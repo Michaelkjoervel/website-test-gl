@@ -160,6 +160,45 @@
       color: rgba(255, 255, 255, 0.88);
     }
 
+    /* ── Top-right login link ── */
+    .top-cta {
+      position: fixed;
+      top: 28px;
+      right: 32px;
+      z-index: 30;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 18px;
+      border-radius: 999px;
+      border: 1px solid rgba(110, 231, 160, 0.4);
+      background: rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(8px);
+      color: #6ee7a0;
+      font-size: 0.82rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all .2s ease;
+    }
+
+    .top-cta:hover {
+      background: rgba(110, 231, 160, 0.1);
+      color: #fff;
+    }
+
+    .top-cta .arrow { font-size: 1rem; }
+
+    @media (max-width: 768px) {
+      .top-cta {
+        top: 14px;
+        right: 14px;
+        padding: 8px 14px;
+        font-size: 0.74rem;
+      }
+    }
+
     /* ── Ambient glow at very bottom (subtle floor reflection) ── */
     .floor-glow {
       position: fixed;
@@ -228,6 +267,12 @@
   </style>
 </head>
 <body>
+
+  <!-- Internal app link -->
+  <a href="app.html" class="top-cta" aria-label="Åbn tidstracking">
+    <span>Tidstracking</span>
+    <span class="arrow">→</span>
+  </a>
 
   <!-- Spotlight overlay (manipulated by JS) -->
   <div class="spotlight-overlay" id="spotlightOverlay"></div>
