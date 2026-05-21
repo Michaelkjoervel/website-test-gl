@@ -1,0 +1,98 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body, #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-surface-soft text-ink font-sans antialiased;
+    background-image:
+      radial-gradient(at 0% 0%, rgba(159, 195, 74, 0.06) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, rgba(159, 195, 74, 0.04) 0px, transparent 50%);
+    background-attachment: fixed;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-white rounded-2xl shadow-card border border-surface-line;
+  }
+  .input,
+  .select,
+  .textarea {
+    @apply w-full rounded-xl border border-surface-line bg-white px-4 py-2.5
+           text-ink text-sm placeholder:text-ink-mute
+           focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-brand-400
+           transition-shadow;
+  }
+  .label {
+    @apply text-xs font-medium text-ink-soft tracking-wide;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5
+           text-sm font-semibold transition-all
+           focus:outline-none focus:ring-2 focus:ring-brand-300 focus:ring-offset-2;
+  }
+  .btn-primary {
+    @apply btn bg-brand-500 text-white hover:bg-brand-600 shadow-sm;
+  }
+  .btn-ghost {
+    @apply btn bg-transparent text-ink-soft hover:bg-surface-soft;
+  }
+  .btn-outline {
+    @apply btn bg-white border border-surface-line text-ink-soft hover:border-brand-400 hover:text-ink;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium;
+  }
+  .nav-link {
+    @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium
+           text-ink-soft hover:bg-surface-soft transition-colors;
+  }
+  .nav-link.active {
+    @apply bg-brand-50 text-ink;
+  }
+  .nav-link.active .nav-dot {
+    @apply bg-brand-500;
+  }
+  .nav-dot {
+    @apply w-1.5 h-1.5 rounded-full bg-surface-line;
+  }
+  .kpi-num {
+    @apply text-2xl font-bold text-ink tracking-tight;
+  }
+  .kpi-label {
+    @apply text-xs text-ink-mute uppercase tracking-wider;
+  }
+}
+
+/* Custom slider */
+input[type="range"].brand-range {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: #E5EBDD;
+  outline: none;
+}
+input[type="range"].brand-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #9FC34A;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(15, 26, 10, 0.2);
+  cursor: pointer;
+}
+input[type="range"].brand-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #9FC34A;
+  border: 2px solid #fff;
+  cursor: pointer;
+}
