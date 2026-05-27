@@ -3,6 +3,9 @@
    ============================================================ */
 
 (function seedIfNeeded() {
+  // Cloud-mode: demo-data oprettes via SQL-scriptet i Supabase, ikke her.
+  if (window.GL_CLOUD) return;
+
   if (DB.Admin.isSeeded() && DB.Users.list().length > 0) {
     // ensure all required users exist (in case a new initial was added)
     ensureUsers();
@@ -14,22 +17,23 @@
 })();
 
 function ensureUsers() {
+  const mail = (i) => i.toLowerCase() + '@green-light.dk';
   const desired = [
-    { initials: 'JMD', name: 'JMD', department: 'Ledelse',          role: 'user'  },
-    { initials: 'JAS', name: 'JAS', department: 'Salg',             role: 'user'  },
-    { initials: 'MKJ', name: 'MKJ', department: 'Ledelse',          role: 'admin' },
-    { initials: 'SHA', name: 'SHA', department: 'Salg',             role: 'user'  },
-    { initials: 'BFA', name: 'BFA', department: 'Teknisk afdeling', role: 'user'  },
-    { initials: 'KHA', name: 'KHA', department: 'Teknisk afdeling', role: 'user'  },
-    { initials: 'CAN', name: 'CAN', department: 'Administration',   role: 'user'  },
-    { initials: 'JEP', name: 'JEP', department: 'Salg',             role: 'user'  },
-    { initials: 'MDA', name: 'MDA', department: 'Marketing',        role: 'user'  },
-    { initials: 'KMA', name: 'KMA', department: 'Lager',            role: 'user'  },
-    { initials: 'ALH', name: 'ALH', department: 'Administration',   role: 'user'  }
+    { initials: 'JMD', department: 'Ledelse',          role: 'user'  },
+    { initials: 'JAS', department: 'Salg',             role: 'user'  },
+    { initials: 'MKJ', department: 'Ledelse',          role: 'admin' },
+    { initials: 'SHA', department: 'Salg',             role: 'user'  },
+    { initials: 'BFA', department: 'Teknisk afdeling', role: 'user'  },
+    { initials: 'KHA', department: 'Teknisk afdeling', role: 'user'  },
+    { initials: 'CAN', department: 'Administration',   role: 'user'  },
+    { initials: 'JEP', department: 'Salg',             role: 'user'  },
+    { initials: 'MDA', department: 'Marketing',        role: 'user'  },
+    { initials: 'KMA', department: 'Lager',            role: 'user'  },
+    { initials: 'ALH', department: 'Administration',   role: 'user'  }
   ];
   desired.forEach(d => {
     if (!DB.Users.getByInitials(d.initials)) {
-      DB.Users.create(d);
+      DB.Users.create({ ...d, name: d.initials, email: mail(d.initials) });
     }
   });
 }

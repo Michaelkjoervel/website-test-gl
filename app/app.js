@@ -5,8 +5,16 @@
 const SESSION_KEY = 'gl-tidstracking-session';
 
 /* ----------------- Auth ----------------- */
+/* Cloud-mode  : Supabase Auth (email + adgangskode). Den indloggede
+                 brugers profil findes i users-tabellen via email.
+   Lokal mode  : simpel initial-login gemt i localStorage.            */
 const Auth = {
+  _cloudUser: null, // cached profile-row i cloud-mode
+
   current() {
+    if (DB.isCloud()) {
+      return Auth._cloudUser || null;
+    }
     try {
       const raw = localStorage.getItem(SESSION_KEY);
       if (!raw) return null;
@@ -14,14 +22,55 @@ const Auth = {
       return DB.Users.get(userId) || null;
     } catch { return null; }
   },
+
+  // Lokal mode
   login(initials) {
     const u = DB.Users.getByInitials(initials);
     if (!u) throw new Error('Ukendt initialer. Tjek staveform.');
     localStorage.setItem(SESSION_KEY, JSON.stringify({ userId: u.id, ts: Date.now() }));
     return u;
   },
-  logout() {
-    localStorage.removeItem(SESSION_KEY);
+
+  // Cloud mode
+  async loginCloud(email, password) {
+    await window.Cloud.signIn(email, password);
+    await DB.hydrate();
+    return Auth.resolveCloudProfile(email);
+  },
+
+  // Find profil-rækken i users-tabellen der matcher den indloggede email.
+  resolveCloudProfile(email) {
+    const all = DB.Users.list();
+    const match = all.find(u => (u.email || '').toLowerCase() === String(email).toLowerCase());
+    if (!match) {
+      throw new Error('Din login virker, men der findes ingen brugerprofil med din email. Kontakt admin.');
+    }
+    Auth._cloudUser = match;
+    return match;
+  },
+
+  async logout() {
+    if (DB.isCloud()) {
+      Auth._cloudUser = null;
+      await window.Cloud.signOut();
+    } else {
+      localStorage.removeItem(SESSION_KEY);
+    }
+  },
+
+  // Genskab session ved sideindlæsning (kun cloud).
+  async restoreCloudSession() {
+    if (!DB.isCloud()) return null;
+    const session = await window.Cloud.getSession();
+    if (!session) return null;
+    const email = session.user ? session.user.email : null;
+    if (!email) return null;
+    await DB.hydrate();
+    try {
+      return Auth.resolveCloudProfile(email);
+    } catch {
+      return null;
+    }
   }
 };
 
@@ -277,6 +326,31 @@ function render() {
 function bindLogin() {
   document.getElementById('app').className = '';
   const form = document.getElementById('login-form');
+
+  if (DB.isCloud()) {
+    // Cloud: email + adgangskode
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = form.email.value.trim();
+      const password = form.password.value;
+      const btn = form.querySelector('button[type="submit"]');
+      btn.disabled = true;
+      btn.textContent = 'Logger ind...';
+      try {
+        const u = await Auth.loginCloud(email, password);
+        toast('Velkommen ' + u.initials, 'success');
+        if (!window.location.hash || window.location.hash === '#/') window.location.hash = '#/dashboard';
+        render();
+      } catch (err) {
+        toast(err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Log ind';
+      }
+    });
+    return;
+  }
+
+  // Lokal: initialer
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     const initials = form.initials.value.trim();
@@ -307,10 +381,10 @@ function bindLogin() {
 function bindGlobal() {
   // Logout
   document.querySelectorAll('[data-action="logout"]').forEach(el => {
-    el.addEventListener('click', () => {
-      Auth.logout();
+    el.addEventListener('click', async () => {
+      await Auth.logout();
       toast('Logget ud', 'info');
-      Router.navigate('#/dashboard'); // will land on login since no user
+      window.location.hash = '#/dashboard'; // lander på login da der ikke er bruger
       render();
     });
   });
@@ -752,7 +826,8 @@ function bindPage(path, user, params) {
           initials: fd.get('initials').toUpperCase(),
           name: fd.get('name') || fd.get('initials').toUpperCase(),
           department: fd.get('department'),
-          role: fd.get('role') || 'user'
+          role: fd.get('role') || 'user',
+          email: fd.get('email') || null
         });
         toast('Bruger oprettet', 'success');
         render();
@@ -791,9 +866,13 @@ function bindPage(path, user, params) {
         actions: [
           { label: 'Annullér' },
           { label: 'Nulstil alt', cls: 'btn-danger', onClick: () => {
-              DB.Admin.resetAll();
-              toast('Database nulstillet — genindlæser...', 'info');
-              setTimeout(() => location.reload(), 800);
+              try {
+                DB.Admin.resetAll();
+                toast('Database nulstillet — genindlæser...', 'info');
+                setTimeout(() => location.reload(), 800);
+              } catch (err) {
+                toast(err.message, 'error');
+              }
             }
           }
         ]
@@ -802,6 +881,42 @@ function bindPage(path, user, params) {
   });
 }
 
-/* ----------------- Boot ----------------- */
-window.addEventListener('hashchange', render);
-document.addEventListener('DOMContentLoaded', render);
+/* ----------------- Navigation & boot ----------------- */
+// I cloud-mode hentes friske data fra serveren før hver visning, så
+// medarbejdere ser hinandens opdateringer. Igangværende skrivninger
+// afventes først, så vi ikke overskriver en netop gemt ændring.
+async function navigate() {
+  if (DB.isCloud() && Auth.current()) {
+    try {
+      if (window.Cloud) await window.Cloud.flush();
+      await DB.hydrate();
+      // Genfind profil-reference efter hydrering (objektet er nyt).
+      if (Auth._cloudUser) Auth.resolveCloudProfile(Auth._cloudUser.email);
+    } catch (err) {
+      toast('Kunne ikke hente data: ' + err.message, 'error');
+    }
+  }
+  render();
+}
+
+async function boot() {
+  // Vis cloud-fejl fra baggrundsskrivninger.
+  window.addEventListener('gl-cloud-error', (e) => {
+    toast('Synk-fejl: ' + (e.detail || 'ukendt fejl'), 'error');
+  });
+
+  if (DB.isCloud()) {
+    try {
+      const u = await Auth.restoreCloudSession();
+      if (u && (!window.location.hash || window.location.hash === '#/')) {
+        window.location.hash = '#/dashboard';
+      }
+    } catch (err) {
+      console.error('Session-gendannelse fejlede:', err);
+    }
+  }
+  render();
+}
+
+window.addEventListener('hashchange', navigate);
+document.addEventListener('DOMContentLoaded', boot);

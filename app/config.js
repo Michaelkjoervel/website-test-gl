@@ -1,0 +1,27 @@
+/* ============================================================
+   config.js — Miljøkonfiguration
+   ------------------------------------------------------------
+   Udfyld de to nøgler nedenfor for at slå DELT CLOUD-mode til
+   (fælles database + per-bruger login via Supabase).
+
+   Lader du dem stå tomme, kører appen i LOKAL DEMO-mode, hvor
+   data kun gemmes i den enkelte browser (localStorage).
+
+   Nøglerne findes i Supabase:
+     Project Settings → API
+       - Project URL          → SUPABASE_URL
+       - Project API keys: anon/public → SUPABASE_ANON_KEY
+
+   Den anonyme nøgle er beregnet til at ligge i frontend-kode
+   (den er offentlig). Adgang styres af Row Level Security i
+   databasen + login.
+   ============================================================ */
+
+window.GL_CONFIG = {
+  SUPABASE_URL: '',        // fx 'https://abcdxyz.supabase.co'
+  SUPABASE_ANON_KEY: '',   // fx 'eyJhbGciOi...'
+  APP_NAME: 'green light tidstracking'
+};
+
+// Cloud-mode er aktiv når begge nøgler er udfyldt.
+window.GL_CLOUD = !!(window.GL_CONFIG.SUPABASE_URL && window.GL_CONFIG.SUPABASE_ANON_KEY);

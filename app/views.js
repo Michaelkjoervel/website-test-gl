@@ -4,6 +4,41 @@
 
 /* ----------------- LOGIN ----------------- */
 function viewLogin() {
+  // Cloud-mode: rigtig per-bruger login med email + adgangskode.
+  if (window.GL_CLOUD) {
+    return `
+      <div class="login-page">
+        <div class="login-card">
+          <div class="login-brand">
+            <div class="brand-dot">gl</div>
+            <div>
+              <h1>green light a/s</h1>
+              <p>Tidstracking</p>
+            </div>
+          </div>
+          <div class="login-title">Log ind</div>
+          <div class="login-sub">Brug din green light-email og adgangskode.</div>
+
+          <form id="login-form" class="form">
+            <div class="field">
+              <label for="email">Email</label>
+              <input id="email" name="email" type="email" autocomplete="username"
+                     placeholder="fx mkj@green-light.dk" required />
+            </div>
+            <div class="field">
+              <label for="password">Adgangskode</label>
+              <input id="password" name="password" type="password" autocomplete="current-password"
+                     placeholder="Din adgangskode" required />
+            </div>
+            <button class="btn btn-primary btn-block" type="submit">Log ind</button>
+          </form>
+          <div class="hint" style="margin-top:14px;">Har du ikke en konto? Kontakt MKJ (administrator).</div>
+        </div>
+      </div>
+    `;
+  }
+
+  // Lokal demo-mode: hurtig login med initialer.
   const users = DB.Users.list();
   return `
     <div class="login-page">
@@ -12,7 +47,7 @@ function viewLogin() {
           <div class="brand-dot">gl</div>
           <div>
             <h1>green light a/s</h1>
-            <p>Tidstracking</p>
+            <p>Tidstracking · demo</p>
           </div>
         </div>
         <div class="login-title">Velkommen tilbage</div>
@@ -967,6 +1002,13 @@ function viewAdmin() {
               </select>
             </div>
           </div>
+          ${window.GL_CLOUD ? `
+            <div class="field">
+              <label>Email (login)</label>
+              <input name="email" type="email" placeholder="fx abc@green-light.dk" required />
+              <div class="hint">Husk også at oprette en login-konto med samme email i Supabase (Authentication → Users), ellers kan brugeren ikke logge ind.</div>
+            </div>
+          ` : ''}
           <div class="form-actions">
             <button class="btn btn-primary" type="submit">Tilføj bruger</button>
           </div>

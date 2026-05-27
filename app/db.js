@@ -76,9 +76,60 @@ function emptyStore() {
   };
 }
 
-let _store = loadStore() || emptyStore();
+let _store = window.GL_CLOUD ? emptyStore() : (loadStore() || emptyStore());
 
-function persist() { saveStore(_store); }
+/* ------------------------------------------------------------
+   Persistence routing
+   ------------------------------------------------------------
+   LOKAL mode  : hele _store gemmes i localStorage.
+   CLOUD mode  : den enkelte række skrives til Supabase (write-
+                 through). _store er en in-memory cache der
+                 hydreres fra serveren via hydrate().
+   ------------------------------------------------------------ */
+function isCloud() {
+  return !!(window.GL_CLOUD && window.Cloud);
+}
+
+// Hent al data ind i cachen. I lokal mode læses fra localStorage.
+async function hydrate() {
+  if (isCloud()) {
+    _store = await window.Cloud.fetchAll();
+  } else {
+    _store = loadStore() || emptyStore();
+  }
+  return _store;
+}
+
+// Skriv (insert eller update) én række.
+function syncUpsert(table, row) {
+  if (isCloud()) {
+    window.Cloud.upsert(table, stripClientOnly(table, row));
+  } else {
+    saveStore(_store);
+  }
+}
+
+// Slet én række.
+function syncRemove(table, id) {
+  if (isCloud()) {
+    window.Cloud.remove(table, id);
+  } else {
+    saveStore(_store);
+  }
+}
+
+// Felter der kun giver mening lokalt fjernes inden de sendes til DB.
+function stripClientOnly(table, row) {
+  const clone = { ...row };
+  if (table === 'cases') {
+    // 'favorite' findes som kolonne; intet at fjerne pt.
+  }
+  return clone;
+}
+
+function persist() {
+  if (!isCloud()) saveStore(_store);
+}
 
 /* ------------------------------------------------------------
    Users
@@ -96,7 +147,7 @@ const Users = {
       u => u.initials.toUpperCase() === String(initials).toUpperCase()
     );
   },
-  create({ initials, name, department, role = 'user' }) {
+  create({ initials, name, department, role = 'user', email = null }) {
     if (!initials) throw new Error('Initialer mangler');
     if (Users.getByInitials(initials)) throw new Error('Initialer findes allerede');
     if (!DEPARTMENTS.includes(department)) throw new Error('Ugyldig afdeling');
@@ -106,23 +157,24 @@ const Users = {
       name: name || initials.toUpperCase(),
       department,
       role,
+      email: email || null,
       created_at: nowIso(),
       updated_at: nowIso()
     };
     _store.users.push(user);
-    persist();
+    syncUpsert('users', user);
     return user;
   },
   update(id, patch) {
     const u = Users.get(id);
     if (!u) throw new Error('Bruger ikke fundet');
     Object.assign(u, patch, { updated_at: nowIso() });
-    persist();
+    syncUpsert('users', u);
     return u;
   },
   remove(id) {
     _store.users = _store.users.filter(u => u.id !== id);
-    persist();
+    syncRemove('users', id);
   }
 };
 
@@ -186,7 +238,7 @@ const Cases = {
       updated_at: nowIso()
     };
     _store.cases.push(c);
-    persist();
+    syncUpsert('cases', c);
     ActivityLog.add({
       case_id: c.id,
       user_id: created_by_user_id,
@@ -200,7 +252,7 @@ const Cases = {
     if (!c) throw new Error('Sag ikke fundet');
     const before = { ...c };
     Object.assign(c, patch, { updated_at: nowIso() });
-    persist();
+    syncUpsert('cases', c);
     if (patch.phase && patch.phase !== before.phase) {
       ActivityLog.add({
         case_id: c.id, user_id: actorUserId,
@@ -225,7 +277,7 @@ const Cases = {
     c.po_date = po_date || nowIso().slice(0, 10);
     c.closed_at = nowIso();
     c.updated_at = nowIso();
-    persist();
+    syncUpsert('cases', c);
     ActivityLog.add({
       case_id: c.id, user_id: actorUserId,
       action_type: ACTIONS.CASE_WON,
@@ -241,7 +293,7 @@ const Cases = {
     c.lost_reason = lost_reason || '';
     c.closed_at = nowIso();
     c.updated_at = nowIso();
-    persist();
+    syncUpsert('cases', c);
     ActivityLog.add({
       case_id: c.id, user_id: actorUserId,
       action_type: ACTIONS.CASE_LOST,
@@ -255,7 +307,7 @@ const Cases = {
     c.status = 'Afsluttet';
     c.closed_at = nowIso();
     c.updated_at = nowIso();
-    persist();
+    syncUpsert('cases', c);
     ActivityLog.add({
       case_id: c.id, user_id: actorUserId,
       action_type: ACTIONS.CASE_CLOSED,
@@ -268,7 +320,7 @@ const Cases = {
     if (!c) return;
     c.favorite = !c.favorite;
     c.updated_at = nowIso();
-    persist();
+    syncUpsert('cases', c);
     return c;
   },
   remove(id) {
@@ -276,7 +328,8 @@ const Cases = {
     _store.time_entries = _store.time_entries.filter(t => t.case_id !== id);
     _store.activity_log = _store.activity_log.filter(a => a.case_id !== id);
     _store.comments = _store.comments.filter(c => c.case_id !== id);
-    persist();
+    // Cloud: FK ON DELETE CASCADE fjerner relaterede rækker automatisk.
+    syncRemove('cases', id);
   }
 };
 
@@ -331,7 +384,7 @@ const TimeEntries = {
       updated_at: nowIso()
     };
     _store.time_entries.push(entry);
-    persist();
+    syncUpsert('time_entries', entry);
     ActivityLog.add({
       case_id: case_id,
       user_id: user_id,
@@ -349,12 +402,12 @@ const TimeEntries = {
       patch.hours = h;
     }
     Object.assign(t, patch, { updated_at: nowIso() });
-    persist();
+    syncUpsert('time_entries', t);
     return t;
   },
   remove(id) {
     _store.time_entries = _store.time_entries.filter(t => t.id !== id);
-    persist();
+    syncRemove('time_entries', id);
   }
 };
 
@@ -382,7 +435,7 @@ const ActivityLog = {
       created_at: nowIso()
     };
     _store.activity_log.push(entry);
-    persist();
+    syncUpsert('activity_log', entry);
     return entry;
   }
 };
@@ -406,7 +459,7 @@ const Comments = {
       created_at: nowIso()
     };
     _store.comments.push(comment);
-    persist();
+    syncUpsert('comments', comment);
     ActivityLog.add({
       case_id, user_id,
       action_type: ACTIONS.COMMENT_ADDED,
@@ -416,7 +469,7 @@ const Comments = {
   },
   remove(id) {
     _store.comments = _store.comments.filter(c => c.id !== id);
-    persist();
+    syncRemove('comments', id);
   }
 };
 
@@ -517,6 +570,10 @@ const Calc = {
    ------------------------------------------------------------ */
 const Admin = {
   resetAll() {
+    if (isCloud()) {
+      // I cloud-mode nulstilles data via SQL i Supabase, ikke fra klienten.
+      throw new Error('Nulstilling sker i Supabase i cloud-mode (se SETUP.md).');
+    }
     _store = emptyStore();
     persist();
   },
@@ -529,6 +586,7 @@ const Admin = {
     persist();
   },
   setSeeded() {
+    if (isCloud()) return;
     _store.meta.seeded = true;
     persist();
   },
@@ -575,6 +633,6 @@ function todayIso() {
 }
 
 /* expose */
-window.DB = { Users, Cases, TimeEntries, ActivityLog, Comments, Calc, Admin };
+window.DB = { Users, Cases, TimeEntries, ActivityLog, Comments, Calc, Admin, hydrate, isCloud };
 window.CONSTS = { DEPARTMENTS, PHASES, STATUSES, ACTIONS };
 window.Fmt = { formatHours, formatDate, formatDateTime, formatCurrency, todayIso };
