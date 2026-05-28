@@ -10,7 +10,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import type { CustomerEstimate } from "./types";
-import { dkkInt, formatDate, num } from "./format";
+import { dkkInt, formatDate, num, pct } from "./format";
 
 const BRAND = {
   green: [159, 195, 74] as [number, number, number],
@@ -289,6 +289,64 @@ export function generateEstimatePdf(est: CustomerEstimate): jsPDF {
   });
   // @ts-expect-error
   y = doc.lastAutoTable.finalY + 24;
+
+  // ─── Energibesparelse (før/efter) ───
+  if (est.energyComparison) {
+    const ec = est.energyComparison;
+    if (y > pageH - 220) {
+      doc.addPage();
+      y = margin;
+    }
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.setTextColor(...BRAND.ink);
+    doc.text("Energibesparelse · før/efter", margin, y);
+    y += 8;
+
+    autoTable(doc, {
+      startY: y + 4,
+      head: [["Energibesparelse", "Værdi"]],
+      body: [
+        ["Nuværende forbrug", `${num.format(ec.currentAnnualKwh)} kWh/år`],
+        ["Forbrug ny løsning", `${num.format(ec.newAnnualKwh)} kWh/år`],
+        ...(ec.controlSavingsPct > 0
+          ? [["Heraf styringsbesparelse", pct(ec.controlSavingsPct, 0)]]
+          : []),
+        ["Sparet pr. år", `${num.format(ec.savedKwh)} kWh (${pct(ec.savedPct, 0)})`],
+        ["Sparet i kr. pr. år", dkkInt(ec.savedAnnualCost)],
+      ],
+      theme: "plain",
+      margin: { left: margin, right: margin },
+      styles: {
+        font: "helvetica",
+        fontSize: 10,
+        cellPadding: 7,
+        textColor: BRAND.ink,
+        lineColor: BRAND.line,
+        lineWidth: 0.4,
+      },
+      headStyles: {
+        fillColor: BRAND.soft,
+        textColor: BRAND.inkSoft,
+        fontStyle: "bold",
+      },
+      columnStyles: {
+        0: { cellWidth: 320 },
+        1: { halign: "right", fontStyle: "bold" },
+      },
+      didParseCell: (data) => {
+        if (
+          data.section === "body" &&
+          data.row.index === data.table.body.length - 1
+        ) {
+          data.cell.styles.lineColor = BRAND.green;
+          data.cell.styles.lineWidth = 1;
+        }
+      },
+    });
+    // @ts-expect-error – jspdf-autotable mutation
+    y = doc.lastAutoTable.finalY + 24;
+  }
 
   // ─── Bemærkninger ───
   if (est.technical.notes) {

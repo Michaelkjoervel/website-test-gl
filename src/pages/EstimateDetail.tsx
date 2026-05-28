@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { storage } from "../lib/storage";
 import { downloadEstimatePdf } from "../lib/pdf";
 import { ConfidenceBadge, ConfidenceMeter } from "../components/Confidence";
-import { dkkInt, formatDate, num } from "../lib/format";
+import { dkkInt, formatDate, num, pct } from "../lib/format";
 import type {
   ActualResult,
   CustomerEstimate,
@@ -196,6 +196,85 @@ export function EstimateDetail() {
           </div>
         ) : null}
       </section>
+
+      {/* Energibesparelse før/efter */}
+      {est.energyComparison && (
+        <section className="card p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-ink-soft uppercase tracking-wider">
+              Energibesparelse · før/efter
+            </h3>
+            <span className="chip bg-brand-500 text-white">
+              −{pct(est.energyComparison.savedPct, 0)} pr. år
+            </span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+            <Big
+              label="Nuværende forbrug"
+              value={`${num.format(est.energyComparison.currentAnnualKwh)} kWh`}
+            />
+            <Big
+              label="Ny løsning"
+              value={`${num.format(est.energyComparison.newAnnualKwh)} kWh`}
+            />
+            <Big
+              label="Sparet pr. år"
+              value={`${num.format(est.energyComparison.savedKwh)} kWh`}
+            />
+            <Big
+              label="Sparet i kr./år"
+              value={dkkInt(est.energyComparison.savedAnnualCost)}
+              tone="primary"
+            />
+          </div>
+          {est.energyComparisonInput && (
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <DefList
+                items={[
+                  [
+                    "Nuværende armaturer",
+                    num.format(est.energyComparisonInput.current.luminaireCount),
+                  ],
+                  [
+                    "Watt pr. armatur (nu)",
+                    `${num.format(
+                      est.energyComparisonInput.current.wattPerLuminaire,
+                    )} W`,
+                  ],
+                  [
+                    "Brændetimer (nu)",
+                    `${num.format(
+                      est.energyComparisonInput.current.burnHours,
+                    )} t/år`,
+                  ],
+                ]}
+              />
+              <DefList
+                items={[
+                  [
+                    "Nye armaturer",
+                    num.format(
+                      est.energyComparisonInput.oneToOne
+                        ? est.energyComparisonInput.current.luminaireCount
+                        : est.energyComparisonInput.replacement.luminaireCount,
+                    ),
+                  ],
+                  [
+                    "Watt pr. nyt armatur",
+                    `${num.format(
+                      est.energyComparisonInput.replacement.wattPerLuminaire,
+                    )} W`,
+                  ],
+                  [
+                    "Styringsbesparelse",
+                    pct(est.energyComparison.controlSavingsPct, 0),
+                  ],
+                ]}
+              />
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Installer */}
       <section className="card p-6">

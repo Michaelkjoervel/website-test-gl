@@ -15,6 +15,8 @@
 import { pricingConfig } from "./pricingConfig";
 import type {
   EnergyCalculation,
+  EnergyComparisonInput,
+  EnergyComparisonResult,
   EstimateConfidence,
   PricingResult,
   TechnicalInput,
@@ -111,6 +113,60 @@ export function calculateEnergy(
   }
 
   return result;
+}
+
+// Energi-sammenligning: nuværende installation vs. ny (1:1) løsning.
+// Besparelse fra styring lægges oven i forskellen mellem gammelt og nyt armatur.
+//   forbrug = antal armaturer × watt × brændetimer / 1000 (kWh/år)
+//   styringsbesparelse trækkes fra de nye armaturers forbrug.
+export function calculateEnergyComparison(
+  input: EnergyComparisonInput,
+  electricityPrice: number,
+): EnergyComparisonResult {
+  const cfg = pricingConfig.energySavings;
+
+  const kwh = (set: { luminaireCount: number; wattPerLuminaire: number; burnHours: number }) =>
+    (set.luminaireCount * set.wattPerLuminaire * set.burnHours) / 1000;
+
+  const currentAnnualKwh = kwh(input.current);
+
+  // 1:1-udskiftning: de nye armaturers antal følger det nuværende antal.
+  const replacementCount = input.oneToOne
+    ? input.current.luminaireCount
+    : input.replacement.luminaireCount;
+
+  const newBaseAnnualKwh = kwh({
+    luminaireCount: replacementCount,
+    wattPerLuminaire: input.replacement.wattPerLuminaire,
+    burnHours: input.replacement.burnHours,
+  });
+
+  // Styringsbesparelse: styring 50% + evt. dagslysstyring yderligere 20%.
+  const controlSavingsPct = Math.min(
+    1,
+    (input.withControl ? cfg.control : 0) +
+      (input.withDaylightControl ? cfg.daylightControl : 0),
+  );
+
+  const newAnnualKwh = newBaseAnnualKwh * (1 - controlSavingsPct);
+
+  const savedKwh = currentAnnualKwh - newAnnualKwh;
+  const savedPct = currentAnnualKwh > 0 ? savedKwh / currentAnnualKwh : 0;
+
+  const currentAnnualCost = currentAnnualKwh * electricityPrice;
+  const newAnnualCost = newAnnualKwh * electricityPrice;
+
+  return {
+    currentAnnualKwh: round(currentAnnualKwh),
+    newBaseAnnualKwh: round(newBaseAnnualKwh),
+    controlSavingsPct,
+    newAnnualKwh: round(newAnnualKwh),
+    savedKwh: round(savedKwh),
+    savedPct,
+    currentAnnualCost: round(currentAnnualCost),
+    newAnnualCost: round(newAnnualCost),
+    savedAnnualCost: round(savedKwh * electricityPrice),
+  };
 }
 
 // Confidence – baseret på hvor meget brugeren har udfyldt.

@@ -7,6 +7,7 @@ import { storage, newId } from "../lib/storage";
 import {
   calculateConfidence,
   calculateEnergy,
+  calculateEnergyComparison,
   calculatePricing,
 } from "../lib/estimateEngine";
 import { suggestAdjustment } from "../lib/learningModel";
@@ -15,11 +16,12 @@ import type {
   AreaType,
   ControlType,
   CustomerEstimate,
+  EnergyComparisonInput,
   InstallerInfo,
   KelvinValue,
   TechnicalInput,
 } from "../lib/types";
-import { dkkInt, num } from "../lib/format";
+import { dkkInt, num, pct } from "../lib/format";
 
 const AREAS: AreaType[] = [
   "Lager",
@@ -51,9 +53,12 @@ const LUX_PRESETS = [150, 200, 300, 500, 750];
 const STEPS = [
   { id: 1, label: "Projekt" },
   { id: 2, label: "Installatør" },
-  { id: 3, label: "Teknisk" },
-  { id: 4, label: "Resultat" },
+  { id: 3, label: "Energi" },
+  { id: 4, label: "Teknisk" },
+  { id: 5, label: "Resultat" },
 ];
+
+const LAST_STEP = STEPS.length;
 
 export function NewEstimate() {
   const navigate = useNavigate();
@@ -83,8 +88,28 @@ export function NewEstimate() {
 
   const [customLux, setCustomLux] = useState(false);
 
+  const [energyInput, setEnergyInput] = useState<EnergyComparisonInput>({
+    current: {
+      luminaireCount: pricingConfig.defaults.luminaireCount,
+      wattPerLuminaire: pricingConfig.energyDefaults.currentWattPerLuminaire,
+      burnHours: pricingConfig.defaults.annualBurnHours,
+    },
+    replacement: {
+      luminaireCount: pricingConfig.defaults.luminaireCount,
+      wattPerLuminaire: pricingConfig.energyDefaults.newWattPerLuminaire,
+      burnHours: pricingConfig.defaults.annualBurnHours,
+    },
+    oneToOne: true,
+    withControl: true,
+    withDaylightControl: false,
+  });
+
   const pricing = useMemo(() => calculatePricing(technical), [technical]);
   const energy = useMemo(() => calculateEnergy(technical), [technical]);
+  const energyComparison = useMemo(
+    () => calculateEnergyComparison(energyInput, technical.electricityPrice),
+    [energyInput, technical.electricityPrice],
+  );
   const confidence = useMemo(
     () =>
       calculateConfidence(
@@ -105,8 +130,12 @@ export function NewEstimate() {
     [technical],
   );
 
-  const next = () => setStep((s) => Math.min(4, s + 1));
+  const next = () => setStep((s) => Math.min(LAST_STEP, s + 1));
   const prev = () => setStep((s) => Math.max(1, s - 1));
+
+  // Hjælper til at opdatere et delfelt i energi-sammenligningen.
+  const setEnergy = (patch: Partial<EnergyComparisonInput>) =>
+    setEnergyInput((e) => ({ ...e, ...patch }));
 
   const save = () => {
     const id = newId();
@@ -121,6 +150,8 @@ export function NewEstimate() {
       technical,
       pricing,
       energy,
+      energyComparison,
+      energyComparisonInput: energyInput,
       confidence,
       status: "Kladde",
       learningAdjustmentPct: learning.averageDeltaPct,
@@ -229,6 +260,228 @@ export function NewEstimate() {
         )}
 
         {step === 3 && (
+          <section className="card p-6 space-y-6">
+            <div>
+              <div className="kpi-label">Energibesparelse · overslag</div>
+              <p className="text-sm text-ink-mute mt-1">
+                Sammenlign den nuværende belysning med en ny løsning (1:1
+                udskiftning som udgangspunkt). Tilvalg af styring lægger en
+                anslået besparelse oveni. Resultatet vises sammen med det
+                samlede estimat.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Nuværende */}
+              <div className="rounded-2xl border border-surface-line p-4 space-y-4">
+                <div className="text-sm font-semibold text-ink">
+                  Nuværende anlæg
+                </div>
+                <Field label="Antal armaturer">
+                  <input
+                    type="number"
+                    min={0}
+                    className="input"
+                    value={energyInput.current.luminaireCount}
+                    onChange={(e) =>
+                      setEnergy({
+                        current: {
+                          ...energyInput.current,
+                          luminaireCount: Number(e.target.value) || 0,
+                        },
+                      })
+                    }
+                  />
+                </Field>
+                <Field
+                  label="Watt pr. armatur (gns.)"
+                  tooltip="Gennemsnitligt effektforbrug pr. eksisterende armatur."
+                >
+                  <input
+                    type="number"
+                    min={0}
+                    className="input"
+                    value={energyInput.current.wattPerLuminaire}
+                    onChange={(e) =>
+                      setEnergy({
+                        current: {
+                          ...energyInput.current,
+                          wattPerLuminaire: Number(e.target.value) || 0,
+                        },
+                      })
+                    }
+                  />
+                </Field>
+                <Field label="Brændetimer pr. år">
+                  <input
+                    type="number"
+                    min={0}
+                    className="input"
+                    value={energyInput.current.burnHours}
+                    onChange={(e) =>
+                      setEnergy({
+                        current: {
+                          ...energyInput.current,
+                          burnHours: Number(e.target.value) || 0,
+                        },
+                      })
+                    }
+                  />
+                </Field>
+              </div>
+
+              {/* Nyt */}
+              <div className="rounded-2xl border border-brand-200 bg-brand-50/40 p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-semibold text-ink">
+                    Ny løsning
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEnergy({ oneToOne: !energyInput.oneToOne })}
+                    className={`chip border ${
+                      energyInput.oneToOne
+                        ? "bg-brand-500 text-white border-brand-500"
+                        : "bg-white text-ink-soft border-surface-line"
+                    }`}
+                  >
+                    1:1 udskiftning
+                  </button>
+                </div>
+                <Field
+                  label="Antal armaturer"
+                  hint={
+                    energyInput.oneToOne
+                      ? "Følger det nuværende antal (1:1)."
+                      : undefined
+                  }
+                >
+                  <input
+                    type="number"
+                    min={0}
+                    className="input disabled:opacity-50"
+                    disabled={energyInput.oneToOne}
+                    value={
+                      energyInput.oneToOne
+                        ? energyInput.current.luminaireCount
+                        : energyInput.replacement.luminaireCount
+                    }
+                    onChange={(e) =>
+                      setEnergy({
+                        replacement: {
+                          ...energyInput.replacement,
+                          luminaireCount: Number(e.target.value) || 0,
+                        },
+                      })
+                    }
+                  />
+                </Field>
+                <Field
+                  label="Watt pr. nyt armatur"
+                  tooltip="Effektforbrug pr. nyt LED-armatur."
+                >
+                  <input
+                    type="number"
+                    min={0}
+                    className="input"
+                    value={energyInput.replacement.wattPerLuminaire}
+                    onChange={(e) =>
+                      setEnergy({
+                        replacement: {
+                          ...energyInput.replacement,
+                          wattPerLuminaire: Number(e.target.value) || 0,
+                        },
+                      })
+                    }
+                  />
+                </Field>
+                <Field label="Brændetimer pr. år">
+                  <input
+                    type="number"
+                    min={0}
+                    className="input"
+                    value={energyInput.replacement.burnHours}
+                    onChange={(e) =>
+                      setEnergy({
+                        replacement: {
+                          ...energyInput.replacement,
+                          burnHours: Number(e.target.value) || 0,
+                        },
+                      })
+                    }
+                  />
+                </Field>
+              </div>
+            </div>
+
+            {/* Styringsbesparelse */}
+            <Field
+              label="Tillæg af besparelse ved styring"
+              tooltip="Styring giver ca. 50% besparelse. Dagslysstyring giver yderligere ca. 20%."
+            >
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setEnergy({
+                      withControl: !energyInput.withControl,
+                      withDaylightControl: energyInput.withControl
+                        ? false
+                        : energyInput.withDaylightControl,
+                    })
+                  }
+                  className={`chip border ${
+                    energyInput.withControl
+                      ? "bg-brand-500 text-white border-brand-500"
+                      : "bg-white text-ink-soft border-surface-line hover:border-brand-300"
+                  }`}
+                >
+                  Styring −{pct(pricingConfig.energySavings.control, 0)}
+                </button>
+                <button
+                  type="button"
+                  disabled={!energyInput.withControl}
+                  onClick={() =>
+                    setEnergy({
+                      withDaylightControl: !energyInput.withDaylightControl,
+                    })
+                  }
+                  className={`chip border disabled:opacity-40 ${
+                    energyInput.withDaylightControl
+                      ? "bg-brand-500 text-white border-brand-500"
+                      : "bg-white text-ink-soft border-surface-line hover:border-brand-300"
+                  }`}
+                >
+                  + Dagslysstyring −{pct(pricingConfig.energySavings.daylightControl, 0)}
+                </button>
+              </div>
+            </Field>
+
+            {/* Live resultat */}
+            <div className="rounded-2xl bg-surface-soft border border-surface-line p-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <SmallStat
+                  label="Nuværende forbrug"
+                  value={`${num.format(energyComparison.currentAnnualKwh)} kWh`}
+                />
+                <SmallStat
+                  label="Nyt forbrug"
+                  value={`${num.format(energyComparison.newAnnualKwh)} kWh`}
+                />
+                <SmallStat
+                  label="Sparet pr. år"
+                  value={`${num.format(energyComparison.savedKwh)} kWh`}
+                />
+                <SmallStat
+                  label="Besparelse"
+                  value={pct(energyComparison.savedPct, 0)}
+                />
+              </div>
+            </div>
+          </section>
+        )}
+
+        {step === 4 && (
           <section className="card p-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <Field
@@ -448,7 +701,7 @@ export function NewEstimate() {
           </section>
         )}
 
-        {step === 4 && (
+        {step === 5 && (
           <section className="card p-6 space-y-5">
             <div>
               <div className="kpi-label">Foreløbigt estimat</div>
@@ -485,6 +738,42 @@ export function NewEstimate() {
               />
             </div>
 
+            {/* Energibesparelse (før/efter) */}
+            <div className="rounded-2xl border border-brand-200 bg-brand-50/50 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-sm font-semibold text-ink">
+                  Energibesparelse · før/efter
+                </div>
+                <span className="chip bg-brand-500 text-white">
+                  −{pct(energyComparison.savedPct, 0)} pr. år
+                </span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <SmallStat
+                  label="Nuværende"
+                  value={`${num.format(energyComparison.currentAnnualKwh)} kWh`}
+                />
+                <SmallStat
+                  label="Ny løsning"
+                  value={`${num.format(energyComparison.newAnnualKwh)} kWh`}
+                />
+                <SmallStat
+                  label="Sparet"
+                  value={`${num.format(energyComparison.savedKwh)} kWh`}
+                />
+                <SmallStat
+                  label="Sparet i kr./år"
+                  value={dkkInt(energyComparison.savedAnnualCost)}
+                />
+              </div>
+              {energyComparison.controlSavingsPct > 0 && (
+                <div className="text-[11px] text-ink-mute mt-2">
+                  Inkl. styringsbesparelse på{" "}
+                  {pct(energyComparison.controlSavingsPct, 0)}.
+                </div>
+              )}
+            </div>
+
             <LearningCard learning={learning} />
 
             <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[12px] text-amber-900 leading-relaxed">
@@ -507,7 +796,7 @@ export function NewEstimate() {
           >
             ← Tilbage
           </button>
-          {step < 4 ? (
+          {step < LAST_STEP ? (
             <button type="button" className="btn-primary" onClick={next}>
               Næste →
             </button>
@@ -544,6 +833,12 @@ export function NewEstimate() {
             <Row
               label="Årligt forbrug"
               value={`${num.format(energy.annualKwh)} kWh`}
+            />
+            <Row
+              label="Energibesparelse"
+              value={`${pct(energyComparison.savedPct, 0)} · ${dkkInt(
+                energyComparison.savedAnnualCost,
+              )}/år`}
             />
           </div>
 

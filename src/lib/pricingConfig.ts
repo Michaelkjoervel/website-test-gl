@@ -36,6 +36,16 @@ export interface PricingConfig {
   controlSurcharge: Record<string, { perLuminaire: number; fixed: number }>;
   // Margin / budgetinterval – ±%
   budgetRangePct: number;
+  // Energibesparelse ved tilvalg af styring (før/efter-beregner)
+  energySavings: {
+    control: number; // andel sparet ved styring (0..1)
+    daylightControl: number; // yderligere andel ved dagslysstyring (0..1)
+  };
+  // Standardværdier til energi-sammenligningen
+  energyDefaults: {
+    currentWattPerLuminaire: number;
+    newWattPerLuminaire: number;
+  };
   // Standardværdier for nye estimater (sliders, defaults)
   defaults: {
     luxLevel: number;
@@ -105,6 +115,16 @@ export const pricingConfig: PricingConfig = {
   },
 
   budgetRangePct: 12,
+
+  energySavings: {
+    control: 0.5, // styring: 50%
+    daylightControl: 0.2, // dagslysstyring: yderligere 20%
+  },
+
+  energyDefaults: {
+    currentWattPerLuminaire: 58, // typisk eksisterende armatur (fx lysstofrør)
+    newWattPerLuminaire: 35, // typisk nyt LED-armatur
+  },
 
   defaults: {
     luxLevel: 300,

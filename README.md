@@ -11,9 +11,10 @@ hurtigt, professionelt **overslag** på en belysningsløsning ude hos kunden.
 
 ## Hvad systemet gør
 
-- Opretter nye estimater via et **trinvist flow** (Projekt → Installatør → Teknisk → Resultat).
+- Opretter nye estimater via et **trinvist flow** (Projekt → Installatør → Energi → Teknisk → Resultat).
 - Beregner overslag på materiale, installation, styring, samlet pris, pris pr. armatur og budgetinterval.
 - Estimerer årligt energiforbrug og el-omkostning.
+- **Energibesparelse · før/efter**: sammenligner nuværende anlæg (antal armaturer, watt, brændetimer) med en ny 1:1-løsning og lægger en anslået styringsbesparelse oveni (styring 50%, dagslysstyring yderligere 20%). Resultatet vises i estimatet og i PDF'en.
 - Viser et **sikkerhedsniveau** (Lav / Middel / Høj) baseret på hvor godt brugeren har udfyldt felterne.
 - Genererer en **professionel PDF** med green light branding, klar til at sende eller vise kunden.
 - Gemmer estimathistorik lokalt i browseren.
@@ -108,6 +109,12 @@ areaFactor: { Lager: 1.0, Produktion: 1.15, … },
 // lux-/watt-tabeller
 luxFactor:        [{ lux: 300, factor: 1.0 }, …],
 wattLuxMultiplier:[{ lux: 300, multiplier: 1.0 }, …],
+
+// energibesparelse ved styring (før/efter-beregner)
+energySavings: { control: 0.50, daylightControl: 0.20 },
+
+// standard-watt i energi-sammenligningen
+energyDefaults: { currentWattPerLuminaire: 58, newWattPerLuminaire: 35 },
 ```
 
 Når green light leverer rigtige priser, behøver man **kun** at ændre denne

@@ -73,6 +73,34 @@ export interface EnergyCalculation {
   estimatedAnnualSavings?: number;
 }
 
+// Before/after energy estimate: existing installation vs. new (1:1) solution,
+// with an extra saving when lighting control is added.
+export interface EnergyFixtureSet {
+  luminaireCount: number;
+  wattPerLuminaire: number;
+  burnHours: number;
+}
+
+export interface EnergyComparisonInput {
+  current: EnergyFixtureSet;
+  replacement: EnergyFixtureSet;
+  oneToOne: boolean; // when true, replacement count follows the current count
+  withControl: boolean; // styring
+  withDaylightControl: boolean; // dagslysstyring (yderligere)
+}
+
+export interface EnergyComparisonResult {
+  currentAnnualKwh: number;
+  newBaseAnnualKwh: number; // nye armaturer uden styring
+  controlSavingsPct: number; // samlet besparelse fra styring (0..1)
+  newAnnualKwh: number; // efter styringsbesparelse
+  savedKwh: number;
+  savedPct: number;
+  currentAnnualCost: number;
+  newAnnualCost: number;
+  savedAnnualCost: number;
+}
+
 export interface EstimateConfidence {
   level: ConfidenceLevel;
   score: number; // 0-100
@@ -100,6 +128,8 @@ export interface CustomerEstimate {
   technical: TechnicalInput;
   pricing: PricingResult;
   energy: EnergyCalculation;
+  energyComparison?: EnergyComparisonResult;
+  energyComparisonInput?: EnergyComparisonInput;
   confidence: EstimateConfidence;
   status: EstimateStatus;
   actual?: ActualResult;
