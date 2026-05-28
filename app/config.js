@@ -18,8 +18,8 @@
    ============================================================ */
 
 window.GL_CONFIG = {
-  SUPABASE_URL: '',        // fx 'https://abcdxyz.supabase.co'
-  SUPABASE_ANON_KEY: '',   // fx 'eyJhbGciOi...'
+  SUPABASE_URL: 'https://czogeolinlguilkzpsyf.supabase.co',
+  SUPABASE_ANON_KEY: 'sb_publishable_rM1GZ1Ohg1hiDQ7ex3aqBQ_K9LFt8Pp',
   APP_NAME: 'green light tidstracking'
 };
 
