@@ -53,8 +53,8 @@ const LUX_PRESETS = [150, 200, 300, 500, 750];
 const STEPS = [
   { id: 1, label: "Projekt" },
   { id: 2, label: "Installatør" },
-  { id: 3, label: "Energi" },
-  { id: 4, label: "Teknisk" },
+  { id: 3, label: "Teknisk" },
+  { id: 4, label: "Energi" },
   { id: 5, label: "Resultat" },
 ];
 
@@ -88,24 +88,43 @@ export function NewEstimate() {
 
   const [customLux, setCustomLux] = useState(false);
 
-  const [energyInput, setEnergyInput] = useState<EnergyComparisonInput>({
-    current: {
-      luminaireCount: pricingConfig.defaults.luminaireCount,
-      wattPerLuminaire: pricingConfig.energyDefaults.currentWattPerLuminaire,
-      burnHours: pricingConfig.defaults.annualBurnHours,
-    },
-    replacement: {
-      luminaireCount: pricingConfig.defaults.luminaireCount,
-      wattPerLuminaire: pricingConfig.energyDefaults.newWattPerLuminaire,
-      burnHours: pricingConfig.defaults.annualBurnHours,
-    },
+  // Energi-trinnet genbruger antal armaturer, brændetimer og elpris fra
+  // Teknisk. Her gemmes kun de felter, der er specifikke for energi-
+  // sammenligningen: watt pr. armatur (gammelt/nyt), 1:1-valg og styring.
+  const [energyExtra, setEnergyExtra] = useState({
+    currentWattPerLuminaire: pricingConfig.energyDefaults.currentWattPerLuminaire,
+    newWattPerLuminaire: pricingConfig.energyDefaults.newWattPerLuminaire,
     oneToOne: true,
+    overrideNewCount: undefined as number | undefined,
     withControl: true,
     withDaylightControl: false,
   });
 
   const pricing = useMemo(() => calculatePricing(technical), [technical]);
   const energy = useMemo(() => calculateEnergy(technical), [technical]);
+
+  // Saml det fulde sammenlignings-input ud fra Teknisk + energi-specifikke felter.
+  const energyInput: EnergyComparisonInput = useMemo(
+    () => ({
+      current: {
+        luminaireCount: technical.luminaireCount,
+        wattPerLuminaire: energyExtra.currentWattPerLuminaire,
+        burnHours: technical.annualBurnHours,
+      },
+      replacement: {
+        luminaireCount: energyExtra.oneToOne
+          ? technical.luminaireCount
+          : energyExtra.overrideNewCount ?? technical.luminaireCount,
+        wattPerLuminaire: energyExtra.newWattPerLuminaire,
+        burnHours: technical.annualBurnHours,
+      },
+      oneToOne: energyExtra.oneToOne,
+      withControl: energyExtra.withControl,
+      withDaylightControl: energyExtra.withDaylightControl,
+    }),
+    [technical.luminaireCount, technical.annualBurnHours, energyExtra],
+  );
+
   const energyComparison = useMemo(
     () => calculateEnergyComparison(energyInput, technical.electricityPrice),
     [energyInput, technical.electricityPrice],
@@ -133,9 +152,9 @@ export function NewEstimate() {
   const next = () => setStep((s) => Math.min(LAST_STEP, s + 1));
   const prev = () => setStep((s) => Math.max(1, s - 1));
 
-  // Hjælper til at opdatere et delfelt i energi-sammenligningen.
-  const setEnergy = (patch: Partial<EnergyComparisonInput>) =>
-    setEnergyInput((e) => ({ ...e, ...patch }));
+  // Hjælper til at opdatere et delfelt i energi-trinnet.
+  const setEnergy = (patch: Partial<typeof energyExtra>) =>
+    setEnergyExtra((e) => ({ ...e, ...patch }));
 
   const save = () => {
     const id = newId();
@@ -260,228 +279,6 @@ export function NewEstimate() {
         )}
 
         {step === 3 && (
-          <section className="card p-6 space-y-6">
-            <div>
-              <div className="kpi-label">Energibesparelse · overslag</div>
-              <p className="text-sm text-ink-mute mt-1">
-                Sammenlign den nuværende belysning med en ny løsning (1:1
-                udskiftning som udgangspunkt). Tilvalg af styring lægger en
-                anslået besparelse oveni. Resultatet vises sammen med det
-                samlede estimat.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Nuværende */}
-              <div className="rounded-2xl border border-surface-line p-4 space-y-4">
-                <div className="text-sm font-semibold text-ink">
-                  Nuværende anlæg
-                </div>
-                <Field label="Antal armaturer">
-                  <input
-                    type="number"
-                    min={0}
-                    className="input"
-                    value={energyInput.current.luminaireCount}
-                    onChange={(e) =>
-                      setEnergy({
-                        current: {
-                          ...energyInput.current,
-                          luminaireCount: Number(e.target.value) || 0,
-                        },
-                      })
-                    }
-                  />
-                </Field>
-                <Field
-                  label="Watt pr. armatur (gns.)"
-                  tooltip="Gennemsnitligt effektforbrug pr. eksisterende armatur."
-                >
-                  <input
-                    type="number"
-                    min={0}
-                    className="input"
-                    value={energyInput.current.wattPerLuminaire}
-                    onChange={(e) =>
-                      setEnergy({
-                        current: {
-                          ...energyInput.current,
-                          wattPerLuminaire: Number(e.target.value) || 0,
-                        },
-                      })
-                    }
-                  />
-                </Field>
-                <Field label="Brændetimer pr. år">
-                  <input
-                    type="number"
-                    min={0}
-                    className="input"
-                    value={energyInput.current.burnHours}
-                    onChange={(e) =>
-                      setEnergy({
-                        current: {
-                          ...energyInput.current,
-                          burnHours: Number(e.target.value) || 0,
-                        },
-                      })
-                    }
-                  />
-                </Field>
-              </div>
-
-              {/* Nyt */}
-              <div className="rounded-2xl border border-brand-200 bg-brand-50/40 p-4 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm font-semibold text-ink">
-                    Ny løsning
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setEnergy({ oneToOne: !energyInput.oneToOne })}
-                    className={`chip border ${
-                      energyInput.oneToOne
-                        ? "bg-brand-500 text-white border-brand-500"
-                        : "bg-white text-ink-soft border-surface-line"
-                    }`}
-                  >
-                    1:1 udskiftning
-                  </button>
-                </div>
-                <Field
-                  label="Antal armaturer"
-                  hint={
-                    energyInput.oneToOne
-                      ? "Følger det nuværende antal (1:1)."
-                      : undefined
-                  }
-                >
-                  <input
-                    type="number"
-                    min={0}
-                    className="input disabled:opacity-50"
-                    disabled={energyInput.oneToOne}
-                    value={
-                      energyInput.oneToOne
-                        ? energyInput.current.luminaireCount
-                        : energyInput.replacement.luminaireCount
-                    }
-                    onChange={(e) =>
-                      setEnergy({
-                        replacement: {
-                          ...energyInput.replacement,
-                          luminaireCount: Number(e.target.value) || 0,
-                        },
-                      })
-                    }
-                  />
-                </Field>
-                <Field
-                  label="Watt pr. nyt armatur"
-                  tooltip="Effektforbrug pr. nyt LED-armatur."
-                >
-                  <input
-                    type="number"
-                    min={0}
-                    className="input"
-                    value={energyInput.replacement.wattPerLuminaire}
-                    onChange={(e) =>
-                      setEnergy({
-                        replacement: {
-                          ...energyInput.replacement,
-                          wattPerLuminaire: Number(e.target.value) || 0,
-                        },
-                      })
-                    }
-                  />
-                </Field>
-                <Field label="Brændetimer pr. år">
-                  <input
-                    type="number"
-                    min={0}
-                    className="input"
-                    value={energyInput.replacement.burnHours}
-                    onChange={(e) =>
-                      setEnergy({
-                        replacement: {
-                          ...energyInput.replacement,
-                          burnHours: Number(e.target.value) || 0,
-                        },
-                      })
-                    }
-                  />
-                </Field>
-              </div>
-            </div>
-
-            {/* Styringsbesparelse */}
-            <Field
-              label="Tillæg af besparelse ved styring"
-              tooltip="Styring giver ca. 50% besparelse. Dagslysstyring giver yderligere ca. 20%."
-            >
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setEnergy({
-                      withControl: !energyInput.withControl,
-                      withDaylightControl: energyInput.withControl
-                        ? false
-                        : energyInput.withDaylightControl,
-                    })
-                  }
-                  className={`chip border ${
-                    energyInput.withControl
-                      ? "bg-brand-500 text-white border-brand-500"
-                      : "bg-white text-ink-soft border-surface-line hover:border-brand-300"
-                  }`}
-                >
-                  Styring −{pct(pricingConfig.energySavings.control, 0)}
-                </button>
-                <button
-                  type="button"
-                  disabled={!energyInput.withControl}
-                  onClick={() =>
-                    setEnergy({
-                      withDaylightControl: !energyInput.withDaylightControl,
-                    })
-                  }
-                  className={`chip border disabled:opacity-40 ${
-                    energyInput.withDaylightControl
-                      ? "bg-brand-500 text-white border-brand-500"
-                      : "bg-white text-ink-soft border-surface-line hover:border-brand-300"
-                  }`}
-                >
-                  + Dagslysstyring −{pct(pricingConfig.energySavings.daylightControl, 0)}
-                </button>
-              </div>
-            </Field>
-
-            {/* Live resultat */}
-            <div className="rounded-2xl bg-surface-soft border border-surface-line p-4">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <SmallStat
-                  label="Nuværende forbrug"
-                  value={`${num.format(energyComparison.currentAnnualKwh)} kWh`}
-                />
-                <SmallStat
-                  label="Nyt forbrug"
-                  value={`${num.format(energyComparison.newAnnualKwh)} kWh`}
-                />
-                <SmallStat
-                  label="Sparet pr. år"
-                  value={`${num.format(energyComparison.savedKwh)} kWh`}
-                />
-                <SmallStat
-                  label="Besparelse"
-                  value={pct(energyComparison.savedPct, 0)}
-                />
-              </div>
-            </div>
-          </section>
-        )}
-
-        {step === 4 && (
           <section className="card p-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <Field
@@ -698,6 +495,196 @@ export function NewEstimate() {
                 placeholder="Særlige forhold, installation, ønsker mv."
               />
             </Field>
+          </section>
+        )}
+
+        {step === 4 && (
+          <section className="card p-6 space-y-6">
+            <div>
+              <div className="kpi-label">Energibesparelse · overslag</div>
+              <p className="text-sm text-ink-mute mt-1">
+                Sammenlign den nuværende belysning med en ny løsning (1:1
+                udskiftning som udgangspunkt). Antal armaturer, brændetimer og
+                elpris hentes automatisk fra det tekniske trin. Tilvalg af
+                styring lægger en anslået besparelse oveni.
+              </p>
+            </div>
+
+            {/* Forudsætninger hentet fra Teknisk */}
+            <div className="rounded-2xl bg-surface-soft border border-surface-line p-4">
+              <div className="text-[11px] uppercase tracking-wider text-ink-mute mb-2">
+                Hentet fra teknisk
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <Row
+                  label="Antal armaturer"
+                  value={num.format(technical.luminaireCount)}
+                />
+                <Row
+                  label="Brændetimer/år"
+                  value={num.format(technical.annualBurnHours)}
+                />
+                <Row
+                  label="Elpris"
+                  value={`${technical.electricityPrice.toFixed(2)} kr/kWh`}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Nuværende */}
+              <div className="rounded-2xl border border-surface-line p-4 space-y-4">
+                <div className="text-sm font-semibold text-ink">
+                  Nuværende anlæg
+                </div>
+                <Field
+                  label="Watt pr. armatur (gns.)"
+                  tooltip="Gennemsnitligt effektforbrug pr. eksisterende armatur."
+                >
+                  <input
+                    type="number"
+                    min={0}
+                    className="input"
+                    value={energyExtra.currentWattPerLuminaire}
+                    onChange={(e) =>
+                      setEnergy({
+                        currentWattPerLuminaire: Number(e.target.value) || 0,
+                      })
+                    }
+                  />
+                </Field>
+                <div className="text-[11px] text-ink-mute">
+                  {num.format(technical.luminaireCount)} armaturer ·{" "}
+                  {num.format(technical.annualBurnHours)} timer/år
+                </div>
+              </div>
+
+              {/* Nyt */}
+              <div className="rounded-2xl border border-brand-200 bg-brand-50/40 p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-semibold text-ink">
+                    Ny løsning
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEnergy({ oneToOne: !energyExtra.oneToOne })}
+                    className={`chip border ${
+                      energyExtra.oneToOne
+                        ? "bg-brand-500 text-white border-brand-500"
+                        : "bg-white text-ink-soft border-surface-line"
+                    }`}
+                  >
+                    1:1 udskiftning
+                  </button>
+                </div>
+                <Field
+                  label="Antal armaturer"
+                  hint={
+                    energyExtra.oneToOne
+                      ? "Følger antallet fra teknisk (1:1)."
+                      : undefined
+                  }
+                >
+                  <input
+                    type="number"
+                    min={0}
+                    className="input disabled:opacity-50"
+                    disabled={energyExtra.oneToOne}
+                    value={
+                      energyExtra.oneToOne
+                        ? technical.luminaireCount
+                        : energyExtra.overrideNewCount ?? technical.luminaireCount
+                    }
+                    onChange={(e) =>
+                      setEnergy({
+                        overrideNewCount: Number(e.target.value) || 0,
+                      })
+                    }
+                  />
+                </Field>
+                <Field
+                  label="Watt pr. nyt armatur"
+                  tooltip="Effektforbrug pr. nyt LED-armatur."
+                >
+                  <input
+                    type="number"
+                    min={0}
+                    className="input"
+                    value={energyExtra.newWattPerLuminaire}
+                    onChange={(e) =>
+                      setEnergy({
+                        newWattPerLuminaire: Number(e.target.value) || 0,
+                      })
+                    }
+                  />
+                </Field>
+              </div>
+            </div>
+
+            {/* Styringsbesparelse */}
+            <Field
+              label="Tillæg af besparelse ved styring"
+              tooltip="Styring giver ca. 50% besparelse. Dagslysstyring giver yderligere ca. 20%."
+            >
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setEnergy({
+                      withControl: !energyExtra.withControl,
+                      withDaylightControl: energyExtra.withControl
+                        ? false
+                        : energyExtra.withDaylightControl,
+                    })
+                  }
+                  className={`chip border ${
+                    energyExtra.withControl
+                      ? "bg-brand-500 text-white border-brand-500"
+                      : "bg-white text-ink-soft border-surface-line hover:border-brand-300"
+                  }`}
+                >
+                  Styring −{pct(pricingConfig.energySavings.control, 0)}
+                </button>
+                <button
+                  type="button"
+                  disabled={!energyExtra.withControl}
+                  onClick={() =>
+                    setEnergy({
+                      withDaylightControl: !energyExtra.withDaylightControl,
+                    })
+                  }
+                  className={`chip border disabled:opacity-40 ${
+                    energyExtra.withDaylightControl
+                      ? "bg-brand-500 text-white border-brand-500"
+                      : "bg-white text-ink-soft border-surface-line hover:border-brand-300"
+                  }`}
+                >
+                  + Dagslysstyring −{pct(pricingConfig.energySavings.daylightControl, 0)}
+                </button>
+              </div>
+            </Field>
+
+            {/* Live resultat */}
+            <div className="rounded-2xl bg-surface-soft border border-surface-line p-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <SmallStat
+                  label="Nuværende forbrug"
+                  value={`${num.format(energyComparison.currentAnnualKwh)} kWh`}
+                />
+                <SmallStat
+                  label="Nyt forbrug"
+                  value={`${num.format(energyComparison.newAnnualKwh)} kWh`}
+                />
+                <SmallStat
+                  label="Sparet pr. år"
+                  value={`${num.format(energyComparison.savedKwh)} kWh`}
+                />
+                <SmallStat
+                  label="Besparelse"
+                  value={pct(energyComparison.savedPct, 0)}
+                />
+              </div>
+            </div>
           </section>
         )}
 
