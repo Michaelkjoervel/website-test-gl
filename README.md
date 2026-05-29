@@ -254,8 +254,20 @@ version en **regelbaseret** similarity-matcher:
 
 ---
 
-## Den gamle hero-side
+## Deployment
 
-Den oprindelige `index.html` (spotlight-hero) er bevaret under
-[`public/hero.html`](public/hero.html) og kan tilgås på
-`http://localhost:5173/hero.html` mens dev-serveren kører.
+Estimatet og tidsregistreringsværktøjet bor i samme repo og udgives via
+`.github/workflows/deploy.yml` til ét fælles GitHub Pages-site:
+
+- `…/website-test-gl/` og `…/website-test-gl/app.html` → tidsregistreringen
+  (serveres uændret fra branchen `claude/time-tracking-tool-aTwpD`, som
+  workflowen henter og lægger i roden)
+- `…/website-test-gl/estimat/` → dette estimatværktøj (Vite-build under
+  undermappen `/estimat/`)
+
+Workflowen bygger estimatet, henter tidsregistreringens statiske filer og
+samler dem i ét `_site/`, der udgives samlet. Estimatet bruger relativ Vite
+`base` og HashRouter, så det fungerer uændret under undermappen.
+
+Den oprindelige hero-side ligger under `public/hero.html` og serveres på
+`…/website-test-gl/estimat/hero.html`.
