@@ -76,12 +76,12 @@ export function NewEstimate() {
 
   const [technical, setTechnical] = useState<TechnicalInput>({
     areaType: pricingConfig.defaults.areaType,
-    luminaireCount: pricingConfig.defaults.luminaireCount,
+    luminaireCount: 0,
     controlType: pricingConfig.defaults.controlType,
     luxLevel: pricingConfig.defaults.luxLevel,
     kelvin: pricingConfig.defaults.kelvin,
-    annualBurnHours: pricingConfig.defaults.annualBurnHours,
-    electricityPrice: pricingConfig.defaults.electricityPrice,
+    annualBurnHours: 0,
+    electricityPrice: 0,
     budgetWish: undefined,
     notes: "",
   });
@@ -129,6 +129,9 @@ export function NewEstimate() {
     () => calculateEnergyComparison(energyInput, technical.electricityPrice),
     [energyInput, technical.electricityPrice],
   );
+
+  // Live overslaget starter tomt og vises først, når der er tastet et antal.
+  const hasEstimate = technical.luminaireCount > 0;
   const confidence = useMemo(
     () =>
       calculateConfidence(
@@ -282,16 +285,18 @@ export function NewEstimate() {
           <section className="card p-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <Field
-                label={`Antal armaturer: ${num.format(
-                  technical.luminaireCount,
-                )}`}
+                label={`Antal armaturer${
+                  technical.luminaireCount > 0
+                    ? `: ${num.format(technical.luminaireCount)}`
+                    : ""
+                }`}
                 tooltip="Det forventede antal armaturer i projektet."
               >
                 <div className="flex items-center gap-3">
                   <input
                     type="range"
                     className="brand-range flex-1"
-                    min={1}
+                    min={0}
                     max={500}
                     step={1}
                     value={technical.luminaireCount}
@@ -305,8 +310,9 @@ export function NewEstimate() {
                   <input
                     type="number"
                     className="input w-24"
-                    min={1}
-                    value={technical.luminaireCount}
+                    min={0}
+                    placeholder="0"
+                    value={technical.luminaireCount || ""}
                     onChange={(e) =>
                       setTechnical({
                         ...technical,
@@ -408,25 +414,42 @@ export function NewEstimate() {
               </Field>
 
               <Field
-                label={`Årlig brændetid: ${num.format(
-                  technical.annualBurnHours,
-                )} timer`}
+                label={`Årlig brændetid${
+                  technical.annualBurnHours > 0
+                    ? `: ${num.format(technical.annualBurnHours)} timer`
+                    : ""
+                }`}
                 tooltip="Det antal timer armaturerne forventes at være tændt om året."
               >
-                <input
-                  type="range"
-                  className="brand-range"
-                  min={500}
-                  max={8760}
-                  step={100}
-                  value={technical.annualBurnHours}
-                  onChange={(e) =>
-                    setTechnical({
-                      ...technical,
-                      annualBurnHours: Number(e.target.value),
-                    })
-                  }
-                />
+                <div className="flex items-center gap-3">
+                  <input
+                    type="range"
+                    className="brand-range flex-1"
+                    min={0}
+                    max={8760}
+                    step={100}
+                    value={technical.annualBurnHours}
+                    onChange={(e) =>
+                      setTechnical({
+                        ...technical,
+                        annualBurnHours: Number(e.target.value),
+                      })
+                    }
+                  />
+                  <input
+                    type="number"
+                    className="input w-24"
+                    min={0}
+                    placeholder="0"
+                    value={technical.annualBurnHours || ""}
+                    onChange={(e) =>
+                      setTechnical({
+                        ...technical,
+                        annualBurnHours: Number(e.target.value) || 0,
+                      })
+                    }
+                  />
+                </div>
               </Field>
 
               <Field
@@ -437,7 +460,8 @@ export function NewEstimate() {
                   type="number"
                   step="0.01"
                   className="input"
-                  value={technical.electricityPrice}
+                  placeholder="0,00"
+                  value={technical.electricityPrice || ""}
                   onChange={(e) =>
                     setTechnical({
                       ...technical,
@@ -799,35 +823,54 @@ export function NewEstimate() {
       <aside className="space-y-4">
         <div className="card p-5 sticky top-24">
           <div className="kpi-label">Live overslag</div>
-          <div className="text-3xl font-bold text-ink mt-1">
-            {dkkInt(pricing.totalCost)}
-          </div>
-          <div className="text-xs text-ink-mute">
-            {dkkInt(pricing.budgetRange.low)} – {dkkInt(pricing.budgetRange.high)}
-          </div>
 
-          <div className="mt-5 space-y-2">
-            <Row label="Antal armaturer" value={num.format(technical.luminaireCount)} />
-            <Row label="Styring" value={technical.controlType} />
-            <Row
-              label="Lux / Kelvin"
-              value={`${technical.luxLevel} lux · ${String(technical.kelvin)}`}
-            />
-            <Row
-              label="Pris pr. armatur"
-              value={dkkInt(pricing.pricePerLuminaire)}
-            />
-            <Row
-              label="Årligt forbrug"
-              value={`${num.format(energy.annualKwh)} kWh`}
-            />
-            <Row
-              label="Energibesparelse"
-              value={`${pct(energyComparison.savedPct, 0)} · ${dkkInt(
-                energyComparison.savedAnnualCost,
-              )}/år`}
-            />
-          </div>
+          {hasEstimate ? (
+            <>
+              <div className="text-3xl font-bold text-ink mt-1">
+                {dkkInt(pricing.totalCost)}
+              </div>
+              <div className="text-xs text-ink-mute">
+                {dkkInt(pricing.budgetRange.low)} –{" "}
+                {dkkInt(pricing.budgetRange.high)}
+              </div>
+
+              <div className="mt-5 space-y-2">
+                <Row
+                  label="Antal armaturer"
+                  value={num.format(technical.luminaireCount)}
+                />
+                <Row label="Styring" value={technical.controlType} />
+                <Row
+                  label="Lux / Kelvin"
+                  value={`${technical.luxLevel} lux · ${String(
+                    technical.kelvin,
+                  )}`}
+                />
+                <Row
+                  label="Pris pr. armatur"
+                  value={dkkInt(pricing.pricePerLuminaire)}
+                />
+                <Row
+                  label="Årligt forbrug"
+                  value={`${num.format(energy.annualKwh)} kWh`}
+                />
+                <Row
+                  label="Energibesparelse"
+                  value={`${pct(energyComparison.savedPct, 0)} · ${dkkInt(
+                    energyComparison.savedAnnualCost,
+                  )}/år`}
+                />
+              </div>
+            </>
+          ) : (
+            <div className="mt-2">
+              <div className="text-3xl font-bold text-ink-mute/40">—</div>
+              <p className="text-xs text-ink-mute mt-2 leading-relaxed">
+                Udfyld antal armaturer på det tekniske trin for at se
+                overslaget.
+              </p>
+            </div>
+          )}
 
           <div className="mt-5 pt-5 border-t border-surface-line">
             <ConfidenceMeter confidence={confidence} />
