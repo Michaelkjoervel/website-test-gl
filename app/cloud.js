@@ -29,12 +29,23 @@
 
   const TABLES = ['users', 'cases', 'time_entries', 'activity_log', 'comments'];
 
-  // Track igangværende skrivninger så vi ikke re-henter midt i en write.
+  // Serialiseret skrivekø.
+  // Skrivninger udføres i PRÆCIS den rækkefølge de udstedes, så
+  // afhængige rækker (fx en activity_log-linje der peger på en sag)
+  // aldrig rammer databasen før deres parent-række er gemt. Uden
+  // dette kan to samtidige requests ankomme i forkert rækkefølge og
+  // udløse en foreign key-fejl.
   const pending = new Set();
-  function track(promise) {
-    pending.add(promise);
-    promise.finally(() => pending.delete(promise));
-    return promise;
+  let writeChain = Promise.resolve();
+
+  function enqueue(task) {
+    // Kæd opgaven på halen af køen. En fejl i én skrivning må ikke
+    // blokere de efterfølgende, så vi sluger fejlen for selve kæden.
+    const p = writeChain.then(task, task);
+    writeChain = p.catch(() => {});
+    pending.add(p);
+    p.finally(() => pending.delete(p));
+    return p;
   }
 
   const Cloud = {
@@ -77,23 +88,23 @@
     },
 
     upsert(table, row) {
-      const p = client.from(table).upsert(row).then(({ error }) => {
+      return enqueue(async () => {
+        const { error } = await client.from(table).upsert(row);
         if (error) {
           console.error(`Upsert-fejl (${table}):`, error.message);
           window.dispatchEvent(new CustomEvent('gl-cloud-error', { detail: error.message }));
         }
       });
-      return track(p);
     },
 
     remove(table, id) {
-      const p = client.from(table).delete().eq('id', id).then(({ error }) => {
+      return enqueue(async () => {
+        const { error } = await client.from(table).delete().eq('id', id);
         if (error) {
           console.error(`Slet-fejl (${table}):`, error.message);
           window.dispatchEvent(new CustomEvent('gl-cloud-error', { detail: error.message }));
         }
       });
-      return track(p);
     },
 
     // Afvent at alle igangværende skrivninger er færdige.
