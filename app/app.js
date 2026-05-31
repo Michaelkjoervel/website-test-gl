@@ -518,7 +518,8 @@ function bindPage(path, user, params) {
           primary_department: fd.get('primary_department'),
           phase: fd.get('phase') || 'Opstartsfase',
           estimated_value: fd.get('estimated_value') ? Number(fd.get('estimated_value')) : null,
-          notes: fd.get('notes')
+          notes: fd.get('notes'),
+          created_date: fd.get('created_date') || null
         });
         toast('Sag oprettet: ' + c.case_number, 'success');
         Router.navigate('#/cases/' + c.id);

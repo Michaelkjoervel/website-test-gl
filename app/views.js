@@ -425,6 +425,11 @@ function viewCreateCase(currentUser) {
             <select name="phase">${UI.phaseOptions('Opstartsfase')}</select>
           </div>
           <div class="field">
+            <label>Startdato <span class="req">*</span></label>
+            <input name="created_date" type="date" value="${UI.attr(Fmt.todayIso())}" required />
+            <div class="hint">Bruges til at beregne tid frem til PO.</div>
+          </div>
+          <div class="field">
             <label>Estimeret værdi (kr.)</label>
             <input name="estimated_value" type="number" min="0" step="1000" placeholder="Valgfrit" />
           </div>

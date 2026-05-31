@@ -210,12 +210,22 @@ const Cases = {
     primary_department,
     phase = 'Opstartsfase',
     estimated_value = null,
-    notes = ''
+    notes = '',
+    created_date = null
   }) {
     if (!title) throw new Error('Sagsnavn er påkrævet');
     if (!customer_name) throw new Error('Kundenavn er påkrævet');
     if (!PHASES.includes(phase)) throw new Error('Ugyldig fase');
     if (!DEPARTMENTS.includes(primary_department)) throw new Error('Ugyldig primær afdeling');
+    // Startdato — brugerens valg (YYYY-MM-DD) gemmes som ISO-timestamp.
+    // Default er nu. Fremtidige datoer afvises.
+    let createdAt = nowIso();
+    if (created_date) {
+      const today = new Date().toISOString().slice(0, 10);
+      if (created_date > today) throw new Error('Startdato kan ikke ligge i fremtiden');
+      // Sættes til kl. 12:00 UTC for at undgå tidszone-spring.
+      createdAt = new Date(created_date + 'T12:00:00Z').toISOString();
+    }
     const c = {
       id: uid('case'),
       case_number: Cases.nextCaseNumber(),
@@ -228,7 +238,7 @@ const Cases = {
       phase,
       status: 'Aktiv',
       estimated_value: estimated_value === '' ? null : estimated_value,
-      created_at: nowIso(),
+      created_at: createdAt,
       po_date: null,
       closed_at: null,
       result: null,
