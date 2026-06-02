@@ -90,10 +90,20 @@
     upsert(table, row) {
       return enqueue(async () => {
         const { error } = await client.from(table).upsert(row);
-        if (error) {
-          console.error(`Upsert-fejl (${table}):`, error.message);
-          window.dispatchEvent(new CustomEvent('gl-cloud-error', { detail: error.message }));
+        if (!error) return;
+        // FK-fejl er typisk et tegn på at parent-rækken endnu ikke
+        // er synlig. Forsøg igen efter et kort delay — så heler det
+        // sig selv også ved eventuelle micro-race conditions.
+        if (isForeignKeyError(error)) {
+          await sleep(300);
+          const retry = await client.from(table).upsert(row);
+          if (!retry.error) return;
+          console.error(`Upsert-fejl (${table}) efter retry:`, retry.error.message);
+          window.dispatchEvent(new CustomEvent('gl-cloud-error', { detail: retry.error.message }));
+          return;
         }
+        console.error(`Upsert-fejl (${table}):`, error.message);
+        window.dispatchEvent(new CustomEvent('gl-cloud-error', { detail: error.message }));
       });
     },
 
@@ -112,6 +122,14 @@
       await Promise.allSettled([...pending]);
     }
   };
+
+  function isForeignKeyError(err) {
+    if (!err) return false;
+    if (err.code === '23503') return true; // Postgres foreign_key_violation
+    return /foreign key|fkey/i.test(err.message || '');
+  }
+
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
   function oversaetAuthFejl(msg) {
     if (/invalid login credentials/i.test(msg)) return 'Forkert email eller adgangskode.';
