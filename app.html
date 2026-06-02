@@ -14,15 +14,16 @@
   <div id="toast-container"></div>
   <div id="modal-root"></div>
 
-  <!-- Supabase JS (kun nødvendigt i cloud-mode; harmløst i lokal mode) -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Supabase JS — pinnes til 2.45+ for sb_publishable_-nøgleformat -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 
-  <script src="app/config.js"></script>
-  <script src="app/cloud.js"></script>
-  <script src="app/db.js"></script>
-  <script src="app/seed.js"></script>
-  <script src="app/components.js"></script>
-  <script src="app/views.js"></script>
-  <script src="app/app.js"></script>
+  <!-- ?v=3 nedenfor cache-buster når der pushes nye versioner -->
+  <script src="app/config.js?v=3"></script>
+  <script src="app/cloud.js?v=3"></script>
+  <script src="app/db.js?v=3"></script>
+  <script src="app/seed.js?v=3"></script>
+  <script src="app/components.js?v=3"></script>
+  <script src="app/views.js?v=3"></script>
+  <script src="app/app.js?v=3"></script>
 </body>
 </html>

@@ -9,6 +9,9 @@
    ============================================================ */
 
 (function () {
+  const CLOUD_VERSION = 'cloud.js v3 — serialized queue + FK retry';
+  console.log('[gl-tid] ' + CLOUD_VERSION);
+
   if (!window.GL_CLOUD) {
     // Local demo-mode: ingen cloud.
     window.Cloud = null;
