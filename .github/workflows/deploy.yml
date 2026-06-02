@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - claude/time-tracking-tool-aTwpD
   workflow_dispatch:
 
 permissions:
