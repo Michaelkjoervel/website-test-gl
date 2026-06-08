@@ -1,0 +1,31 @@
+services:
+  backend:
+    build: ./backend
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      TRANSCRIPTION_ENGINE: ${TRANSCRIPTION_ENGINE:-openai}
+      DATABASE_URL: sqlite:////app/data/transskribering.db
+      UPLOAD_DIRECTORY: /app/data/uploads
+      TEMP_DIRECTORY: /app/data/temp
+      CORS_ORIGINS: http://localhost:5173,http://localhost
+      MAX_AUDIO_DURATION_SECONDS: ${MAX_AUDIO_DURATION_SECONDS:-7200}
+      MAX_UPLOAD_SIZE_MB: ${MAX_UPLOAD_SIZE_MB:-500}
+      AUDIO_RETENTION: ${AUDIO_RETENTION:-24h}
+    volumes:
+      - backend-data:/app/data
+    expose:
+      - "8000"
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+
+volumes:
+  backend-data:
