@@ -17,7 +17,11 @@ import {
   calculatePricing,
 } from "./estimateEngine";
 import { pricingConfig } from "./pricingConfig";
-import type { CustomerEstimate, TechnicalInput } from "./types";
+import type {
+  CustomerEstimate,
+  EnergyComparisonResult,
+  TechnicalInput,
+} from "./types";
 
 export interface BusinessCaseAssumptions {
   horizonYears: number;
@@ -76,6 +80,29 @@ export interface BusinessCaseResult {
 const cfg = () => pricingConfig.businessCase;
 
 /**
+ * Bygger forretningscasens råtal direkte fra estimat-flowets levende dele
+ * (det aktuelle prisoverslag + før/efter-sammenligningen), så casen kan vises
+ * live i energitrinnet, inden estimatet er gemt.
+ */
+export function buildLiveBusinessCaseInput(parts: {
+  investment: number;
+  comparison: EnergyComparisonResult;
+  luminaireCount: number;
+  electricityPrice: number;
+}): BusinessCaseInput {
+  const maintenancePerLum = cfg().annualMaintenanceSavingsPerLuminaire;
+  return {
+    investment: parts.investment,
+    annualEnergySavingsKr: parts.comparison.savedAnnualCost,
+    annualMaintenanceSavingsKr: maintenancePerLum * (parts.luminaireCount || 0),
+    annualKwhSaved: parts.comparison.savedKwh,
+    currentAnnualKwh: parts.comparison.currentAnnualKwh,
+    newAnnualKwh: parts.comparison.newAnnualKwh,
+    electricityPrice: parts.electricityPrice,
+  };
+}
+
+/**
  * Udleder forretningscasens råtal fra et estimat. Bruger før/efter-energi-
  * sammenligningen hvis den findes, ellers det simple besparelsestal fra
  * energiblokken. Faktisk tilbudspris (hvis registreret) bruges som investering
@@ -86,17 +113,19 @@ export function buildBusinessCaseInput(
 ): BusinessCaseInput {
   const investment = est.actual?.actualTotal ?? est.pricing.totalCost;
 
+  if (est.energyComparison) {
+    return buildLiveBusinessCaseInput({
+      investment,
+      comparison: est.energyComparison,
+      luminaireCount: est.technical.luminaireCount,
+      electricityPrice: est.technical.electricityPrice,
+    });
+  }
+
   let annualEnergySavingsKr = 0;
   let annualKwhSaved = 0;
   let currentAnnualKwh = 0;
-  let newAnnualKwh = est.energy.annualKwh;
-
-  if (est.energyComparison) {
-    annualEnergySavingsKr = est.energyComparison.savedAnnualCost;
-    annualKwhSaved = est.energyComparison.savedKwh;
-    currentAnnualKwh = est.energyComparison.currentAnnualKwh;
-    newAnnualKwh = est.energyComparison.newAnnualKwh;
-  } else if (est.energy.estimatedAnnualSavings && est.energy.referenceAnnualKwh) {
+  if (est.energy.estimatedAnnualSavings && est.energy.referenceAnnualKwh) {
     annualEnergySavingsKr = est.energy.estimatedAnnualSavings;
     annualKwhSaved = Math.max(
       0,
@@ -115,7 +144,7 @@ export function buildBusinessCaseInput(
     annualMaintenanceSavingsKr,
     annualKwhSaved,
     currentAnnualKwh,
-    newAnnualKwh,
+    newAnnualKwh: est.energy.annualKwh,
     electricityPrice: est.technical.electricityPrice,
   };
 }

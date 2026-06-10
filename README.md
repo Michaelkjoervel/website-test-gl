@@ -15,6 +15,7 @@ hurtigt, professionelt **overslag** på en belysningsløsning ude hos kunden.
 - Beregner overslag på materiale, installation, styring, samlet pris, pris pr. armatur og budgetinterval.
 - Estimerer årligt energiforbrug og el-omkostning.
 - **Energibesparelse · før/efter**: sammenligner nuværende anlæg (antal armaturer, watt, brændetimer) med en ny 1:1-løsning og lægger en anslået styringsbesparelse oveni (styring 50%, dagslysstyring yderligere 20%). Resultatet vises i estimatet og i PDF'en.
+- **Forretningscase (ROI & CO₂)**: tilbagebetalingstid, nettogevinst, afkast og CO₂-besparelse beregnes live i energitrinnet og på resultattrinnet. Hvert gemt estimat har desuden en fuldskærms, kundevendt præsentation på `/forretningscase/:id` (cash-flow-graf med break-even, før/efter-søjler, CO₂ omsat til træer/biler/flyrejser, følsomheds-slider for el-prisstigning). Prøv demoen på `/forretningscase/demo`. Antagelserne ligger i `pricingConfig.businessCase`, og beregningen i `src/lib/businessCase.ts`.
 - Viser et **sikkerhedsniveau** (Lav / Middel / Høj) baseret på hvor godt brugeren har udfyldt felterne.
 - Genererer en **professionel PDF** med green light branding, klar til at sende eller vise kunden.
 - Gemmer estimathistorik lokalt i browseren.

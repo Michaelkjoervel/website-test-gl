@@ -11,6 +11,12 @@ import {
   calculatePricing,
 } from "../lib/estimateEngine";
 import { suggestAdjustment } from "../lib/learningModel";
+import {
+  buildLiveBusinessCaseInput,
+  computeBusinessCase,
+  formatPayback,
+  type BusinessCaseResult,
+} from "../lib/businessCase";
 import { pricingConfig } from "../lib/pricingConfig";
 import type {
   AreaType,
@@ -128,6 +134,26 @@ export function NewEstimate() {
   const energyComparison = useMemo(
     () => calculateEnergyComparison(energyInput, technical.electricityPrice),
     [energyInput, technical.electricityPrice],
+  );
+
+  // Live forretningscase: investering = det aktuelle prisoverslag, besparelse
+  // = før/efter-sammenligningen. Opdateres ved hvert input i energitrinnet.
+  const businessCase = useMemo(
+    () =>
+      computeBusinessCase(
+        buildLiveBusinessCaseInput({
+          investment: pricing.totalCost,
+          comparison: energyComparison,
+          luminaireCount: technical.luminaireCount,
+          electricityPrice: technical.electricityPrice,
+        }),
+      ),
+    [
+      pricing.totalCost,
+      energyComparison,
+      technical.luminaireCount,
+      technical.electricityPrice,
+    ],
   );
 
   // Live overslaget starter tomt og vises først, når der er tastet et antal.
@@ -709,6 +735,9 @@ export function NewEstimate() {
                 />
               </div>
             </div>
+
+            {/* Live forretningscase */}
+            <BusinessCasePanel businessCase={businessCase} />
           </section>
         )}
 
@@ -785,6 +814,10 @@ export function NewEstimate() {
               )}
             </div>
 
+            {businessCase.hasData && (
+              <BusinessCasePanel businessCase={businessCase} compact />
+            )}
+
             <LearningCard learning={learning} />
 
             <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[12px] text-amber-900 leading-relaxed">
@@ -860,6 +893,16 @@ export function NewEstimate() {
                     energyComparison.savedAnnualCost,
                   )}/år`}
                 />
+                {businessCase.hasData && (
+                  <Row
+                    label="Tilbagebetaling"
+                    value={
+                      businessCase.paybackYears === null
+                        ? "—"
+                        : formatPayback(businessCase.paybackYears)
+                    }
+                  />
+                )}
               </div>
             </>
           ) : (
@@ -897,6 +940,70 @@ function SmallStat({ label, value }: { label: string; value: string }) {
         {label}
       </div>
       <div className="font-bold text-ink mt-0.5">{value}</div>
+    </div>
+  );
+}
+
+// Live forretningscase i energitrinnet: tilbagebetaling, gevinst og CO₂
+// beregnet ud fra det aktuelle prisoverslag og før/efter-sammenligningen.
+function BusinessCasePanel({
+  businessCase,
+  compact,
+}: {
+  businessCase: BusinessCaseResult;
+  compact?: boolean;
+}) {
+  const bc = businessCase;
+  return (
+    <div className="rounded-2xl border border-brand-200 bg-brand-50/40 p-4">
+      <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+        <div className="text-sm font-semibold text-ink">
+          Forretningscase{compact ? "" : " · live"}
+        </div>
+        {bc.hasData && (
+          <span className="chip bg-brand-500 text-white">
+            {bc.paybackYears === null
+              ? "Uden tilbagebetaling i perioden"
+              : `Tilbagebetalt på ${formatPayback(bc.paybackYears)}`}
+          </span>
+        )}
+      </div>
+
+      {bc.hasData ? (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <SmallStat
+              label="Sparet pr. år"
+              value={dkkInt(bc.firstYearTotalSavingsKr)}
+            />
+            <SmallStat
+              label={`Nettogevinst · ${bc.horizonYears} år`}
+              value={dkkInt(bc.horizonNetSavings)}
+            />
+            <SmallStat
+              label={`Afkast · ${bc.horizonYears} år`}
+              value={`${num.format(Math.round(bc.roiPct))}%`}
+            />
+            <SmallStat
+              label="CO₂ sparet pr. år"
+              value={`${num.format(Math.round(bc.co2.annualKg))} kg`}
+            />
+          </div>
+          <div className="text-[11px] text-ink-mute mt-2">
+            Beregnet ud fra det aktuelle prisoverslag (
+            {dkkInt(bc.investment)}) og en el-prisstigning på{" "}
+            {bc.escalationPct.toLocaleString("da-DK")}% pr. år.{" "}
+            {compact
+              ? "Den fulde kundevendte præsentation åbnes fra estimatet med knappen “Forretningscase”."
+              : "Gem estimatet for at åbne den fulde kundevendte præsentation."}
+          </div>
+        </>
+      ) : (
+        <p className="text-sm text-ink-mute">
+          Udfyld antal armaturer, brændetimer og elpris på det tekniske trin —
+          så beregnes tilbagebetalingstid, gevinst og CO₂ automatisk her.
+        </p>
+      )}
     </div>
   );
 }
