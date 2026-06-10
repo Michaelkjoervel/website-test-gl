@@ -96,3 +96,73 @@ input[type="range"].brand-range::-moz-range-thumb {
   border: 2px solid #fff;
   cursor: pointer;
 }
+
+/* ===========================================================================
+   Forretningscase – kundevendt præsentation
+   ======================================================================== */
+.bc-hero {
+  background-color: #4a5e1f;
+  background-image:
+    radial-gradient(at 80% -10%, rgba(159, 195, 74, 0.85) 0px, transparent 55%),
+    radial-gradient(at 0% 120%, rgba(15, 26, 10, 0.55) 0px, transparent 50%),
+    linear-gradient(135deg, #4a5e1f 0%, #65802a 45%, #84a538 100%);
+  box-shadow:
+    0 20px 60px rgba(74, 94, 31, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+/* Scroll-reveal */
+.bc-pre {
+  opacity: 0;
+  transform: translateY(18px);
+}
+.bc-in {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 0.7s ease,
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Svævende glød i hero */
+@keyframes bc-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-16px);
+  }
+}
+.bc-glow {
+  animation: bc-float 8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bc-glow {
+    animation: none;
+  }
+  .bc-pre {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Print / PDF: ren kundevendt udskrift uden app-krom */
+@media print {
+  .bc-chrome {
+    display: none !important;
+  }
+  body {
+    background: #fff !important;
+  }
+  .card,
+  .bc-hero {
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+  .bc-hero {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

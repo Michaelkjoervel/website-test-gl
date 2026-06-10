@@ -100,6 +100,9 @@ export function EstimateDetail() {
                 </option>
               ))}
             </select>
+            <Link to={`/forretningscase/${est.id}`} className="btn-outline">
+              <PresentIcon /> Forretningscase
+            </Link>
             <button
               className="btn-primary"
               onClick={() => downloadEstimatePdf(est)}
@@ -374,6 +377,20 @@ export function EstimateDetail() {
         </button>
       </div>
     </div>
+  );
+}
+
+function PresentIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+      <path
+        d="M3 4h18v12H3V4zm9 12v4m-4 0h8M7 12l3-3 2 2 4-4"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 

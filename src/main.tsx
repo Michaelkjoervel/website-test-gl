@@ -8,11 +8,14 @@ import { NewEstimate } from "./pages/NewEstimate";
 import { EstimateDetail } from "./pages/EstimateDetail";
 import { History } from "./pages/History";
 import { ImportPage } from "./pages/ImportPage";
+import { BusinessCase } from "./pages/BusinessCase";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <HashRouter>
       <Routes>
+        {/* Fuldskærms kundevendt præsentation – uden for app-skallen */}
+        <Route path="/forretningscase/:id" element={<BusinessCase />} />
         <Route element={<AppShell />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/nyt-estimat" element={<NewEstimate />} />

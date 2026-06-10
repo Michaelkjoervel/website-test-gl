@@ -46,6 +46,20 @@ export interface PricingConfig {
     currentWattPerLuminaire: number;
     newWattPerLuminaire: number;
   };
+  // Forretningscase – antagelser til den kundevendte ROI/CO₂-præsentation.
+  // Alle værdier er bevidst samlet her, så green light kan justere ét sted.
+  businessCase: {
+    horizonYears: number; // betragtningsperiode (typisk armaturets levetid)
+    electricityPriceEscalationPct: number; // forventet årlig el-prisstigning (%)
+    annualMaintenanceSavingsPerLuminaire: number; // sparet vedligehold pr. armatur/år (kr)
+    co2FactorKgPerKwh: number; // CO₂ pr. kWh – dansk el (konfigurerbar)
+    equivalents: {
+      treeKgPerYear: number; // CO₂ optaget af ét træ pr. år
+      carKgPerYear: number; // CO₂-udledning fra én personbil pr. år
+      flightCphLondonReturnKg: number; // CO₂ pr. flyrejse CPH–London t/r pr. passager
+      householdKwhPerYear: number; // gennemsnitlig dansk husstands elforbrug pr. år
+    };
+  };
   // Standardværdier for nye estimater (sliders, defaults)
   defaults: {
     luxLevel: number;
@@ -124,6 +138,21 @@ export const pricingConfig: PricingConfig = {
   energyDefaults: {
     currentWattPerLuminaire: 58, // typisk eksisterende armatur (fx lysstofrør)
     newWattPerLuminaire: 35, // typisk nyt LED-armatur
+  },
+
+  businessCase: {
+    horizonYears: 15,
+    electricityPriceEscalationPct: 3,
+    // Konservativt 0 indtil green light har et reelt vedligeholdsgrundlag.
+    annualMaintenanceSavingsPerLuminaire: 0,
+    // ~ dansk forbrugsdeklaration de senere år. Justeres her ét sted.
+    co2FactorKgPerKwh: 0.12,
+    equivalents: {
+      treeKgPerYear: 21,
+      carKgPerYear: 2000,
+      flightCphLondonReturnKg: 230,
+      householdKwhPerYear: 4000,
+    },
   },
 
   defaults: {
