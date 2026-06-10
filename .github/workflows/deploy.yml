@@ -5,6 +5,8 @@ on:
     branches:
       - main
       - claude/time-tracking-tool-aTwpD
+      # Preview af forretningscasen – fjernes når branchen merges til main
+      - claude/blissful-shannon-5x38k0
   workflow_dispatch:
 
 permissions:
