@@ -174,6 +174,76 @@ window.ANSOEGNING = {
   },
 
   /* ------------------------------------------------------------------ */
+  /* AI-værdiberegner – interaktiv, kører lokalt (ingen backend).        */
+  calculator: {
+    title: "Hvad er AI værd hos SH Group?",
+    lead:
+      "En illustrativ beregning baseret på min dokumenterede effekt: 2–4 timer " +
+      "frigjort pr. medarbejder om ugen. Skru på tallene, så de passer til jer.",
+    defaults: { employees: 150, hoursPerWeek: 3, hourlyRate: 350, weeksPerYear: 46 },
+    note:
+      "Tallene er et regneeksempel, ikke et løfte – den reelle værdi afhænger af " +
+      "use cases og forankring. Men pointen står: selv få timer om ugen bliver til " +
+      "store tal, når de ganges op.",
+  },
+
+  /* ------------------------------------------------------------------ */
+  /* Live AI-demo – kalder en RIGTIG sprogmodel (Claude).                */
+  /* Sæt "endpoint" til din Cloudflare Worker-URL (se ai-backend/README).*/
+  /* Lad den stå tom for at vise opsætnings-vejledning i stedet.         */
+  aiDemo: {
+    title: "Prøv en rigtig AI-funktion",
+    lead:
+      "Agenten ovenfor er en kurateret vidensbase. Her er det modsatte: en ægte, " +
+      "generativ AI-funktion, jeg har bygget til en SH Group-use case – powered by " +
+      "Claude. Skriv stikord, og få et færdigt udkast.",
+    endpoint: "",                 // <- din Worker-URL indsættes her
+    model: "claude-opus-4-8",     // kan skiftes til "claude-haiku-4-5" for lavere pris/hurtigere svar
+    maxChars: 4000,
+    governance:
+      "Sådan er det bygget governance-rigtigt: API-nøglen ligger på en server, " +
+      "ikke i din browser. Systemprompten er fast og afgrænset pr. use case, og " +
+      "et menneske godkender altid output, før det bruges. Præcis den ramme, jeg " +
+      "ville sætte op hos jer, før generativ AI rulles ud.",
+    presets: [
+      {
+        id: "servicerapport",
+        label: "Servicerapport",
+        placeholder: "Skriv teknikerens stikord her …",
+        example:
+          "Kunde: hydraulikanlæg, kaj 3. Skiftede 2 pakninger på pumpe P-12, " +
+          "efterspændte ventil. Olielækage stoppet. Tryktest ok ved 210 bar. " +
+          "Anbefaler udskiftning af slange S-4 ved næste service – begyndende revner.",
+        system:
+          "Du er SH Groups interne assistent, der hjælper teknikere med at skrive " +
+          "professionelle servicerapporter på dansk. Ud fra teknikerens stikord " +
+          "skriver du et struktureret udkast med afsnittene: Udført arbejde, " +
+          "Observationer, Anbefalinger og Næste skridt. Vær konkret og faglig. " +
+          "Opfind aldrig oplysninger, der ikke fremgår af stikordene – marker i " +
+          "stedet manglende info med [ ... ]. Afslut med en kort note om, at en " +
+          "tekniker skal gennemlæse og godkende rapporten før afsendelse.",
+      },
+      {
+        id: "kundesvar",
+        label: "Tilbud / kundesvar",
+        placeholder: "Skriv noterne til kundesvaret her …",
+        example:
+          "Kunde spørger, om vi kan levere og montere et nyt spil til et " +
+          "offshore-fartøj inden uge 40. Vi kan levere; montage tager ca. 3 dage. " +
+          "Mangler tegninger for at give endelig pris. Foreslå et møde.",
+        system:
+          "Du er SH Groups interne assistent, der hjælper med at skrive " +
+          "professionelle, imødekommende kundesvar og tilbudsudkast på dansk. Ud " +
+          "fra noterne skriver du et klart, høfligt udkast med passende struktur: " +
+          "indledning, svar/indhold, næste skridt og en venlig afslutning. Opfind " +
+          "aldrig priser, datoer eller tekniske detaljer, der ikke står i noterne – " +
+          "marker manglende info med [ ... ]. Afslut med en kort note om, at en " +
+          "medarbejder skal gennemlæse udkastet før afsendelse.",
+      },
+    ],
+  },
+
+  /* ------------------------------------------------------------------ */
   /* "Match med rollen" – citater fra opslaget og dit svar på dem.       */
   match: [
     {

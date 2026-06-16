@@ -230,6 +230,232 @@
   }
 
   /* ------------------------------------------------------------------ */
+  /* AI-værdiberegner                                                    */
+  /* ------------------------------------------------------------------ */
+
+  var nfDK = new Intl.NumberFormat("da-DK", { maximumFractionDigits: 0 });
+
+  if (C.calculator) {
+    var calc = C.calculator;
+    var calcTitle = document.getElementById("calc-title");
+    var calcLead = document.getElementById("calc-lead");
+    var calcNote = document.getElementById("calc-note");
+    if (calcTitle) calcTitle.textContent = calc.title;
+    if (calcLead) calcLead.textContent = calc.lead;
+    if (calcNote) calcNote.textContent = calc.note;
+
+    var calcState = {
+      employees: calc.defaults.employees,
+      hoursPerWeek: calc.defaults.hoursPerWeek,
+      hourlyRate: calc.defaults.hourlyRate,
+      weeksPerYear: calc.defaults.weeksPerYear,
+    };
+    var calcFields = [
+      { key: "employees", label: "Antal medarbejdere", min: 10, max: 1000, step: 10, fmt: function (v) { return nfDK.format(v); } },
+      { key: "hoursPerWeek", label: "Timer sparet pr. medarbejder/uge", min: 1, max: 8, step: 0.5, fmt: function (v) { return String(v).replace(".", ","); } },
+      { key: "hourlyRate", label: "Gns. timepris", min: 200, max: 800, step: 25, fmt: function (v) { return nfDK.format(v) + " kr"; } },
+      { key: "weeksPerYear", label: "Arbejdsuger pr. år", min: 40, max: 48, step: 1, fmt: function (v) { return String(v); } },
+    ];
+
+    var calcValueEl = document.getElementById("calc-value");
+    var calcHoursEl = document.getElementById("calc-hours");
+    var calcFteEl = document.getElementById("calc-fte");
+
+    function calcRecompute() {
+      var totalHours = calcState.employees * calcState.hoursPerWeek * calcState.weeksPerYear;
+      var value = totalHours * calcState.hourlyRate;
+      var fte = calcState.employees * calcState.hoursPerWeek / 37;
+      if (calcValueEl) calcValueEl.textContent = nfDK.format(Math.round(value / 1000) * 1000) + " kr";
+      if (calcHoursEl) calcHoursEl.textContent = nfDK.format(Math.round(totalHours));
+      if (calcFteEl) calcFteEl.textContent = fte.toFixed(1).replace(".", ",");
+    }
+
+    var calcControls = document.getElementById("calc-controls");
+    if (calcControls) {
+      calcFields.forEach(function (f) {
+        var row = el("div", "calc-row");
+        var head = el("div", "calc-row-head");
+        head.appendChild(el("label", null, f.label));
+        var valSpan = el("span", "calc-row-val", f.fmt(calcState[f.key]));
+        head.appendChild(valSpan);
+        row.appendChild(head);
+        var input = document.createElement("input");
+        input.type = "range";
+        input.min = f.min; input.max = f.max; input.step = f.step;
+        input.value = calcState[f.key];
+        input.addEventListener("input", function () {
+          calcState[f.key] = parseFloat(input.value);
+          valSpan.textContent = f.fmt(calcState[f.key]);
+          calcRecompute();
+        });
+        row.appendChild(input);
+        calcControls.appendChild(row);
+      });
+    }
+    calcRecompute();
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Live AI-demo (rigtig sprogmodel)                                    */
+  /* ------------------------------------------------------------------ */
+
+  if (C.aiDemo) {
+    var ad = C.aiDemo;
+    var adTitle = document.getElementById("aidemo-title");
+    var adLead = document.getElementById("aidemo-lead");
+    var adGov = document.getElementById("aidemo-governance");
+    if (adTitle) adTitle.textContent = ad.title;
+    if (adLead) adLead.textContent = ad.lead;
+    if (adGov) adGov.textContent = ad.governance;
+
+    var adInput = document.getElementById("aidemo-input");
+    var adOutput = document.getElementById("aidemo-output");
+    var adRun = document.getElementById("aidemo-run");
+    var adExample = document.getElementById("aidemo-example");
+    var adTabs = document.getElementById("aidemo-tabs");
+    var adMain = adInput ? adInput.closest(".aidemo-main") : null;
+    var adActive = (ad.presets && ad.presets[0]) || null;
+
+    function adSelect(preset, btn) {
+      adActive = preset;
+      if (adInput) adInput.placeholder = preset.placeholder || "";
+      if (adTabs) {
+        Array.prototype.forEach.call(adTabs.children, function (c) { c.classList.remove("active"); });
+      }
+      if (btn) btn.classList.add("active");
+    }
+
+    if (adTabs && ad.presets) {
+      ad.presets.forEach(function (preset, i) {
+        var b = el("button", "aidemo-tab" + (i === 0 ? " active" : ""), preset.label);
+        b.type = "button";
+        b.addEventListener("click", function () { adSelect(preset, b); });
+        adTabs.appendChild(b);
+      });
+    }
+    if (adActive && adInput) adInput.placeholder = adActive.placeholder || "";
+
+    function adShow(text, kind) {
+      if (!adOutput) return;
+      adOutput.className = "aidemo-output" + (kind ? " aidemo-" + kind : "");
+      adOutput.innerHTML = "";
+      String(text).split(/\n\n+/).forEach(function (para) {
+        var p = document.createElement("p");
+        para.split("\n").forEach(function (line, idx) {
+          if (idx) p.appendChild(document.createElement("br"));
+          p.appendChild(document.createTextNode(line));
+        });
+        adOutput.appendChild(p);
+      });
+    }
+
+    function adRunRequest(preset, input) {
+      if (ad.endpoint) {
+        return fetch(ad.endpoint, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ useCaseId: preset.id, input: input }),
+        }).then(function (r) {
+          return r.json().catch(function () { throw new Error("Uventet svar fra serveren (" + r.status + ")"); })
+            .then(function (data) {
+              if (!r.ok || data.error) throw new Error(data.error || ("Serverfejl " + r.status));
+              return data.text;
+            });
+        });
+      }
+      if (window.__AIDEMO_KEY) {
+        return fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-api-key": window.__AIDEMO_KEY,
+            "anthropic-version": "2023-06-01",
+            "anthropic-dangerous-direct-browser-access": "true",
+          },
+          body: JSON.stringify({
+            model: ad.model,
+            max_tokens: 1500,
+            system: preset.system,
+            messages: [{ role: "user", content: input }],
+          }),
+        }).then(function (r) {
+          return r.json().then(function (data) {
+            if (!r.ok) throw new Error((data.error && data.error.message) || ("Fejl " + r.status));
+            if (data.stop_reason === "refusal") throw new Error("Modellen afviste forespørgslen.");
+            var tb = (data.content || []).filter(function (b) { return b.type === "text"; })[0];
+            return tb ? tb.text : "(tomt svar)";
+          });
+        });
+      }
+      return Promise.resolve(null); // ikke konfigureret
+    }
+
+    function adSetupNotice() {
+      adShow(
+        "Demoen er ikke aktiveret i denne version. Den går live, når Worker-endpointet " +
+        "er sat op (tager ~5 min – se ai-backend/README.md). Vil du teste med det samme, " +
+        "kan du bruge en lokal test med din egen nøgle nedenfor.",
+        "muted"
+      );
+    }
+
+    var adBusy = false;
+    function adGenerate() {
+      if (adBusy || !adActive || !adInput) return;
+      var input = adInput.value.trim();
+      if (!input) { adShow("Skriv et par stikord først – eller indsæt eksemplet.", "muted"); return; }
+      if (input.length > (ad.maxChars || 4000)) {
+        adShow("Teksten er for lang (maks " + (ad.maxChars || 4000) + " tegn).", "muted"); return;
+      }
+      adBusy = true;
+      if (adRun) { adRun.disabled = true; adRun.textContent = "Claude skriver …"; }
+      adShow("Claude skriver …", "muted");
+      adRunRequest(adActive, input)
+        .then(function (text) {
+          if (text === null) adSetupNotice();
+          else adShow(text, "result");
+        })
+        .catch(function (e) { adShow("Kunne ikke hente svar: " + e.message, "error"); })
+        .finally(function () {
+          adBusy = false;
+          if (adRun) { adRun.disabled = false; adRun.textContent = "Generér udkast"; }
+        });
+    }
+
+    if (adRun) adRun.addEventListener("click", adGenerate);
+    if (adExample) adExample.addEventListener("click", function () {
+      if (adActive && adInput) { adInput.value = adActive.example || ""; adInput.focus(); }
+    });
+
+    // Lokal test-mulighed (kun når der ikke er et endpoint)
+    if (!ad.endpoint && adMain) {
+      var details = document.createElement("details");
+      details.className = "aidemo-local";
+      var summary = el("summary", null, "Kør en lokal test med din egen API-nøgle");
+      details.appendChild(summary);
+      details.appendChild(el("p", null,
+        "Kun til din egen test på denne maskine. Nøglen gemmes ikke og sendes kun " +
+        "direkte til Anthropic. Brug den ALDRIG på den offentlige version – deploy i " +
+        "stedet din Worker (se ai-backend/README.md)."));
+      var keyInput = document.createElement("input");
+      keyInput.type = "password";
+      keyInput.placeholder = "sk-ant-…";
+      keyInput.autocomplete = "off";
+      details.appendChild(keyInput);
+      var keyBtn = el("button", "btn btn-ghost btn-small", "Aktivér lokal test");
+      keyBtn.type = "button";
+      keyBtn.addEventListener("click", function () {
+        if (keyInput.value.trim()) {
+          window.__AIDEMO_KEY = keyInput.value.trim();
+          adShow("Lokal test aktiveret. Klik “Generér udkast”.", "muted");
+        }
+      });
+      details.appendChild(keyBtn);
+      adMain.appendChild(details);
+    }
+  }
+
+  /* ------------------------------------------------------------------ */
   /* Agenten: matching mod vidensbasen                                   */
   /* ------------------------------------------------------------------ */
 

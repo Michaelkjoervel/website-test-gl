@@ -23,9 +23,10 @@
       <nav aria-label="Sektioner">
         <a href="#ommig">Om mig</a>
         <a href="#erfaring">Erfaring</a>
-        <a href="#match">Match</a>
         <a href="#plan">100 dage</a>
-        <a href="#agent" class="nav-accent">Interview agenten</a>
+        <a href="#vaerdi">Værdi</a>
+        <a href="#agent">Agent</a>
+        <a href="#ai-demo" class="nav-accent">Prøv AI</a>
         <a href="#kontakt">Kontakt</a>
       </nav>
     </div>
@@ -154,6 +155,28 @@
       </div>
     </section>
 
+    <!-- ===================== AI-VÆRDIBEREGNER ===================== -->
+    <section class="section section-alt" id="vaerdi">
+      <div class="container">
+        <h2 id="calc-title">…</h2>
+        <p class="section-lead" id="calc-lead">…</p>
+        <div class="calc">
+          <div class="calc-controls" id="calc-controls"><!-- sliders fra app.js --></div>
+          <div class="calc-result">
+            <div class="calc-big">
+              <span class="calc-big-num" id="calc-value">–</span>
+              <span class="calc-big-label">estimeret værdi pr. år</span>
+            </div>
+            <div class="calc-sub">
+              <div><span id="calc-hours">–</span><span>timer frigjort/år</span></div>
+              <div><span id="calc-fte">–</span><span>≈ fuldtidsstillinger</span></div>
+            </div>
+            <p class="calc-note" id="calc-note"></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- ========================= AGENT / CHAT ========================= -->
     <section class="section section-dark" id="agent">
       <div class="container">
@@ -198,6 +221,30 @@
               kunde&#8209; og medarbejdervendte løsninger – start med kontrol, og udvid med
               generativ AI dér, hvor governance er på plads.
             </p>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== LIVE AI-DEMO ===================== -->
+    <section class="section section-dark" id="ai-demo">
+      <div class="container">
+        <h2 id="aidemo-title">…</h2>
+        <p class="section-lead" id="aidemo-lead">…</p>
+        <div class="aidemo-layout">
+          <div class="aidemo-main">
+            <div class="aidemo-tabs" id="aidemo-tabs"><!-- preset-knapper fra app.js --></div>
+            <label class="visually-hidden" for="aidemo-input">Dine stikord</label>
+            <textarea id="aidemo-input" rows="5" spellcheck="false"></textarea>
+            <div class="aidemo-actions">
+              <button type="button" class="btn btn-ghost btn-small" id="aidemo-example">Indsæt eksempel</button>
+              <button type="button" class="btn btn-primary" id="aidemo-run">Generér udkast</button>
+            </div>
+            <div class="aidemo-output" id="aidemo-output" aria-live="polite"></div>
+          </div>
+          <aside class="aidemo-spec">
+            <h3>Governance by design</h3>
+            <p id="aidemo-governance"></p>
           </aside>
         </div>
       </div>
