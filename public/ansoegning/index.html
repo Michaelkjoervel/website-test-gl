@@ -21,10 +21,11 @@
     <div class="container topnav-inner">
       <a class="brand" href="#top" data-bind="name">…</a>
       <nav aria-label="Sektioner">
+        <a href="#ommig">Om mig</a>
+        <a href="#erfaring">Erfaring</a>
         <a href="#match">Match</a>
         <a href="#plan">100 dage</a>
         <a href="#agent" class="nav-accent">Interview agenten</a>
-        <a href="#governance">Governance</a>
         <a href="#kontakt">Kontakt</a>
       </nav>
     </div>
@@ -63,6 +64,41 @@
   </section>
 
   <main>
+    <!-- ========================= OM MIG ========================= -->
+    <section class="section" id="ommig">
+      <div class="container">
+        <p class="eyebrow eyebrow-light">Om mig</p>
+        <h2 id="about-title">…</h2>
+        <p class="section-lead" id="about-lead">…</p>
+        <div class="about-grid">
+          <div class="about-body" id="about-body"><!-- afsnit fra content.js --></div>
+          <aside class="about-facts">
+            <h3>Kort om</h3>
+            <dl id="about-facts"><!-- quick facts fra content.js --></dl>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== ERHVERVSERFARING ===================== -->
+    <section class="section section-alt" id="erfaring">
+      <div class="container">
+        <h2>Erhvervserfaring</h2>
+        <p class="section-lead" id="exp-intro">…</p>
+        <div class="exp-timeline" id="exp-roles"><!-- roller fra content.js --></div>
+        <div class="exp-extra">
+          <div class="exp-col">
+            <h3>Uddannelse</h3>
+            <div id="exp-education"></div>
+          </div>
+          <div class="exp-col">
+            <h3>Kompetencer</h3>
+            <div class="exp-skills" id="exp-skills"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- ===================== HVORFOR DENNE FORM ===================== -->
     <section class="section" id="tilgang">
       <div class="container">

@@ -147,6 +147,85 @@
   }
 
   /* ------------------------------------------------------------------ */
+  /* Om mig (personlig del)                                              */
+  /* ------------------------------------------------------------------ */
+
+  if (C.about) {
+    var aTitle = document.getElementById("about-title");
+    var aLead = document.getElementById("about-lead");
+    if (aTitle) aTitle.textContent = C.about.title || "";
+    if (aLead) aLead.textContent = C.about.lead || "";
+
+    var aBody = document.getElementById("about-body");
+    if (aBody && Array.isArray(C.about.paragraphs)) {
+      C.about.paragraphs.forEach(function (p) { aBody.appendChild(el("p", null, p)); });
+    }
+
+    var aFacts = document.getElementById("about-facts");
+    if (aFacts && Array.isArray(C.about.quickFacts)) {
+      C.about.quickFacts.forEach(function (f) {
+        aFacts.appendChild(el("dt", null, f.label));
+        aFacts.appendChild(el("dd", null, f.value));
+      });
+    }
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Erhvervserfaring                                                    */
+  /* ------------------------------------------------------------------ */
+
+  if (C.experience) {
+    var exp = C.experience;
+
+    var expIntro = document.getElementById("exp-intro");
+    if (expIntro) expIntro.textContent = exp.intro || "";
+
+    var expRoles = document.getElementById("exp-roles");
+    if (expRoles && Array.isArray(exp.roles)) {
+      exp.roles.forEach(function (role) {
+        var item = el("article", "exp-item");
+        item.appendChild(el("div", "exp-period", role.period));
+        var main = el("div", "exp-main");
+        main.appendChild(el("h3", "exp-role", role.title));
+        var org = el("p", "exp-org");
+        org.appendChild(el("strong", null, role.org));
+        if (role.note) org.appendChild(document.createTextNode(" · " + role.note));
+        main.appendChild(org);
+        if (Array.isArray(role.points) && role.points.length) {
+          var ul = document.createElement("ul");
+          role.points.forEach(function (p) { ul.appendChild(el("li", null, p)); });
+          main.appendChild(ul);
+        }
+        item.appendChild(main);
+        expRoles.appendChild(item);
+      });
+    }
+
+    var expEdu = document.getElementById("exp-education");
+    if (expEdu && Array.isArray(exp.education)) {
+      exp.education.forEach(function (e) {
+        var row = el("div", "edu-row");
+        row.appendChild(el("span", "edu-period", e.period));
+        var t = el("span", "edu-title");
+        t.appendChild(el("strong", null, e.title));
+        if (e.org) t.appendChild(document.createTextNode(" – " + e.org));
+        row.appendChild(t);
+        expEdu.appendChild(row);
+      });
+    }
+
+    var expSkills = document.getElementById("exp-skills");
+    if (expSkills) {
+      (exp.skillsEvidenced || []).forEach(function (s) {
+        expSkills.appendChild(el("span", "skill-tag", s));
+      });
+      if (exp.skillsTodo) {
+        expSkills.appendChild(el("p", "skill-todo", exp.skillsTodo));
+      }
+    }
+  }
+
+  /* ------------------------------------------------------------------ */
   /* Agenten: matching mod vidensbasen                                   */
   /* ------------------------------------------------------------------ */
 
