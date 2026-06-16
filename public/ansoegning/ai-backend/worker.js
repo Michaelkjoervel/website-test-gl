@@ -6,6 +6,9 @@
    er fast og afgrænset pr. use case, så endpointet ikke kan misbruges som en
    generel gratis-LLM.
 
+   Fair-use-grænse: pr. IP pr. dag + et samlet dagligt loft (kræver et KV-
+   namespace ved navn RATE_KV – se README.md). Begge kan justeres via variabler.
+
    Deploy: se README.md i denne mappe.
    ============================================================================ */
 
@@ -33,8 +36,13 @@ const USE_CASES = {
   },
 };
 
-const DEFAULT_MODEL = "claude-opus-4-8"; // skift evt. til "claude-haiku-4-5" via MODEL-variablen
+const DEFAULT_MODEL = "claude-haiku-4-5"; // sæt MODEL-secret til claude-opus-4-8 for skarpere (dyrere) svar
 const MAX_INPUT = 4000;
+
+// Fair-use-grænser (kan overstyres med variablerne PER_IP_DAILY / GLOBAL_DAILY).
+const PER_IP_DAILY_DEFAULT = 10;   // antal kald pr. besøgende pr. dag
+const GLOBAL_DAILY_DEFAULT = 500;  // samlet loft pr. dag (bundет omkostning)
+const COUNT_TTL = 172800;          // KV-tællere udløber efter 2 døgn
 
 // Stram "Allow-Origin" til din rigtige URL i produktion, fx
 // "https://dit-site.netlify.app", så kun dit site kan kalde endpointet.
@@ -64,6 +72,30 @@ export default {
     if (input.length > MAX_INPUT) return json({ error: "Input er for langt" }, 413);
     if (!env.ANTHROPIC_API_KEY) return json({ error: "API-nøgle mangler på serveren" }, 500);
 
+    // ---- Fair-use-grænse (kræver KV-binding RATE_KV) --------------------
+    const perIp = parseInt(env.PER_IP_DAILY, 10) || PER_IP_DAILY_DEFAULT;
+    const globalMax = parseInt(env.GLOBAL_DAILY, 10) || GLOBAL_DAILY_DEFAULT;
+    const day = new Date().toISOString().slice(0, 10);
+    const ip = request.headers.get("CF-Connecting-IP") || "ukendt";
+    const ipKey = "ip:" + ip + ":" + day;
+    const globalKey = "global:" + day;
+    let ipCount = 0, globalCount = 0;
+
+    if (env.RATE_KV) {
+      ipCount = parseInt((await env.RATE_KV.get(ipKey)) || "0", 10);
+      if (ipCount >= perIp) {
+        return json({
+          error: "Du har nået dagens grænse for demoen. Prøv igen i morgen – " +
+                 "eller tag fat i Michael for en rigtig snak.",
+        }, 429);
+      }
+      globalCount = parseInt((await env.RATE_KV.get(globalKey)) || "0", 10);
+      if (globalCount >= globalMax) {
+        return json({ error: "Demoen har nået dagens samlede grænse. Prøv igen i morgen." }, 429);
+      }
+    }
+
+    // ---- Kald Claude ---------------------------------------------------
     let r, data;
     try {
       r = await fetch("https://api.anthropic.com/v1/messages", {
@@ -88,6 +120,15 @@ export default {
     if (!r.ok) {
       return json({ error: (data && data.error && data.error.message) || ("Anthropic-fejl " + r.status) }, 502);
     }
+
+    // Tæl kun gennemførte (billige/billable) kald – så fejl ikke æder kvoten.
+    if (env.RATE_KV) {
+      await Promise.all([
+        env.RATE_KV.put(ipKey, String(ipCount + 1), { expirationTtl: COUNT_TTL }),
+        env.RATE_KV.put(globalKey, String(globalCount + 1), { expirationTtl: COUNT_TTL }),
+      ]);
+    }
+
     if (data.stop_reason === "refusal") {
       return json({ error: "Modellen afviste forespørgslen." });
     }

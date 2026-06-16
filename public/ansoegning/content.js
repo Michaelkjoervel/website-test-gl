@@ -198,11 +198,12 @@ window.ANSOEGNING = {
       "generativ AI-funktion, jeg har bygget til en SH Group-use case – powered by " +
       "Claude. Skriv stikord, og få et færdigt udkast.",
     endpoint: "",                 // <- din Worker-URL indsættes her
-    model: "claude-opus-4-8",     // kan skiftes til "claude-haiku-4-5" for lavere pris/hurtigere svar
+    model: "claude-haiku-4-5",    // standard: hurtig/billig. Skift til "claude-opus-4-8" for skarpere svar
     maxChars: 4000,
     governance:
       "Sådan er det bygget governance-rigtigt: API-nøglen ligger på en server, " +
-      "ikke i din browser. Systemprompten er fast og afgrænset pr. use case, og " +
+      "ikke i din browser. Systemprompten er fast og afgrænset pr. use case, " +
+      "adgangen er rate-limited (så demoen kan prøves, men ikke misbruges), og " +
       "et menneske godkender altid output, før det bruges. Præcis den ramme, jeg " +
       "ville sætte op hos jer, før generativ AI rulles ud.",
     presets: [
