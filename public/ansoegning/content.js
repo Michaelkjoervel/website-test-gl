@@ -144,12 +144,12 @@ window.ANSOEGNING = {
       {
         period: "2018–2020",
         title: "Cand.IT i Informationsvidenskab – speciale om selvlæring",
-        org: "",
+        org: "Aarhus Universitet",
       },
       {
         period: "2015–2018",
         title: "Bachelor i Informationsvidenskab",
-        org: "",
+        org: "Aarhus Universitet",
       },
       {
         period: "2011–2014",
