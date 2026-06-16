@@ -23,10 +23,18 @@ from sqlalchemy.orm import Session
 from ..config import settings
 from ..database import get_db
 from ..models import TranscriptionJob
-from ..schemas import JobDetail, JobOut, JobStatusOut, JobUpdate
+from ..schemas import (
+    DocumentDocxRequest,
+    GenerateDocumentResponse,
+    JobDetail,
+    JobOut,
+    JobStatusOut,
+    JobUpdate,
+)
 from ..services import audio as audio_svc
 from ..services import jobs as job_svc
-from ..services.exports import build_docx, build_pdf, build_srt, build_txt
+from ..services.exports import build_docx, build_pdf, build_srt, build_summary_docx, build_txt
+from ..services.summary import DOCUMENT_LABELS, SummaryError, generate_document
 from ..services.validation import (
     ValidationError,
     check_extension,
@@ -331,4 +339,73 @@ def export_srt(job_id: str, db: Session = Depends(get_db)):
         data,
         media_type="application/x-subrip",
         headers={"Content-Disposition": f"attachment; filename={_export_filename(job, 'srt')}"},
+    )
+
+
+@router.get("/meta/document-types")
+def document_types() -> list[dict]:
+    """Hvilke AI-dokumenter brugeren kan vælge imellem."""
+    from ..services.summary import DOCUMENT_DESCRIPTIONS
+
+    return [
+        {"type": key, "label": label, "description": DOCUMENT_DESCRIPTIONS[key]}
+        for key, label in DOCUMENT_LABELS.items()
+    ]
+
+
+@router.post("/{job_id}/documents/{doc_type}", response_model=GenerateDocumentResponse)
+def generate_doc(job_id: str, doc_type: str, db: Session = Depends(get_db)) -> GenerateDocumentResponse:
+    """Generér et AI-dokument (summary/referat/næste skridt/opfølgning) fra transskriberingen."""
+    job = db.get(TranscriptionJob, job_id)
+    if not job:
+        raise HTTPException(404, "Transskriberingen blev ikke fundet.")
+    if doc_type not in DOCUMENT_LABELS:
+        raise HTTPException(400, "Ukendt dokumenttype.")
+    if job.status != "completed":
+        raise HTTPException(400, "Transskriberingen er ikke færdig endnu.")
+    if not job.document:
+        raise HTTPException(400, "Der er ingen tekst at generere ud fra.")
+
+    text = (job.document.edited_text or job.document.raw_text or "").strip()
+    if not text:
+        raise HTTPException(400, "Der er ingen tekst at generere ud fra.")
+
+    try:
+        content = generate_document(text, doc_type)
+    except SummaryError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+    return GenerateDocumentResponse(
+        type=doc_type,  # type: ignore[arg-type]
+        label=DOCUMENT_LABELS[doc_type],
+        content=content,
+    )
+
+
+@router.post("/{job_id}/documents/{doc_type}/docx")
+def download_doc_docx(
+    job_id: str,
+    doc_type: str,
+    payload: DocumentDocxRequest,
+    db: Session = Depends(get_db),
+):
+    """Modtag brugerens (evt. redigerede) indhold og returnér det som Word-fil."""
+    job = db.get(TranscriptionJob, job_id)
+    if not job:
+        raise HTTPException(404, "Transskriberingen blev ikke fundet.")
+    if doc_type not in DOCUMENT_LABELS:
+        raise HTTPException(400, "Ukendt dokumenttype.")
+    content = (payload.content or "").strip()
+    if not content:
+        raise HTTPException(400, "Indholdet er tomt.")
+
+    data = build_summary_docx(job, doc_type, content)
+    suffix = doc_type.replace("_", "-")
+    base = Path(job.title or job.original_filename or "dokument").stem or "dokument"
+    safe = "".join(c if c.isalnum() or c in ("-", "_") else "_" for c in base)[:80]
+    filename = f"{safe}_{suffix}.docx"
+    return Response(
+        data,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )

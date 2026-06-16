@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { DocumentGenerator } from "../components/DocumentGenerator";
 import { StatusBadge } from "../components/StatusBadge";
 import { audioUrl, deleteJob, exportUrl, getJob, updateJob } from "../lib/api";
 import { formatDateTime, formatDuration, formatFileSize } from "../lib/format";
@@ -201,6 +202,8 @@ export function ResultPage() {
           </div>
         </div>
       </div>
+
+      <DocumentGenerator jobId={job.id} jobTitle={title} disabled={job.status !== "completed"} />
 
       <div className="flex items-center justify-between">
         <Link to="/historik" className="text-sm text-slate-600 hover:text-slate-900">

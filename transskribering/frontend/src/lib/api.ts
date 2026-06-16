@@ -1,4 +1,11 @@
-import type { JobDetail, JobOut, JobStatusOut } from "./types";
+import type {
+  DocumentType,
+  DocumentTypeInfo,
+  GeneratedDocument,
+  JobDetail,
+  JobOut,
+  JobStatusOut,
+} from "./types";
 
 const BASE = "/api";
 
@@ -108,4 +115,46 @@ export function audioUrl(id: string): string {
 
 export function exportUrl(id: string, format: "txt" | "docx" | "pdf" | "srt"): string {
   return `${BASE}/transcriptions/${id}/export/${format}`;
+}
+
+export async function listDocumentTypes(): Promise<DocumentTypeInfo[]> {
+  const res = await fetch(`${BASE}/transcriptions/meta/document-types`);
+  return jsonOrThrow<DocumentTypeInfo[]>(res);
+}
+
+export async function generateDocument(id: string, type: DocumentType): Promise<GeneratedDocument> {
+  const res = await fetch(`${BASE}/transcriptions/${id}/documents/${type}`, { method: "POST" });
+  return jsonOrThrow<GeneratedDocument>(res);
+}
+
+export async function downloadDocumentDocx(
+  id: string,
+  type: DocumentType,
+  content: string,
+  suggestedName: string
+): Promise<void> {
+  const res = await fetch(`${BASE}/transcriptions/${id}/documents/${type}/docx`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content }),
+  });
+  if (!res.ok) {
+    let message = `Download fejlede (${res.status})`;
+    try {
+      const body = await res.json();
+      if (typeof body?.detail === "string") message = body.detail;
+    } catch {
+      /* ignore */
+    }
+    throw new Error(message);
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = suggestedName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

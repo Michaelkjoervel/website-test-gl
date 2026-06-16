@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     transcription_engine: Literal["openai", "dummy"] = "openai"
     openai_transcription_model: str = "whisper-1"
+    summary_model: str = "gpt-4o-mini"
 
     database_url: str = "sqlite:///./data/transskribering.db"
 

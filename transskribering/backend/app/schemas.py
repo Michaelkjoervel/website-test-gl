@@ -72,3 +72,16 @@ class JobStatusOut(BaseModel):
     current_chunk: int
     total_chunks: int
     error_message: Optional[str] = None
+
+
+DocumentTypeStr = Literal["executive_summary", "minutes", "next_steps", "followup"]
+
+
+class GenerateDocumentResponse(BaseModel):
+    type: DocumentTypeStr
+    label: str
+    content: str
+
+
+class DocumentDocxRequest(BaseModel):
+    content: str

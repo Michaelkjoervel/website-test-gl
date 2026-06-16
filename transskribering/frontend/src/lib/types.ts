@@ -58,3 +58,17 @@ export interface JobStatusOut {
   total_chunks: number;
   error_message: string | null;
 }
+
+export type DocumentType = "executive_summary" | "minutes" | "next_steps" | "followup";
+
+export interface DocumentTypeInfo {
+  type: DocumentType;
+  label: string;
+  description: string;
+}
+
+export interface GeneratedDocument {
+  type: DocumentType;
+  label: string;
+  content: string;
+}
