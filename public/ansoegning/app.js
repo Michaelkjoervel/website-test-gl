@@ -68,7 +68,7 @@
   document.querySelectorAll("[data-bind]").forEach(function (node) {
     var key = node.getAttribute("data-bind");
     if (key === "phoneLabel") {
-      node.textContent = isTodo(C.meta.phone) ? "Ring op" : "Ring " + C.meta.phone;
+      node.textContent = (C.meta.phone && !isTodo(C.meta.phone)) ? "Ring " + C.meta.phone : "Ring op";
     } else if (C.meta[key] != null) {
       node.textContent = C.meta[key];
     }
@@ -81,8 +81,12 @@
       "?subject=" + encodeURIComponent(C.meta.mailSubject || "");
   }
   var phoneBtn = document.getElementById("contact-phone");
-  if (phoneBtn && !isTodo(C.meta.phone)) {
-    phoneBtn.href = "tel:" + C.meta.phone.replace(/[^+\d]/g, "");
+  if (phoneBtn) {
+    if (C.meta.phone && !isTodo(C.meta.phone)) {
+      phoneBtn.href = "tel:" + C.meta.phone.replace(/[^+\d]/g, "");
+    } else {
+      phoneBtn.style.display = "none";
+    }
   }
   var liBtn = document.getElementById("contact-linkedin");
   if (liBtn) {
