@@ -1,7 +1,11 @@
 /* ============================================================================
    INDHOLD – det eneste sted, du skal redigere.
 
-   1) Udskift alle "[UDFYLD: …]"-markeringer med dine egne oplysninger.
+   Profilen er nu udfyldt med Michaels rigtige LinkedIn-data. Der er kun få
+   "[UDFYLD: …]"-markeringer tilbage (personlig motivation, konkrete tal,
+   uddannelse, telefon, evt. Microsoft-værktøjer).
+
+   1) Udskift de resterende "[UDFYLD: …]"-markeringer.
    2) Læs alle svar igennem – agenten må kun sige ting, du selv står inde for.
    3) Sæt meta.draft = false, når du er klar til at sende sitet.
 
@@ -14,10 +18,10 @@ window.ANSOEGNING = {
   meta: {
     draft: true,
     name: "Michael Kjørvel",
-    tagline: "Teknisk profil, der bygger AI-løsninger, folk faktisk bruger",
-    city: "[UDFYLD: by]",
+    tagline: "Transformationsprofil med hands-on AI – jeg gør strategi til målbare resultater",
+    city: "Odense",
     email: "mkj@green-light.dk",
-    phone: "[UDFYLD: telefonnummer, fx +45 12 34 56 78]",
+    phone: "[UDFYLD: telefonnummer – eller slet, hvis det ikke skal med]",
     linkedin: "https://www.linkedin.com/in/michael-kjørvel/",
     mailSubject: "Samtale – Head of AI Transformation",
   },
@@ -25,93 +29,144 @@ window.ANSOEGNING = {
   /* ------------------------------------------------------------------ */
   /* "Om mig" – den personlige del.                                      */
   about: {
-    title: "Jeg taler ikke bare om digitalisering – jeg bygger den",
+    title: "Jeg har gjort det før: forvandlet en disciplin til en vækstmotor",
     lead:
-      "Jeg arbejder i krydsfeltet mellem teknologi, forretning og mennesker – og " +
-      "min force er at gøre AI konkret nok til, at den skaber værdi i hverdagen.",
+      "Erfaren marketing- og transformationsprofil i krydsfeltet mellem strategi, " +
+      "teknologi og forretning. Mit formål er enkelt: at gøre noget, mange ser som en " +
+      "støttefunktion, til en målbar drivkraft for vækst.",
     paragraphs: [
-      "I dag arbejder jeg i energi- og belysningsbranchen hos green light a/s, hvor jeg " +
-        "[UDFYLD: din rolle og dit hovedansvar i én sætning]. Det, der kendetegner mig, " +
-        "er, at jeg ikke stopper ved idéer og oplæg: Jeg bygger fungerende løsninger og " +
-        "sørger for, at de bliver taget i brug.",
-      "AI er omdrejningspunktet i den måde, jeg arbejder på. Jeg bruger AI-assisteret " +
-        "udvikling til at gå fra idé til fungerende værktøj på dage frem for måneder – " +
-        "fx en estimerings- og business case-løsning, der regner ROI og CO₂ for kunderne, " +
-        "og et internt tidsregistreringsværktøj. Dette ansøgningssite er bygget på samme " +
-        "måde. For mig er AI ikke et buzzword, men en daglig arbejdsform: mennesket sætter " +
-        "retningen, AI accelererer vejen derhen.",
-      "[UDFYLD: et par personlige linjer – fx hvor du bor, familie, hvad der driver dig " +
-        "uden for arbejdet, og hvorfor netop den maritime branche og Sydfyn trækker i dig. " +
-        "Det er her, læseren får fornemmelsen af mennesket bag profilen.]",
+      "Gennem de seneste år har jeg haft det samlede marketingansvar i flere " +
+        "virksomheder og gentagne gange ændret synet på marketing – fra en omkostning til " +
+        "en strategisk motor for synlighed, leads og positionering, forankret i ledelsen. " +
+        "Det er præcis den rejse, AI skal igennem i en organisation: fra spredte forsøg til " +
+        "forankret, målbar værdi.",
+      "AI er omdrejningspunktet i den måde, jeg arbejder på. Jeg arbejder hands-on med " +
+        "AI-agenter, automatisering og en systematiseret arbejdsstruktur, der løfter både " +
+        "kvalitet og hastighed – og jeg bygger digitale fundamenter, der genererer organisk " +
+        "synlighed, også i AI-drevne søgemiljøer (GEO). Jeg er teknisk hands-on: Jeg bruger " +
+        "AI-assisteret udvikling til at gå fra idé til fungerende værktøj på dage frem for " +
+        "måneder – fx en business case-løsning (ROI & CO₂), et tidsregistreringsværktøj og " +
+        "dette ansøgningssite.",
+      "Privat er jeg 32 år, far til to skønne piger på 2 og 7, og bor i Odense SV – kun " +
+        "omkring tre kvarter fra Svendborg. Jeg er social og udadvendt, god til at have mange " +
+        "bolde i luften, og et stort familiemenneske, der gerne renoverer tilbygningen i " +
+        "fritiden. Jeg elsker at lære nyt: Jeg skrev speciale om selvlæring og har " +
+        "praktiseret det lige siden – en vane, der passer perfekt til et felt som AI, der " +
+        "ændrer sig hver uge.",
     ],
     quickFacts: [
-      { label: "Branche i dag", value: "Energi & belysning (green light a/s)" },
-      { label: "Arbejdsform", value: "Hands-on, AI-assisteret udvikling" },
-      { label: "Bopæl", value: "[UDFYLD: by/område]" },
-      { label: "Sprog", value: "[UDFYLD: fx dansk & engelsk]" },
+      { label: "Bopæl", value: "Odense SV (~45 min. fra Svendborg)" },
+      { label: "Nuværende rolle", value: "Marketingansvarlig, green light a/s" },
+      { label: "Fokus", value: "AI, transformation & digital vækst" },
+      { label: "Privat", value: "32 år · far til to" },
     ],
   },
 
   /* ------------------------------------------------------------------ */
   /* "Erhvervserfaring" – CV-delen.                                      */
-  /* VIGTIGT: Kun den nuværende rolles AI-/værktøjspunkt er bekræftet ud */
-  /* fra dette repo. Alt andet er skabelon – udfyld med din rigtige CV.  */
   experience: {
     intro:
-      "Et udpluk af min baggrund. Den røde tråd er, at jeg omsætter teknologi til " +
-      "værktøjer og resultater, der bliver brugt i hverdagen – ikke til hyldevarer.",
+      "Et udpluk af min baggrund. Jeg har i en periode haft flere marketingansvar " +
+      "parallelt – fællesnævneren er den samme: at gøre digital indsats til en målbar " +
+      "vækstmotor.",
     roles: [
       {
-        period: "[UDFYLD: årstal]–nu",
-        title: "[UDFYLD: din nuværende titel]",
+        period: "2023–nu",
+        title: "Marketingansvarlig",
         org: "green light a/s",
         note: "Energibesparende belysning til erhverv og industri",
         points: [
-          "Designer og bygger interne digitale værktøjer med AI-assisteret udvikling – " +
-            "bl.a. en estimerings- og business case-løsning (ROI & CO₂) og et " +
-            "tidsregistreringsværktøj.",
-          "[UDFYLD: dit primære ansvarsområde i rollen]",
-          "[UDFYLD: ét konkret resultat, gerne med tal – fx sparet tid, øget hitrate eller hurtigere tilbud]",
+          "Samlet ansvar for al marketing: strategi og retning, brandidentitet, " +
+            "kommunikation, hjemmeside, paid advertising og sociale medier.",
+          "Bygget en digital struktur med SEO/GEO, content clusters og E-E-A-T, der har " +
+            "sikret topplaceringer på Google og citeringer i AI-søgemaskiner.",
+          "Arbejder aktivt med AI-agenter, automatisering og AI-assisteret udvikling – " +
+            "bl.a. interne værktøjer som en business case-løsning (ROI & CO₂) og et " +
+            "tidsregistreringsværktøj (se dette site).",
         ],
       },
       {
-        period: "[UDFYLD: årstal–årstal]",
-        title: "[UDFYLD: tidligere titel]",
-        org: "[UDFYLD: virksomhed]",
-        note: "[UDFYLD: branche/kort kontekst]",
+        period: "2023–nu",
+        title: "Marketingansvarlig",
+        org: "erwin andersen a/s",
+        note: "Rekruttering – kandidater & virksomheder",
         points: [
-          "[UDFYLD: dit ansvar og vigtigste resultat i rollen]",
+          "Samlet marketingansvar med fokus på en konsistent rød tråd på tværs af kanaler.",
+          "Lancerede i 2023 ny hjemmeside bygget på kommunikation og UX/UI, så " +
+            "brugeroplevelse, budskaber og forretningsmål hænger sammen.",
+          "Styrker den digitale synlighed via struktureret SEO og GEO – også over for " +
+            "større, digitalt etablerede aktører.",
         ],
       },
       {
-        period: "[UDFYLD: årstal–årstal]",
-        title: "[UDFYLD: tidligere titel]",
-        org: "[UDFYLD: virksomhed]",
-        note: "[UDFYLD: branche/kort kontekst]",
+        period: "2023–2025",
+        title: "Head of Digital Marketing",
+        org: "dwpa – Danish Wind Power Academy",
+        note: "Uddannelse til vindindustrien",
         points: [
-          "[UDFYLD: dit ansvar og vigtigste resultat i rollen]",
+          "Forandrede den digitale indsats fra en nødvendig omkostning til en strategisk " +
+            "vækstmotor – forankret i ledelsen.",
+          "Udviklede og implementerede en digital strategi (SEO, GEO, brand awareness) og " +
+            "stod i spidsen for en gennemgribende UX/UI-opdatering af websitet.",
+          "Skalerede paid advertising på Google Ads, Bing m.fl. med databaseret målretning " +
+            "og løbende performanceanalyse.",
+        ],
+      },
+      {
+        period: "2021–nu",
+        title: "IT, hjemmesideoptimering og marketing",
+        org: "Wecademy ApS",
+        note: "Online events & digital tilstedeværelse",
+        points: [
+          "Transformerede det digitale fundament via hjemmesideoptimering, SEO og paid " +
+            "advertising – med flere vigtige topplaceringer på Google.",
+          "Projektleder og underviser i tekniske online-arrangementer for virksomheder og " +
+            "kommuner; ledte projekter i størrelsesordenen 250.000 kr. fra plan til drift.",
+          "Arbejdede desuden med videoproduktion og -redigering.",
+        ],
+      },
+      {
+        period: "2019–2020",
+        title: "Marketingmedarbejder (deltid)",
+        org: "eAthlete.dk",
+        note: "",
+        points: [
+          "Startede som praktikant og blev hurtigt ansvarlig for sociale medier samt " +
+            "organisk trafik (SEO), brugervenlighed og visuelt/grafisk design.",
+        ],
+      },
+      {
+        period: "2014–2019",
+        title: "Servicemedarbejder",
+        org: "ALDI Danmark",
+        note: "",
+        points: [
+          "Tidlig erfaring med service, drift og kundekontakt ved siden af studierne.",
         ],
       },
     ],
     education: [
       {
         period: "[UDFYLD: årstal]",
-        title: "[UDFYLD: uddannelse/kursus]",
+        title: "[UDFYLD: din uddannelse] – speciale om selvlæring",
         org: "[UDFYLD: institution]",
       },
     ],
-    // Kompetencer, der er dokumenteret i praksis via dette og dine øvrige projekter:
     skillsEvidenced: [
-      "AI-assisteret udvikling (bl.a. Claude Code)",
-      "React & TypeScript",
-      "Business case- & ROI-modellering",
-      "Data- & beregningslogik",
-      "Energi- & CO₂-beregning",
-      "Git & CI-deployment",
+      "AI-agenter & automatisering",
+      "AI-assisteret udvikling (Claude Code)",
+      "GEO – AI-drevet søgesynlighed",
+      "SEO, content clusters & E-E-A-T",
+      "Frontend-udvikling",
+      "UX/UI-design",
+      "Datadrevet paid advertising",
+      "Projektledelse",
+      "Undervisning & formidling",
+      "Forandringsledelse",
     ],
     skillsTodo:
-      "[UDFYLD: øvrige kompetencer du vil fremhæve – fx Microsoft 365 Copilot, " +
-      "Copilot Studio, Power Platform, projektledelse, ledelse, change management]",
+      "[UDFYLD: tilføj Microsoft 365 Copilot / Copilot Studio, hvis du har erfaring – " +
+      "ellers slet denne linje]",
   },
 
   /* ------------------------------------------------------------------ */
@@ -120,34 +175,37 @@ window.ANSOEGNING = {
     {
       quote: "… formidler AI på en måde, der gør det forståeligt og anvendeligt i praksis.",
       answer:
-        "Jeg oversætter mellem maskinrum og direktionsgang. Min regel er, at hvis en " +
-        "kollega ikke kan forklare, hvad løsningen gør for netop deres arbejdsdag, er " +
-        "formidlingen ikke færdig. [UDFYLD: ét konkret eksempel – fx undervisning, " +
-        "workshops eller en udrulning, hvor din formidling gjorde forskellen.]",
+        "Jeg har undervist virksomheder og kommuner og gjort teknisk stof anvendeligt for " +
+        "ikke-tekniske brugere – og jeg har ændret hele organisationers syn på en disciplin " +
+        "ved at forklare værdien i et sprog, ledelsen og kollegerne forstår. Min regel: Kan " +
+        "en kollega ikke se, hvad løsningen gør for netop deres arbejdsdag, er formidlingen " +
+        "ikke færdig.",
     },
     {
       quote: "… følger udviklingen inden for AI og identificerer og prioriterer, hvor AI kan skabe reel værdi.",
       answer:
-        "Jeg tester selv nye værktøjer, før jeg anbefaler dem, og prioriterer altid efter " +
-        "to akser: forretningsværdi og implementerbarhed. Ingen pilot uden en ejer i " +
-        "forretningen og et målepunkt, der er aftalt på forhånd. [UDFYLD: eksempel på en " +
-        "prioritering/business case, du har drevet.]",
+        "Jeg skrev speciale om selvlæring og har praktiseret det lige siden – jeg tilegner " +
+        "mig hurtigt ny teknologi og afprøver den selv, før jeg anbefaler den. Jeg " +
+        "prioriterer efter forretningsværdi og implementerbarhed og jagter skalerbare " +
+        "systemer frem for kortsigtede kampagner. Samme princip tager jeg med til AI.",
     },
     {
       quote: "… omsætter ny viden til konkrete aktiviteter, driver implementeringen og sikrer, at løsninger bliver taget i brug.",
       answer:
-        "Implementering er 20 % teknik og 80 % forankring. Jeg arbejder med superbrugere, " +
-        "træning i arbejdsgange frem for værktøjer, og måler på faktisk anvendelse – ikke " +
-        "kun på go-live. [UDFYLD: eksempel på en løsning, du har bragt fra idé til daglig " +
-        "drift, gerne med tal.]",
+        "Det er min kernedisciplin. Jeg har lanceret og relanceret websites, bygget interne " +
+        "værktøjer med AI-assisteret udvikling og ledt projekter i størrelsesordenen " +
+        "250.000 kr. fra plan til drift. Og vigtigst: Jeg har gjort marketing fra " +
+        "støttefunktion til en kontinuerligt performende motor – altså forandring, der " +
+        "holder, ikke bare et go-live.",
     },
     {
       quote: "… erfaring med moderne AI-værktøjer og platforme … herunder opsætning, integration og governance.",
       answer:
-        "[UDFYLD: dine konkrete platforme og værktøjer – fx Microsoft 365 Copilot, Copilot " +
-        "Studio, Azure OpenAI, Claude/ChatGPT i virksomhedskontekst, automatisering og " +
-        "integrationer.] Dette site er min arbejdsprøve: arkitektur, indhold og governance- " +
-        "principper er beskrevet åbent længere nede – og kan efterprøves.",
+        "Jeg arbejder hands-on med AI-agenter, automatisering og AI-assisteret udvikling i " +
+        "hverdagen – og i AI-drevne søgemiljøer (GEO). [UDFYLD: nævn Microsoft 365 Copilot / " +
+        "Copilot Studio, hvis du har erfaring – ellers fjern denne sætning.] Governance " +
+        "tager jeg alvorligt: Dette site er bygget efter princippet om godkendt viden, " +
+        "afgrænset domæne og fuld gennemsigtighed (se governance-afsnittet nedenfor).",
     },
   ],
 
@@ -196,35 +254,61 @@ window.ANSOEGNING = {
   /*  - a:        svaret. Afsnit adskilles med \n\n, punktlister med "• "*/
   kb: [
     {
+      id: "bridge",
+      q: "Du har marketingbaggrund – hvorfor er du den rette til AI Transformation?",
+      chip: true,
+      keywords: ["marketing", "marketingbaggrund", "baggrund passer", "rette", "kvalificeret", "hvorfor dig", "ikke teknisk", "teknisk nok", "passer ikke", "relevant", "transformation"],
+      a:
+        "Helt ærligt: Min titel har stået på marketing – men mit arbejde har i årevis " +
+        "handlet om transformation og teknologi.\n\n" +
+        "• Jeg har gentagne gange taget en disciplin, mange så som en støttefunktion, og " +
+        "gjort den til en strategisk, målbar vækstmotor forankret i ledelsen. Det er præcis " +
+        "den rejse, AI skal igennem hos jer.\n" +
+        "• Jeg er teknisk hands-on: frontend-udvikling, website- og backend-struktur og " +
+        "AI-assisteret udvikling, hvor jeg selv bygger fungerende værktøjer (som dette site).\n" +
+        "• Jeg arbejder allerede dagligt med AI-agenter, automatisering og AI-drevne " +
+        "søgemiljøer – AI i en organisatorisk kontekst, ikke som eksperiment.\n" +
+        "• Jeg er vant til at formidle og undervise, så ny teknologi bliver forstået og " +
+        "taget i brug på tværs af en organisation.\n\n" +
+        "En Head of AI Transformation skal skabe forandring, prioritere værdi og drive " +
+        "anvendelse. Det har jeg bevist – nu med AI som omdrejningspunkt.",
+    },
+    {
       id: "hvorfor-sh",
       q: "Hvorfor SH Group?",
       chip: true,
-      keywords: ["hvorfor", "sh group", "shgroup", "motivation", "svendborg", "maritim", "maritime", "tiltrækker", "interesse", "drømmejob"],
+      keywords: ["hvorfor", "sh group", "shgroup", "motivation", "svendborg", "maritim", "maritime", "tiltrækker", "interesse", "drømmejob", "pendling", "bopæl", "flytte"],
       a:
-        "Tre ting tiltrækker mig:\n\n" +
-        "• I er en maritim vækstvirksomhed med rigtige produkter, rigtige kunder og processer, hvor AI kan mærkes på bundlinjen – ikke kun i slides.\n" +
-        "• I er allerede i gang: kommercielle værktøjer og egne piloter. Det er langt mere interessant at accelerere en igangværende rejse end at starte fra nul.\n" +
-        "• Rollen sidder i spændingsfeltet mellem teknologi, drift og forretning – præcis der, hvor jeg arbejder bedst.\n\n" +
-        "[UDFYLD: din personlige motivation – fx forhold til det maritime, Sydfyn eller virksomhedstypen.]",
+        "Flere ting trækker mig:\n\n" +
+        "• I er en maritim vækstvirksomhed med rigtige produkter, kunder og processer, hvor " +
+        "AI kan mærkes på bundlinjen – ikke kun i slides.\n" +
+        "• Jeg bor i Odense, kun omkring tre kvarter fra Svendborg, og kender Region " +
+        "Syddanmark godt. Det her er ikke et job, jeg skal flytte for – det er lige i baghaven.\n" +
+        "• Jeg kommer bl.a. fra vindindustrien (DWPA), så jeg er hjemme i en teknisk, " +
+        "industriel kontekst med tunge produkter og lange værdikæder.\n" +
+        "• I er allerede i gang med AI – og det er langt mere interessant at accelerere en " +
+        "igangværende rejse end at starte fra nul.\n\n" +
+        "[UDFYLD: tilføj gerne din helt personlige grund – det, der gør netop SH Group til " +
+        "drømmejobbet for dig.]",
     },
     {
       id: "copilot",
-      q: "Hvilken erfaring har du med Copilot og Copilot Studio?",
+      q: "Hvilken erfaring har du med AI-værktøjer og platforme?",
       chip: true,
-      keywords: ["copilot", "copilot studio", "microsoft", "m365", "365", "power platform", "azure", "platforme", "værktøjer", "teams"],
+      keywords: ["copilot", "copilot studio", "microsoft", "m365", "365", "power platform", "azure", "platforme", "værktøjer", "teams", "ai-værktøjer", "ai agents", "agenter", "automatisering"],
       a:
-        "Jeg er hands-on med moderne AI-værktøjer i praksis – ikke kun som bruger, men " +
-        "som bygger. Jeg udvikler løsninger med AI-assisteret udvikling (bl.a. Claude Code) " +
-        "og arbejder dagligt med kommercielle AI-værktøjer.\n\n" +
+        "Jeg er hands-on med moderne AI – ikke kun som bruger, men som bygger:\n\n" +
+        "• AI-agenter og automatisering i det daglige arbejde for at løfte kvalitet og " +
+        "hastighed uden at gå på kompromis med strategien.\n" +
+        "• AI-assisteret udvikling (bl.a. Claude Code), hvor jeg selv bygger fungerende " +
+        "værktøjer – fra business case-løsninger til dette site.\n" +
+        "• AI-drevne søgemiljøer (GEO), hvor jeg har sikret citeringer i AI-søgemaskiner.\n\n" +
         "[UDFYLD: din konkrete erfaring med Microsoft 365 Copilot, Copilot Studio og " +
-        "tilstødende platforme – fx agenter du har bygget, udrulning i en organisation, " +
-        "opsætning, integrationer og governance i tenant'en. Hvis din erfaring her er " +
-        "begrænset, så vær ærlig og fremhæv, hvor hurtigt du plejer at lære nye platforme.]\n\n" +
-        "Generelt ser jeg Microsoft-økosystemet som det naturlige fundament i en " +
-        "organisation som jeres: Det er der, medarbejderne allerede arbejder, og det er " +
-        "der, adgangsstyring og datagovernance kan håndhæves centralt. Min tilgang er at " +
-        "starte i det eksisterende økosystem og kun bygge specialløsninger, når værdien " +
-        "beviseligt kræver det.",
+        "Power Platform. Hvis den er begrænset, så vær ærlig – og fremhæv, at du lærer nye " +
+        "platforme hurtigt (du skrev jo speciale om selvlæring).]\n\n" +
+        "Jeg ser Microsoft-økosystemet som det naturlige fundament i en organisation som " +
+        "jeres: Det er der, medarbejderne allerede arbejder, og hvor adgangsstyring og " +
+        "datagovernance kan håndhæves centralt.",
     },
     {
       id: "prioritering",
@@ -240,8 +324,9 @@ window.ANSOEGNING = {
         "• En ejer i forretningen, der vil have løsningen – ikke bare acceptere den.\n" +
         "• En baseline målt før start, så effekten kan dokumenteres.\n" +
         "• En tidshorisont på højst ét kvartal til at vise første værdi.\n\n" +
-        "Kan et projekt ikke opfylde de tre krav, er det ikke modent endnu – så ryger det " +
-        "tilbage i kataloget, ikke ind i porteføljen.",
+        "Jeg jagter skalerbare systemer frem for kortsigtede gevinster. Kan et projekt ikke " +
+        "opfylde de tre krav, er det ikke modent endnu – så ryger det tilbage i kataloget, " +
+        "ikke ind i porteføljen.",
     },
     {
       id: "governance",
@@ -268,7 +353,8 @@ window.ANSOEGNING = {
         "• Træning foregår i folks egne arbejdsgange og med deres egne opgaver – ikke i generiske kurser.\n" +
         "• Superbrugere i hver afdeling, der får tid og mandat til at hjælpe kollegerne.\n" +
         "• Anvendelse måles løbende: bliver løsningen ikke brugt, er det løsningen – ikke brugerne – der skal justeres.\n\n" +
-        "Min erfaring er enkel: AI-projekter fejler sjældent på teknik. De fejler, når ingen " +
+        "Jeg har selv stået for at flytte en hel organisations syn på en disciplin. Min " +
+        "erfaring er enkel: AI-projekter fejler sjældent på teknik. De fejler, når ingen " +
         "ejer dem i hverdagen.",
     },
     {
@@ -277,13 +363,14 @@ window.ANSOEGNING = {
       chip: false,
       keywords: ["baggrund", "uddannelse", "cv", "karriere", "erfaring generelt", "teknisk baggrund", "profil", "hvem er du", "fortæl om dig"],
       a:
-        "Kort fortalt en teknisk profil, der bygger – ikke kun rådgiver.\n\n" +
-        "I dag arbejder jeg i energi- og belysningsbranchen hos green light a/s, hvor jeg " +
-        "[UDFYLD: din rolle], og hvor AI-assisteret udvikling er en fast del af mit arbejde: " +
-        "Jeg har bl.a. bygget en estimerings- og business case-løsning (ROI & CO₂) og et " +
-        "internt tidsregistreringsværktøj.\n\n" +
-        "[UDFYLD: 2–3 sætninger om din uddannelse og tidligere karriere – fremhæv det " +
-        "tekniske fundament og evt. ledelses-/projekterfaring.]\n\n" +
+        "Kort fortalt en marketing- og transformationsprofil, der bygger – ikke kun rådgiver.\n\n" +
+        "Jeg har de seneste år haft det samlede marketingansvar i flere virksomheder – i " +
+        "dag hos green light a/s (belysning) og erwin andersen a/s (rekruttering), og " +
+        "tidligere som Head of Digital Marketing hos Danish Wind Power Academy. Før det " +
+        "arbejdede jeg hos Wecademy med hjemmesideoptimering, projektledelse og undervisning.\n\n" +
+        "Den røde tråd er teknologi omsat til forretning: SEO/GEO, website- og " +
+        "frontend-udvikling, AI-agenter, automatisering og AI-assisteret udvikling. Jeg er " +
+        "32, bor i Odense og skrev speciale om selvlæring – noget jeg praktiserer hver uge.\n\n" +
         "Vil I have hele historien, sender jeg gerne CV og referencer samme dag – skriv til " +
         "mig via kontaktsektionen nederst.",
     },
@@ -293,30 +380,33 @@ window.ANSOEGNING = {
       chip: true,
       keywords: ["resultater", "effekt", "skabt", "opnået", "eksempler", "konkrete", "leveret", "succeser", "cases", "tal", "gevinster", "besparelser"],
       a:
-        "Et par eksempler fra min egen hverdag:\n\n" +
-        "• En estimerings- og business case-løsning, der automatisk beregner ROI og CO₂ for " +
-        "kunderne – bygget med AI-assisteret udvikling fra idé til fungerende værktøj.\n" +
-        "• Et internt tidsregistreringsværktøj, udviklet på samme måde.\n" +
-        "• Dette ansøgningssite, inkl. agenten du taler med nu.\n\n" +
-        "[UDFYLD: tilføj 1–2 eksempler mere med tal – fx sparet tid, hurtigere tilbud eller " +
-        "øget hitrate. Vær præcis og ærlig; det er agentens vigtigste svar.]\n\n" +
-        "Fælles for eksemplerne er arbejdsformen: AI accelererer, mennesket styrer – og " +
-        "løsningen er bygget til at blive brugt, ikke for at imponere.",
+        "Et par eksempler:\n\n" +
+        "• Bygget en estimerings- og business case-løsning (ROI & CO₂) og et internt " +
+        "tidsregistreringsværktøj med AI-assisteret udvikling – fra idé til fungerende " +
+        "værktøj på dage.\n" +
+        "• Sikret topplaceringer på Google og citeringer i AI-søgemaskiner via struktureret " +
+        "SEO/GEO og content clusters.\n" +
+        "• Forvandlet marketing fra støttefunktion til en kontinuerligt performende " +
+        "vækstmotor i flere virksomheder.\n" +
+        "• Ledt projekter i størrelsesordenen 250.000 kr. fra plan til drift.\n\n" +
+        "[UDFYLD: tilføj gerne 1–2 eksempler mere med hårde tal – fx sparet tid, øget " +
+        "leadvolumen eller konkret omsætningseffekt. Det styrker svaret yderligere.]",
     },
     {
       id: "ai-rejse",
       q: "Hvordan arbejder du selv med AI til daglig?",
       chip: true,
-      keywords: ["arbejder du selv", "til daglig", "din egen brug", "hands-on", "bygger", "udvikling", "kode", "selv bruger", "ai-rejse", "rejse", "hvordan bruger du"],
+      keywords: ["arbejder du selv", "til daglig", "din egen brug", "hands-on", "bygger", "udvikling", "kode", "selv bruger", "ai-rejse", "rejse", "hvordan bruger du", "automatisering"],
       a:
         "AI er ikke et projekt ved siden af mit arbejde – det er måden, jeg arbejder på.\n\n" +
-        "Jeg bruger AI-assisteret udvikling til at gå fra idé til fungerende værktøj på dage " +
-        "frem for måneder. Konkret har jeg bygget en business case-løsning (ROI & CO₂), et " +
-        "tidsregistreringsværktøj og dette ansøgningssite på den måde.\n\n" +
+        "Jeg arbejder med AI-agenter og automatisering for at løfte både kvalitet og " +
+        "hastighed, og jeg bruger AI-assisteret udvikling til at gå fra idé til fungerende " +
+        "værktøj på dage frem for måneder. Business case-løsningen, tidsregistreringen og " +
+        "dette site er bygget på den måde.\n\n" +
         "Det giver mig en sjælden kombination i den her rolle: Jeg kan både sætte den " +
         "strategiske retning og selv bygge prototypen, der gør en beslutning konkret. Når " +
-        "jeg formidler AI til en organisation, taler jeg derfor ud fra noget, jeg selv har " +
-        "bygget – ikke kun læst om.",
+        "jeg formidler AI til en organisation, taler jeg ud fra noget, jeg selv har bygget – " +
+        "ikke kun læst om.",
     },
     {
       id: "maritimt",
@@ -368,12 +458,12 @@ window.ANSOEGNING = {
       keywords: ["leder", "ledelse", "ledelsesstil", "samarbejde", "stakeholder", "interessenter", "direktion", "organisation", "team", "tværfaglig"],
       a:
         "Rollen her kræver ledelse gennem indflydelse mere end gennem instruks: Resultaterne " +
-        "skabes sammen med afdelinger, jeg ikke er chef for. Det trives jeg med.\n\n" +
+        "skabes sammen med afdelinger, jeg ikke er chef for. Det trives jeg med – jeg er " +
+        "social, udadvendt og god til at have mange bolde i luften.\n\n" +
         "Min stil er tydelig retning, korte feedback-loops og synlige resultater – og så er " +
         "jeg selv hands-on nok til at bygge prototypen, når det er den hurtigste vej til en " +
-        "beslutning.\n\n" +
-        "[UDFYLD: din konkrete ledelseserfaring – fx personaleansvar, projektledelse eller " +
-        "tværgående roller.]",
+        "beslutning. Jeg har forankret strategi helt op i ledelsen før og undervist " +
+        "kolleger, virksomheder og kommuner.",
     },
     {
       id: "vaerdi-maaling",
@@ -381,7 +471,8 @@ window.ANSOEGNING = {
       chip: false,
       keywords: ["måler", "måling", "værdi måling", "kpi", "roi", "effektmåling", "målbar", "dokumentere effekt", "gevinst"],
       a:
-        "Reglen er: baseline før, måling efter – ellers er “værdi” bare en fornemmelse.\n\n" +
+        "Reglen er: baseline før, måling efter – ellers er “værdi” bare en fornemmelse. " +
+        "Marketing skal kunne ses på bundlinjen, og det samme gælder AI.\n\n" +
         "• Hård værdi: sparet tid pr. opgave, kortere gennemløbstid, færre fejl, hurtigere svartider.\n" +
         "• Blød værdi: medarbejdertilfredshed, oplevet kvalitet, mindre frustration ved rutineopgaver – målt simpelt, fx med tre spørgsmål før og efter.\n" +
         "• Anvendelse: hvor mange bruger løsningen ugentligt? Lav anvendelse æder al anden værdi.\n\n" +
@@ -392,14 +483,15 @@ window.ANSOEGNING = {
       id: "opdateret",
       q: "Hvordan holder du dig opdateret på AI-udviklingen?",
       chip: false,
-      keywords: ["opdateret", "følger med", "udviklingen", "nyheder", "trends", "ny viden", "nyt inden for", "læring"],
+      keywords: ["opdateret", "følger med", "udviklingen", "nyheder", "trends", "ny viden", "nyt inden for", "læring", "selvlæring"],
       a:
-        "Struktureret og hands-on:\n\n" +
+        "Struktureret og hands-on – og det ligger dybt i mig: Jeg skrev speciale om " +
+        "selvlæring og har praktiseret det lige siden.\n\n" +
         "• Faste, udvalgte kilder frem for støj – og et netværk af praktikere, der deler, hvad der faktisk virker.\n" +
         "• Jeg tester selv nye værktøjer og modeller, før jeg anbefaler dem. Dette site er et eksempel på den vane.\n" +
         "• Vigtigst: Jeg oversætter altid “nyt” til “relevant for os?” – det meste af udviklingen kræver ingen handling, men det, der gør, skal fanges tidligt.\n\n" +
         "Opslagets formulering “ikke metode for metodens skyld” kunne også have stået over " +
-        "mit skrivebord: Ny teknologi er kun interessant, når den kan blive til værdi hos jer.",
+        "mit skrivebord.",
     },
     {
       id: "loen",
@@ -428,10 +520,10 @@ window.ANSOEGNING = {
       id: "cv",
       q: "Kan jeg se dit CV?",
       chip: false,
-      keywords: ["cv", "referencer", "dokumentation", "ansøgning pdf", "bilag", "papirer", "eksamensbeviser"],
+      keywords: ["cv", "referencer", "dokumentation", "ansøgning pdf", "bilag", "papirer", "eksamensbeviser", "linkedin"],
       a:
         "Selvfølgelig. Skriv eller ring via kontaktsektionen nederst, så sender jeg CV og " +
-        "referencer samme dag.\n\n" +
+        "referencer samme dag – og du finder mig også på LinkedIn via knappen i bunden.\n\n" +
         "Dette site er bevidst et supplement til – ikke en erstatning for – den klassiske " +
         "dokumentation.",
     },
@@ -454,12 +546,12 @@ window.ANSOEGNING = {
 
   /* ------------------------------------------------------------------ */
   greeting:
-    "Hej! Jeg er ansøgnings-agenten. Jeg svarer på spørgsmål om kandidatens erfaring, " +
+    "Hej! Jeg er Michaels ansøgnings-agent. Jeg svarer på spørgsmål om hans erfaring, " +
     "tilgang og motivation – baseret på en kurateret vidensbase. Prøv et af forslagene " +
     "nedenfor, eller stil dit eget spørgsmål.",
 
   fallback:
-    "Det har jeg ikke et forberedt svar på – og jeg gætter ikke på kandidatens vegne. Det " +
+    "Det har jeg ikke et forberedt svar på – og jeg gætter ikke på Michaels vegne. Det " +
     "er en del af mit design: Jeg svarer kun på det, der står i min godkendte vidensbase.\n\n" +
     "Prøv et af forslagene nedenfor, eller stil spørgsmålet direkte i en samtale – " +
     "kontaktoplysningerne står nederst på siden.",
