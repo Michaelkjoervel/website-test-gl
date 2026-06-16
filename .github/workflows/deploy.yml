@@ -5,6 +5,8 @@ on:
     branches:
       - main
       - claude/time-tracking-tool-aTwpD
+      # Preview af ansøgningssitet – fjernes igen før merge til main
+      - claude/amazing-brown-0k6v4v
   workflow_dispatch:
 
 permissions:
@@ -43,6 +45,8 @@ jobs:
           git archive FETCH_HEAD | tar -x -C _site
           mkdir -p _site/estimat
           cp -r dist/. _site/estimat/
+          # Ansøgningssitet også på en ren URL: /ansoegning/
+          cp -r dist/ansoegning _site/ansoegning
 
       - uses: actions/configure-pages@v5
 
