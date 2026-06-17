@@ -527,6 +527,36 @@ window.ANSOEGNING = {
         "og sælgere – derfor handler fase 1 om at lytte, før der besluttes.",
     },
     {
+      id: "svagheder",
+      q: "Hvad er dine udviklingspunkter?",
+      chip: false,
+      keywords: ["svagheder", "svaghed", "udviklingspunkter", "udviklingspunkt", "svage sider", "dårlig til", "blive bedre", "forbedre", "minus", "udfordringer ved dig", "arbejder du med"],
+      a:
+        "To ting, jeg er meget bevidst om og arbejder aktivt med:\n\n" +
+        "• Viden: Feltet – især AI – flytter sig hele tiden, og jeg kan altid blive klogere. " +
+        "Det driver mig faktisk (jeg skrev speciale om selvlæring), men jeg skal passe på ikke " +
+        "at ville vide alt, før jeg handler.\n" +
+        "• At skære mere igennem: Jeg har mange bolde i luften og ser ofte flere muligheder på " +
+        "én gang. Jeg træner mig i at prioritere skarpere og træffe beslutningen hurtigere.\n\n" +
+        "For mig er det ikke svagheder, jeg skjuler – det er områder, jeg holder øje med og " +
+        "bevidst udvikler på.",
+    },
+    {
+      id: "hvorfor-skifte",
+      q: "Hvorfor vil du skifte job?",
+      chip: false,
+      keywords: ["skifte", "skifte job", "væk fra", "forlade", "hvorfor søger", "nuværende job", "hvorfor væk", "hvorfor nyt job", "søger du væk", "hvorfor forlade", "hvorfor vil du videre"],
+      a:
+        "Ærligt talt søger jeg ikke væk – jeg søger hen mod noget.\n\n" +
+        "Jeg har en spændende hverdag med højt til loftet, en rolle, jeg selv er med til at " +
+        "præge, og nogle rigtig gode kolleger. Men jeg brænder for optimering og " +
+        "effektivisering, og lige nu er der en del uro i organisationen, som gør det svært at " +
+        "få det arbejde helt i mål.\n\n" +
+        "Hos SH Group ser jeg det modsatte: klare AI-ambitioner, en virksomhed i vækst og en " +
+        "rolle, der er skabt til netop at drive forankret, målbar forandring. Det er dér, jeg " +
+        "kan gøre størst forskel – og hvor jeg selv vil vokse mest.",
+    },
+    {
       id: "hvorfor-ikke-llm",
       q: "Hvorfor er denne agent ikke en “rigtig” LLM?",
       chip: false,
