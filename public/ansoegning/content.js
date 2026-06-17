@@ -31,22 +31,22 @@ window.ANSOEGNING = {
       "og forretning. Mit formål er enkelt: at gøre noget, mange ser som en støttefunktion, " +
       "til en målbar drivkraft for vækst.",
     paragraphs: [
-      "Gennem de seneste år har jeg haft det samlede marketingansvar i flere virksomheder " +
+      "Gennem de seneste år har jeg haft det samlede marketingansvar i green light, erwin andersen og dwpa " +
         "og gentagne gange ændret synet på marketing – fra en omkostning til en strategisk " +
         "vækstmotor, jeg vækster med mere end 50 % om året. Jeg er uddannet Cand.IT i " +
-        "informationsvidenskab, så det tekniske fundament er på plads i bund – min force er " +
-        "at omsætte det til forretning. Det er præcis den rejse, AI skal igennem i en " +
+        "informationsvidenskab, så det tekniske fundament er på plads. Min force er " +
+        "at omsætte fra teori og idé til forretning. Det er præcis den rejse, AI skal igennem i en " +
         "organisation: fra spredte forsøg til forankret, målbar værdi.",
-      "AI er omdrejningspunktet i den måde, jeg arbejder på. Jeg arbejder hands-on med " +
+      "AI er i dag omdrejningspunktet i den måde, jeg arbejder på. Jeg arbejder hands-on med " +
         "AI-agenter, automatisering og avanceret brug af både GPT og Claude – og frigør " +
         "typisk 2–4 timer pr. medarbejder om ugen gennem smartere arbejdsgange. Jeg bruger " +
-        "AI-assisteret udvikling til at gå fra idé til fungerende værktøj på dage frem for " +
+        "AI udvikling til at gå fra idé til fungerende værktøj på dage frem for " +
         "måneder – fx en business case-løsning (ROI & CO₂), et tidsregistreringsværktøj og " +
-        "dette ansøgningssite.",
+        "dette ansøgningssite. Min viden om AI har gjort mig til organisationens AI-ansvarlige både for implementering, viden og governance.",
       "Privat er jeg 32 år, far til to skønne piger på 2 og 7, og bor i Odense SV – kun " +
         "omkring tre kvarter fra Svendborg. Jeg er social og udadvendt, god til at have mange " +
-        "bolde i luften, og et stort familiemenneske, der gerne renoverer tilbygningen i " +
-        "fritiden. Og så elsker jeg at lære nyt: Jeg skrev speciale om selvlæring og har " +
+        "bolde i luften, og et stort familiemenneske, der samtidig renoverer min tilbygning i " +
+        "fritiden. Og så elsker jeg at lære nyt. Jeg skrev speciale om selvlæring og har " +
         "praktiseret det lige siden – en vane, der passer perfekt til AI, som ændrer sig " +
         "hver uge.",
     ],
@@ -67,7 +67,7 @@ window.ANSOEGNING = {
       "er den samme: at gøre digital indsats til en målbar vækstmotor.",
     roles: [
       {
-        period: "2023–nu",
+        period: "Mar 2023–nu",
         title: "Marketingansvarlig",
         org: "green light a/s",
         note: "Energibesparende belysning til erhverv og industri",
@@ -82,7 +82,7 @@ window.ANSOEGNING = {
         ],
       },
       {
-        period: "2023–nu",
+        period: "Mar 2023–nu",
         title: "Marketingansvarlig",
         org: "erwin andersen a/s",
         note: "Rekruttering – kandidater & virksomheder",
@@ -95,7 +95,7 @@ window.ANSOEGNING = {
         ],
       },
       {
-        period: "2021–nu",
+        period: "Aug 2021–nu",
         title: "IT, hjemmesideoptimering og marketing",
         org: "Wecademy ApS",
         note: "Online events & digital tilstedeværelse",
@@ -104,11 +104,11 @@ window.ANSOEGNING = {
             "advertising – med flere vigtige topplaceringer på Google.",
           "Projektleder og underviser i tekniske online-arrangementer for virksomheder og " +
             "kommuner; ledte projekter i størrelsesordenen 250.000 kr. fra plan til drift.",
-          "Arbejdede desuden med videoproduktion og -redigering.",
+          "Arbejdede desuden med videoproduktion og -redigering. Arbejder i dag som freelance på projektbasis.",
         ],
       },
       {
-        period: "2023–2025",
+        period: "Mar 2023– Sep 2025",
         title: "Head of Digital Marketing",
         org: "dwpa – Danish Wind Power Academy",
         note: "Uddannelse til vindindustrien",
@@ -176,13 +176,13 @@ window.ANSOEGNING = {
   /* ------------------------------------------------------------------ */
   /* AI-værdiberegner – interaktiv, kører lokalt (ingen backend).        */
   calculator: {
-    title: "Hvad er AI værd hos SH Group?",
+    title: "Hvad kan AI blive værd hos SH Group?",
     lead:
-      "En illustrativ beregning baseret på min dokumenterede effekt: 2–4 timer " +
+      "En illustrativ beregning baseret på min dokumenterede effekt i nuværende organisation: 2–4 timer " +
       "frigjort pr. medarbejder om ugen. Skru på tallene, så de passer til jer.",
-    defaults: { employees: 150, hoursPerWeek: 3, hourlyRate: 350, weeksPerYear: 46 },
+    defaults: { employees: 375, hoursPerWeek: 2, hourlyRate: 350, weeksPerYear: 46 },
     note:
-      "Tallene er et regneeksempel, ikke et løfte – den reelle værdi afhænger af " +
+      "Tallene er et regneeksempel. Den reelle værdi afhænger af " +
       "use cases og forankring. Men pointen står: selv få timer om ugen bliver til " +
       "store tal, når de ganges op.",
   },
@@ -194,7 +194,7 @@ window.ANSOEGNING = {
   aiDemo: {
     title: "Prøv en rigtig AI-funktion",
     lead:
-      "Agenten ovenfor er en kurateret vidensbase. Her er det modsatte: en ægte, " +
+      "Agenten ovenfor er en kurateret vidensbase. En ægte, " +
       "generativ AI-funktion, jeg har bygget til en SH Group-use case – powered by " +
       "Claude. Skriv stikord, og få et færdigt udkast.",
     endpoint: "",                 // <- din Worker-URL indsættes her
@@ -259,7 +259,7 @@ window.ANSOEGNING = {
     {
       quote: "… følger udviklingen inden for AI og identificerer og prioriterer, hvor AI kan skabe reel værdi.",
       answer:
-        "Jeg skrev speciale om selvlæring og har praktiseret det lige siden – jeg tilegner " +
+        "Jeg skrev speciale om selvlæring og har praktiseret det lige siden. Jeg tilegner " +
         "mig hurtigt ny teknologi og afprøver den selv, før jeg anbefaler den. Jeg " +
         "prioriterer efter forretningsværdi og implementerbarhed og jagter skalerbare " +
         "systemer frem for kortsigtede kampagner. Samme princip tager jeg med til AI.",
@@ -293,8 +293,8 @@ window.ANSOEGNING = {
       week: "Uge 1–4",
       title: "Lyt og kortlæg",
       points: [
-        "Rundtur i forretningen: projekter, service, produktion, salg og økonomi – hvor gør hverdagen ondt?",
-        "Inventar over jeres nuværende AI-brug: kommercielle værktøjer, piloter og skyggebrug.",
+        "Forstå forretningen: projekter, service, produktion, salg og økonomi – hvor i hverdagen er der repetetivt arbejde?",
+        "Indsigt i jeres nuværende AI-brug: kommercielle værktøjer, piloter og skyggebrug.",
         "Overblik over data- og systemlandskabet, herunder Microsoft 365-fundamentet.",
         "Shortlist af use cases scoret på værdi og implementerbarhed – sammen med de mennesker, der ejer processerne.",
       ],
@@ -316,7 +316,7 @@ window.ANSOEGNING = {
       points: [
         "Fra pilot til drift: integration, ejerskab, support og løbende måling af anvendelse.",
         "12-måneders roadmap med beslutningsmodel for nye AI-idéer – så prioritering bliver en proces, ikke en kamp.",
-        "Superbruger-netværk og kompetenceplan, der gør AI til en del af hverdagen – ikke et projekt ved siden af.",
+        "Superbrugere og kompetenceplan, der gør AI til en del af hverdagen – ikke et projekt ved siden af.",
       ],
       kpi: "Leverance: godkendt roadmap, driftssatte løsninger og en organisation, der ved, hvordan den næste idé bliver vurderet.",
     },
@@ -336,8 +336,8 @@ window.ANSOEGNING = {
       chip: true,
       keywords: ["marketing", "marketingbaggrund", "baggrund passer", "rette", "kvalificeret", "hvorfor dig", "ikke teknisk", "teknisk nok", "passer ikke", "relevant", "transformation", "cand.it", "uddannelse passer"],
       a:
-        "Helt ærligt: Min titel har stået på marketing – men både min uddannelse og mit " +
-        "arbejde er teknisk.\n\n" +
+        "Min titel har stået på marketing – men både min uddannelse, mindset og mit " +
+        "arbejde er teknisk. Mit arbejde har handlet om så meget mere end kun marketing. \n\n" +
         "• Jeg er uddannet Cand.IT i informationsvidenskab, så det tekniske fundament er på " +
         "plads i bund.\n" +
         "• Jeg har gentagne gange taget en disciplin, mange så som en støttefunktion, og " +
@@ -359,8 +359,7 @@ window.ANSOEGNING = {
         "Flere ting trækker mig:\n\n" +
         "• I er en maritim vækstvirksomhed med rigtige produkter, kunder og processer, hvor " +
         "AI kan mærkes på bundlinjen – ikke kun i slides.\n" +
-        "• Jeg bor i Odense, kun omkring tre kvarter fra Svendborg, og kender Region " +
-        "Syddanmark godt. Det her er ikke et job, jeg skal flytte for – det er lige i baghaven.\n" +
+        "• Jeg bor i Odense, kun omkring tre kvarter fra Svendborg. Det her er ikke et job, jeg skal flytte for, men med jeres fleksible tilgang sagtens kan lade sig gøre. \n" +
         "• Jeg kommer bl.a. fra vindindustrien (DWPA), så jeg er hjemme i en teknisk, " +
         "industriel kontekst med tunge produkter og lange værdikæder.\n" +
         "• I er allerede i gang med AI – og det er langt mere interessant at accelerere en " +
@@ -375,8 +374,8 @@ window.ANSOEGNING = {
       chip: true,
       keywords: ["copilot", "copilot studio", "microsoft", "m365", "365", "power platform", "azure", "platforme", "værktøjer", "teams", "ai-værktøjer", "ai agents", "agenter", "automatisering", "gpt", "claude", "chatgpt"],
       a:
-        "Jeg er hands-on med moderne AI – ikke kun som bruger, men som bygger:\n\n" +
-        "• Avanceret, dagligt brug af både GPT og Claude.\n" +
+        "Jeg er hands-on med de mest anvendte AI – ikke kun som bruger, men som bygger:\n\n" +
+        "• Avanceret, dagligt brug af både GPT og Claude og har lanceret flere programmer.\n" +
         "• AI-agenter og automatisering for at løfte kvalitet og hastighed.\n" +
         "• AI-assisteret udvikling (bl.a. Claude Code), hvor jeg selv bygger fungerende " +
         "værktøjer – fra business case-løsninger til dette site.\n" +
@@ -440,12 +439,12 @@ window.ANSOEGNING = {
       chip: false,
       keywords: ["baggrund", "uddannelse", "cv", "karriere", "erfaring generelt", "teknisk baggrund", "profil", "hvem er du", "fortæl om dig", "cand.it"],
       a:
-        "Kort fortalt en Cand.IT, der bygger – ikke kun rådgiver.\n\n" +
-        "Jeg er uddannet Cand.IT i informationsvidenskab (2020) med speciale om selvlæring. " +
+        "Kort fortalt en Cand.IT, der ikke kun rådgiver.\n\n" +
+        "Jeg er uddannet Cand.IT i informationsvidenskab (2020) med fokus på UX/UI, programmering, formidling og selvlæring. " +
         "De seneste år har jeg haft det samlede marketingansvar i flere virksomheder – i " +
         "dag hos green light a/s (belysning) og erwin andersen a/s (rekruttering), og " +
-        "tidligere som Head of Digital Marketing hos Danish Wind Power Academy. Før det " +
-        "arbejdede jeg hos Wecademy med hjemmesideoptimering, projektledelse og undervisning.\n\n" +
+        "tidligere som Head of Digital Marketing hos Danish Wind Power Academy. Samtidig " +
+        "arbejder jeg hos Wecademy med hjemmesideoptimering, projektledelse og undervisning.\n\n" +
         "Den røde tråd er teknologi omsat til forretning: SEO/GEO, website- og " +
         "frontend-udvikling, AI-agenter, automatisering og AI-assisteret udvikling. Jeg er " +
         "32 og bor i Odense.\n\n" +
@@ -459,7 +458,7 @@ window.ANSOEGNING = {
       keywords: ["resultater", "effekt", "skabt", "opnået", "eksempler", "konkrete", "leveret", "succeser", "cases", "tal", "gevinster", "besparelser"],
       a:
         "Et par eksempler:\n\n" +
-        "• Vækster marketing med mere end 50 % om året.\n" +
+        "• Vækster marketing med mere end 50 % om året ved at automatisere processer og skalere produktionen, koblet til data.\n" +
         "• Frigør 2–4 timer pr. medarbejder om ugen gennem AI og smartere arbejdsgange.\n" +
         "• Bygget en business case-løsning (ROI & CO₂) og et internt tidsregistreringsværktøj " +
         "med AI-assisteret udvikling – fra idé til fungerende værktøj på dage.\n" +
@@ -474,7 +473,7 @@ window.ANSOEGNING = {
       chip: true,
       keywords: ["arbejder du selv", "til daglig", "din egen brug", "hands-on", "bygger", "udvikling", "kode", "selv bruger", "ai-rejse", "rejse", "hvordan bruger du", "automatisering"],
       a:
-        "AI er ikke et projekt ved siden af mit arbejde – det er måden, jeg arbejder på.\n\n" +
+        "AI er ikke et projekt ved siden af mit arbejde – det er måden, jeg arbejder og tænker på. Både i og uden for arbejdet.\n\n" +
         "Jeg arbejder med AI-agenter og automatisering for at løfte både kvalitet og " +
         "hastighed, bruger GPT og Claude avanceret, og jeg bruger AI-assisteret udvikling " +
         "til at gå fra idé til fungerende værktøj på dage frem for måneder. Business " +
@@ -547,11 +546,11 @@ window.ANSOEGNING = {
       chip: false,
       keywords: ["skifte", "skifte job", "væk fra", "forlade", "hvorfor søger", "nuværende job", "hvorfor væk", "hvorfor nyt job", "søger du væk", "hvorfor forlade", "hvorfor vil du videre"],
       a:
-        "Ærligt talt søger jeg ikke væk – jeg søger hen mod noget.\n\n" +
+        "Ærligt talt søger jeg ikke væk, jeg søger hen mod noget.\n\n" +
         "Jeg har en spændende hverdag med højt til loftet, en rolle, jeg selv er med til at " +
         "præge, og nogle rigtig gode kolleger. Men jeg brænder for optimering og " +
         "effektivisering, og lige nu er der en del uro i organisationen, som gør det svært at " +
-        "få det arbejde helt i mål.\n\n" +
+        "få det arbejde i mål.\n\n" +
         "Hos SH Group ser jeg det modsatte: klare AI-ambitioner, en virksomhed i vækst og en " +
         "rolle, der er skabt til netop at drive forankret, målbar forandring. Det er dér, jeg " +
         "kan gøre størst forskel – og hvor jeg selv vil vokse mest.",
@@ -678,7 +677,7 @@ window.ANSOEGNING = {
 
   /* ------------------------------------------------------------------ */
   greeting:
-    "Hej! Jeg er Michaels ansøgnings-agent. Jeg svarer på spørgsmål om hans erfaring, " +
+    "Hej SH Group! Jeg er Michaels ansøgnings-agent. Jeg svarer på spørgsmål om hans erfaring, " +
     "tilgang og motivation – baseret på en kurateret vidensbase. Prøv et af forslagene " +
     "nedenfor, eller stil dit eget spørgsmål.",
 
