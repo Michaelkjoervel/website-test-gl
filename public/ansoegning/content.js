@@ -501,6 +501,32 @@ window.ANSOEGNING = {
         "bruge mine første uger sammen med.",
     },
     {
+      id: "hvorfor-dig",
+      q: "Hvorfor skal I vælge mig?",
+      chip: true,
+      keywords: ["hvorfor dig", "vælge dig", "vælge mig", "frem for andre", "styrker", "stærke sider", "skiller dig ud", "adskiller", "bedste kandidat", "hvad gør dig", "hvad tilbyder", "hvorfor ansætte"],
+      a:
+        "Fordi jeg samler tre ting, der sjældent sidder i én person:\n\n" +
+        "• Teknisk fundament: Cand.IT i informationsvidenskab – jeg kan både vurdere muligheder og selv bygge løsningen.\n" +
+        "• Bevist transformation: jeg har gentagne gange gjort en disciplin til en målbar vækstmotor forankret i ledelsen.\n" +
+        "• Hands-on AI i dag: AI-agenter, automatisering og AI-assisteret udvikling – ikke teori, men noget jeg bygger (som dette site).\n\n" +
+        "Oven i det er jeg lokal (Odense), en stærk formidler og drevet af lærelyst. Jeg kan " +
+        "både sætte den strategiske retning og selv lave prototypen, der gør en beslutning konkret.",
+    },
+    {
+      id: "plan-100",
+      q: "Hvad vil du gøre de første 100 dage?",
+      chip: true,
+      keywords: ["100 dage", "første dage", "første måneder", "første 100", "90 dage", "dag ét", "onboarding", "hvad vil du gøre", "plan for start", "starter du", "begynder du"],
+      a:
+        "Jeg har en konkret plan – den står som tidslinje længere oppe på siden. Kort fortalt:\n\n" +
+        "• Uge 1–4 – Lyt og kortlæg: forretningen rundt, inventar over nuværende AI-brug, og et prioriteret use case-katalog scoret på værdi og implementerbarhed.\n" +
+        "• Uge 5–9 – Bevis værdi: 2–3 piloter i drift, hver med en ejer, en baseline og et målepunkt – plus et letvægts-governance-fundament.\n" +
+        "• Uge 10–14 – Forankr og skalér: fra pilot til drift, et 12-måneders roadmap og et superbruger-netværk.\n\n" +
+        "Men vigtigst: De bedste use cases finder jeg sammen med jeres teknikere, projektledere " +
+        "og sælgere – derfor handler fase 1 om at lytte, før der besluttes.",
+    },
+    {
       id: "hvorfor-ikke-llm",
       q: "Hvorfor er denne agent ikke en “rigtig” LLM?",
       chip: false,
