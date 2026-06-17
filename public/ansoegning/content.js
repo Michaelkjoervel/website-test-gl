@@ -197,7 +197,7 @@ window.ANSOEGNING = {
       "Agenten ovenfor er en kurateret vidensbase. En ægte, " +
       "generativ AI-funktion, jeg har bygget til en SH Group-use case – powered by " +
       "Claude. Skriv stikord, og få et færdigt udkast.",
-    endpoint: "",                 // <- din Worker-URL indsættes her
+    endpoint: "https://ansoegning-ai.kjoervel.workers.dev",                 // <- din Worker-URL indsættes her
     model: "claude-haiku-4-5",    // standard: hurtig/billig. Skift til "claude-opus-4-8" for skarpere svar
     maxChars: 4000,
     governance:
