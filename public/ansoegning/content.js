@@ -95,7 +95,7 @@ window.ANSOEGNING = {
         ],
       },
       {
-        period: "Aug 2021–nu",
+        period: "Jan 2021–nu",
         title: "IT, hjemmesideoptimering og marketing",
         org: "Wecademy ApS",
         note: "Online events & digital tilstedeværelse",
