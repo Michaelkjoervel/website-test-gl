@@ -92,7 +92,15 @@ src/
     ├── visualizationStorage.ts  – Repository for universet + visualiseringer
     ├── fixtureSeed.ts     – Realistiske pladsholder-armaturer
     ├── visualizationProvider.ts – AI-motor (mock + proxy) + prompt-bygger
+    ├── visualizationConfig.ts   – Runtime-konfig af live-AI-proxyens URL
     └── image.ts           – Billed-nedskalering til localStorage
+
+api/
+├── _core.mjs             – Delt proxy-logik (kald til OpenAI gpt-image-1)
+└── visualize.js          – Vercel-adapter (holder nøglen skjult)
+server/
+└── proxy.mjs             – Node-server-udgave (fx til GitHub Codespaces)
+vercel.json               – Funktions-timeout (60 s) til proxyen
 ```
 
 UI, beregning og data er **bevidst adskilt**, så hver del kan udskiftes
@@ -139,16 +147,68 @@ skiftes uden at røre UI'et:
 | Motor | Hvad den gør |
 |-------|--------------|
 | **Demo-simulering** (standard) | Simulerer "lys tændt" direkte i browseren via canvas. Ingen backend, ingen nøgle. Til at afprøve flowet og vise før/efter. **Ikke fotometrisk eksakt** (stemplet som simulering). |
-| **Live AI (proxy)** | POST'er rumbillede + prompt til en server-funktion, der kalder et rigtigt inpainting-billed-API. Aktiveres ved at sætte `VITE_VISUALIZATION_ENDPOINT`. |
+| **Live AI (proxy)** | POST'er rumbillede + prompt til en server-funktion, der redigerer fotoet med et rigtigt billed-API og bevarer rummet. Aktiveres ved at indsætte proxy-URL'en i appen (eller via `VITE_VISUALIZATION_ENDPOINT`). |
 
 `buildVisualizationPrompt()` samler en præcis prompt, der beder modellen om at
 **bevare rummet** og kun ændre belysningen ud fra de valgte armaturers specs og
 lyskarakter.
 
-**Sådan kobles live-AI på senere:** byg en lille server-funktion (fx
-Netlify/Vercel) der holder API-nøglen skjult, tager JSON'en fra `proxyProvider`
-og returnerer `{ imageData: "data:image/...;base64,..." }`. Sæt derefter
-`VITE_VISUALIZATION_ENDPOINT=https://…` og bygg – motoren skifter automatisk.
+### Slå ægte fotorealistisk AI til (OpenAI gpt-image-1)
+
+Proxyen ligger klar i [`api/visualize.js`](api/visualize.js). Den holder
+OpenAI-nøglen skjult og kalder `gpt-image-1`'s **billed-redigerings**-endpoint
+(`/v1/images/edits`) med kundens rumfoto + `input_fidelity: high`, så rummet
+bevares og kun belysningen ændres.
+
+**Bemærk:** det kræver en OpenAI **API**-konto (platform.openai.com) — ikke et
+ChatGPT-abonnement. API'et afregnes særskilt pr. billede, og nogle konti skal
+verificere organisationen for at få adgang til `gpt-image-1`.
+
+Opsætning (engangsarbejde):
+
+1. **Deploy proxyen** til Vercel: importér repoet på [vercel.com](https://vercel.com)
+   → New Project. `vercel.json` sætter allerede funktionens timeout (60 s).
+2. **Sæt miljøvariabel** i Vercel → Project → Settings → Environment Variables:
+   - `OPENAI_API_KEY` = din OpenAI API-nøgle (påkrævet)
+   - `ALLOWED_ORIGIN` = `https://michaelkjoervel.github.io` (valgfri, strammer CORS)
+   - Deploy. Din funktion får en URL som `https://<projekt>.vercel.app/api/visualize`.
+3. **Kobl appen på**: i visualiserings-wizardens trin *Generér* → **"Live AI-opsætning"**
+   → indsæt funktions-URL'en → *Gem & slå til*. Motoren skifter til "Live AI".
+   (URL'en gemmes i browseren; ingen genbygning nødvendig. Alternativt sæt
+   `VITE_VISUALIZATION_ENDPOINT` ved build.)
+
+API-nøglen lever **kun** i Vercel — aldrig i browseren eller i repoet.
+
+#### Alternativ: kør proxyen i GitHub Codespaces
+
+Vil man holde nøglen samme sted som andre projekter — som en **Codespaces-secret**
+— kan proxyen køres som en almindelig Node-server ([`server/proxy.mjs`](server/proxy.mjs))
+i stedet for på Vercel:
+
+1. **Læg nøglen som Codespaces-secret**: GitHub → *Settings → Codespaces →
+   Secrets* (eller repoets *Settings → Secrets and variables → Codespaces*) →
+   tilføj `OPENAI_API_KEY`. Den bliver en miljøvariabel i Codespacet.
+2. **Åbn et Codespace** på repoet og kør:
+   ```bash
+   npm install
+   npm run proxy        # starter på port 8787
+   ```
+3. **Gør porten offentlig**: i *Ports*-fanen → højreklik på port 8787 →
+   *Port Visibility → Public*. Kopiér den forwardede URL
+   (`https://<codespace>-8787.app.github.dev`).
+4. **Kobl appen på**: indsæt URL'en + `/api/visualize` i appens
+   *"Live AI-opsætning"*.
+
+> **Bemærk:** et Codespace er et *udviklingsmiljø* — det går i dvale efter
+> inaktivitet og skal køre, for at live-AI virker. Perfekt til at **teste og få
+> det op at køre nu**. Til et altid-tilgængeligt værktøj for flere sælgere er en
+> rigtig vært (Vercel m.fl.) eller en altid-kørende server bedre. Den offentlige
+> port er desuden åben for alle med URL'en, så brug den kun internt/afskærmet.
+
+Begge veje bruger samme kerne ([`api/_core.mjs`](api/_core.mjs)) og er
+provider-agnostiske: vil man bruge en anden model (Flux, Gemini m.fl.), ændrer
+man blot kernen til at kalde det API — kontrakten ud mod appen (`{ imageData }`)
+er den samme.
 
 ### Vigtigt / forbehold
 

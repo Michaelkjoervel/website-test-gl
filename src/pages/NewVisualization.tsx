@@ -24,6 +24,7 @@ import {
   type SelectedFixtureRef,
   type VizRenderInput,
 } from "../lib/visualizationProvider";
+import { getEndpoint, setEndpoint } from "../lib/visualizationConfig";
 
 const STEPS = [
   { id: 1, label: "Projekt" },
@@ -60,7 +61,9 @@ export function NewVisualization() {
   const navigate = useNavigate();
   const library = useMemo(() => vizStorage.listFixtures(), []);
   const estimates = useMemo(() => storage.listEstimates(), []);
-  const providers = useMemo(() => availableProviders(), []);
+  // Genberegnes når live-AI-opsætningen ændres (cfgTick).
+  const [cfgTick, setCfgTick] = useState(0);
+  const providers = useMemo(() => availableProviders(), [cfgTick]);
 
   const [step, setStep] = useState(1);
   const [viz, setViz] = useState<Visualization>(() => ({
@@ -81,6 +84,20 @@ export function NewVisualization() {
   const [showPrompt, setShowPrompt] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [endpointInput, setEndpointInput] = useState(() => getEndpoint());
+  const [showAiSetup, setShowAiSetup] = useState(false);
+
+  const saveEndpoint = () => {
+    setEndpoint(endpointInput);
+    setCfgTick((t) => t + 1);
+    setProviderId(endpointInput.trim() ? "proxy" : "mock");
+  };
+  const clearEndpoint = () => {
+    setEndpoint("");
+    setEndpointInput("");
+    setCfgTick((t) => t + 1);
+    setProviderId("mock");
+  };
 
   const set = (patch: Partial<Visualization>) => setViz((v) => ({ ...v, ...patch }));
 
@@ -309,6 +326,38 @@ export function NewVisualization() {
 
             <div className="rounded-xl bg-surface-soft border border-surface-line p-4 text-[13px] text-ink-soft">
               {providers.find((p) => p.id === providerId)?.description}
+            </div>
+
+            {/* Live AI-opsætning */}
+            <div className="rounded-xl border border-surface-line">
+              <button
+                className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-ink-soft"
+                onClick={() => setShowAiSetup((s) => !s)}
+              >
+                <span className="flex items-center gap-2">
+                  <span className={`w-2 h-2 rounded-full ${getEndpoint() ? "bg-brand-500" : "bg-surface-line"}`} />
+                  Live AI-opsætning {getEndpoint() ? "· aktiv" : "· ikke koblet på (bruger demo)"}
+                </span>
+                <span className="text-ink-mute">{showAiSetup ? "▲" : "▼"}</span>
+              </button>
+              {showAiSetup && (
+                <div className="px-4 pb-4 space-y-3 border-t border-surface-line pt-3">
+                  <p className="text-[12px] text-ink-mute">
+                    Indsæt adressen på jeres proxy-funktion (fx <span className="font-mono">https://…vercel.app/api/visualize</span>).
+                    Den kalder OpenAI og holder API-nøglen skjult. Se README for opsætning.
+                  </p>
+                  <input
+                    className="input font-mono text-[12px]"
+                    placeholder="https://green-light-viz.vercel.app/api/visualize"
+                    value={endpointInput}
+                    onChange={(e) => setEndpointInput(e.target.value)}
+                  />
+                  <div className="flex gap-2">
+                    <button className="btn-primary" onClick={saveEndpoint} disabled={!endpointInput.trim()}>Gem & slå til</button>
+                    {getEndpoint() && <button className="btn-ghost text-ink-mute" onClick={clearEndpoint}>Fjern</button>}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div>

@@ -24,7 +24,8 @@ import type {
   PlacementMode,
   PlacementPoint,
 } from "./visualizationTypes";
-import { loadImage } from "./image";
+import { loadImage, downscaleImage } from "./image";
+import { getEndpoint } from "./visualizationConfig";
 
 export interface SelectedFixtureRef {
   fixture: Fixture;
@@ -291,41 +292,57 @@ export const mockProvider: VisualizationProvider = {
   },
 };
 
-const PROXY_ENDPOINT = import.meta.env.VITE_VISUALIZATION_ENDPOINT as
-  | string
-  | undefined;
-
 export const proxyProvider: VisualizationProvider = {
   id: "proxy",
-  label: "Live AI (via green light-proxy)",
+  label: "Live AI (fotorealistisk · via proxy)",
   description:
-    "Sender rumbillede + prompt til green lights server-funktion, der kalder et rigtigt inpainting-billed-API. Slås til med VITE_VISUALIZATION_ENDPOINT.",
-  available: Boolean(PROXY_ENDPOINT),
+    "Sender rumbillede + prompt til green lights server-funktion (fx OpenAI gpt-image-1), der redigerer fotoet og bevarer rummet. Konfigureres i “Live AI-opsætning” nedenfor.",
+  // Dynamisk: tilgængelig når en proxy-URL er sat (localStorage eller build-env).
+  get available() {
+    return getEndpoint().length > 0;
+  },
   async generate(input) {
-    if (!PROXY_ENDPOINT) throw new Error("Live-AI er ikke konfigureret (VITE_VISUALIZATION_ENDPOINT mangler).");
-    const res = await fetch(PROXY_ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        prompt: input.prompt,
-        roomPhoto: input.roomPhoto,
-        floorPlan: input.floorPlan,
-        placementMode: input.placementMode,
-        placements: input.placements,
-        scenario: input.scenario,
-        roomType: input.roomType,
-        fixtures: input.fixtures.map((f) => ({
-          name: f.fixture.name,
-          category: f.fixture.category,
-          quantity: f.quantity,
-          specs: f.fixture.specs,
-        })),
-      }),
-    });
-    if (!res.ok) throw new Error(`Live-AI svarede ${res.status}. Prøv igen eller brug demo-simulering.`);
+    const endpoint = getEndpoint();
+    if (!endpoint) throw new Error("Live-AI er ikke konfigureret. Indsæt proxy-URL under “Live AI-opsætning”.");
+    let res: Response;
+    try {
+      res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: input.prompt,
+          roomPhoto: input.roomPhoto,
+          floorPlan: input.floorPlan,
+          placementMode: input.placementMode,
+          placements: input.placements,
+          scenario: input.scenario,
+          roomType: input.roomType,
+          fixtures: input.fixtures.map((f) => ({
+            name: f.fixture.name,
+            category: f.fixture.category,
+            quantity: f.quantity,
+            specs: f.fixture.specs,
+          })),
+        }),
+      });
+    } catch (e) {
+      throw new Error(`Kunne ikke nå proxyen. Tjek URL'en. (${e instanceof Error ? e.message : "netværksfejl"})`);
+    }
+    if (!res.ok) {
+      let msg = `Live-AI svarede ${res.status}.`;
+      try {
+        const err = (await res.json()) as { error?: string };
+        if (err?.error) msg += ` ${err.error}`;
+      } catch {
+        /* ignore */
+      }
+      throw new Error(msg);
+    }
     const data = (await res.json()) as { imageData?: string; image?: string };
-    const imageData = data.imageData ?? data.image;
-    if (!imageData) throw new Error("Live-AI returnerede intet billede.");
+    const raw = data.imageData ?? data.image;
+    if (!raw) throw new Error("Live-AI returnerede intet billede.");
+    // Komprimér til et gemme-venligt format inden det lægges i localStorage.
+    const imageData = await downscaleImage(raw, 1600, 0.85, "image/jpeg").catch(() => raw);
     return { imageData, provider: this.id, prompt: input.prompt };
   },
 };
