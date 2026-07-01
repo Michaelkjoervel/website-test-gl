@@ -96,7 +96,10 @@ src/
     └── image.ts           – Billed-nedskalering til localStorage
 
 api/
-└── visualize.js          – Serverless proxy → OpenAI gpt-image-1 (holder nøglen skjult)
+├── _core.mjs             – Delt proxy-logik (kald til OpenAI gpt-image-1)
+└── visualize.js          – Vercel-adapter (holder nøglen skjult)
+server/
+└── proxy.mjs             – Node-server-udgave (fx til GitHub Codespaces)
 vercel.json               – Funktions-timeout (60 s) til proxyen
 ```
 
@@ -176,9 +179,36 @@ Opsætning (engangsarbejde):
 
 API-nøglen lever **kun** i Vercel — aldrig i browseren eller i repoet.
 
-Proxyen er provider-agnostisk: vil man bruge en anden model (Flux, Gemini m.fl.),
-ændrer man blot `api/visualize.js` til at kalde det API — kontrakten ud mod appen
-(`{ imageData }`) er den samme.
+#### Alternativ: kør proxyen i GitHub Codespaces
+
+Vil man holde nøglen samme sted som andre projekter — som en **Codespaces-secret**
+— kan proxyen køres som en almindelig Node-server ([`server/proxy.mjs`](server/proxy.mjs))
+i stedet for på Vercel:
+
+1. **Læg nøglen som Codespaces-secret**: GitHub → *Settings → Codespaces →
+   Secrets* (eller repoets *Settings → Secrets and variables → Codespaces*) →
+   tilføj `OPENAI_API_KEY`. Den bliver en miljøvariabel i Codespacet.
+2. **Åbn et Codespace** på repoet og kør:
+   ```bash
+   npm install
+   npm run proxy        # starter på port 8787
+   ```
+3. **Gør porten offentlig**: i *Ports*-fanen → højreklik på port 8787 →
+   *Port Visibility → Public*. Kopiér den forwardede URL
+   (`https://<codespace>-8787.app.github.dev`).
+4. **Kobl appen på**: indsæt URL'en + `/api/visualize` i appens
+   *"Live AI-opsætning"*.
+
+> **Bemærk:** et Codespace er et *udviklingsmiljø* — det går i dvale efter
+> inaktivitet og skal køre, for at live-AI virker. Perfekt til at **teste og få
+> det op at køre nu**. Til et altid-tilgængeligt værktøj for flere sælgere er en
+> rigtig vært (Vercel m.fl.) eller en altid-kørende server bedre. Den offentlige
+> port er desuden åben for alle med URL'en, så brug den kun internt/afskærmet.
+
+Begge veje bruger samme kerne ([`api/_core.mjs`](api/_core.mjs)) og er
+provider-agnostiske: vil man bruge en anden model (Flux, Gemini m.fl.), ændrer
+man blot kernen til at kalde det API — kontrakten ud mod appen (`{ imageData }`)
+er den samme.
 
 ### Vigtigt / forbehold
 

@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
+    "proxy": "node server/proxy.mjs",
     "lint": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
