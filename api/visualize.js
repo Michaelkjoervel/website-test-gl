@@ -12,7 +12,7 @@
 // server/proxy.mjs — den bruger samme kerne.
 // =============================================================================
 
-import { runVisualize } from "./_core.mjs";
+import { runVisualize, checkKey } from "./_core.mjs";
 
 export const config = {
   maxDuration: 60, // gpt-image-1-redigeringer tager typisk 10-40 s
@@ -36,6 +36,11 @@ async function readJsonBody(req) {
 export default async function handler(req, res) {
   setCors(res);
   if (req.method === "OPTIONS") return res.status(204).end();
+  // GET = let nøgle-tjek (åbn URL'en i en browser for at se om nøglen virker).
+  if (req.method === "GET") {
+    const { status, payload } = await checkKey(process.env.OPENAI_API_KEY);
+    return res.status(status).json(payload);
+  }
   if (req.method !== "POST") return res.status(405).json({ error: "Brug POST." });
 
   let body;
