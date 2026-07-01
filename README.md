@@ -172,7 +172,11 @@ Opsætning (engangsarbejde):
    - `OPENAI_API_KEY` = din OpenAI API-nøgle (påkrævet)
    - `ALLOWED_ORIGIN` = `https://michaelkjoervel.github.io` (valgfri, strammer CORS)
    - Deploy. Din funktion får en URL som `https://<projekt>.vercel.app/api/visualize`.
-3. **Kobl appen på**: i visualiserings-wizardens trin *Generér* → **"Live AI-opsætning"**
+3. **Tjek nøglen** (gratis, genererer intet billede): åbn funktions-URL'en i en
+   browser (et **GET**-kald). Svarer den `{"keyValid":true}`, er nøglen sat
+   rigtigt. `{"keyValid":false, "reason": …}` fortæller hvorfor (fx nøgle ikke
+   sat → husk *Redeploy* efter du tilføjer den, eller 401 = forkert nøgle).
+4. **Kobl appen på**: i visualiserings-wizardens trin *Generér* → **"Live AI-opsætning"**
    → indsæt funktions-URL'en → *Gem & slå til*. Motoren skifter til "Live AI".
    (URL'en gemmes i browseren; ingen genbygning nødvendig. Alternativt sæt
    `VITE_VISUALIZATION_ENDPOINT` ved build.)

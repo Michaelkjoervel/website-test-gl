@@ -117,3 +117,34 @@ export async function runVisualize({ prompt, roomPhoto, quality, apiKey }) {
 
   return { status: 200, payload: { imageData: `data:image/png;base64,${b64}` } };
 }
+
+/**
+ * Let nøgle-tjek: pinger OpenAI's models-endpoint (gratis, genererer intet
+ * billede) og fortæller, om nøglen i miljøet virker. Bruges af GET-ruten, så
+ * man kan verificere opsætningen ved bare at åbne funktions-URL'en i en browser.
+ */
+export async function checkKey(apiKey) {
+  if (!apiKey) {
+    return { status: 200, payload: { keyValid: false, reason: "OPENAI_API_KEY er ikke sat i miljøet (husk at redeploye efter du tilføjer den)." } };
+  }
+  let r;
+  try {
+    r = await fetch("https://api.openai.com/v1/models", {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+  } catch (e) {
+    return { status: 200, payload: { keyValid: false, reason: `Kunne ikke nå OpenAI: ${e.message}` } };
+  }
+  if (r.ok) return { status: 200, payload: { keyValid: true } };
+  if (r.status === 401) {
+    return { status: 200, payload: { keyValid: false, reason: "Nøglen blev afvist (401) – forkert, udløbet eller mangler adgang." } };
+  }
+  let detail = "";
+  try {
+    const j = await r.json();
+    detail = j?.error?.message || "";
+  } catch {
+    /* ignore */
+  }
+  return { status: 200, payload: { keyValid: false, reason: `OpenAI svarede ${r.status}. ${detail}`.trim() } };
+}

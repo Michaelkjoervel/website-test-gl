@@ -14,7 +14,7 @@
 // =============================================================================
 
 import { createServer } from "node:http";
-import { runVisualize } from "../api/_core.mjs";
+import { runVisualize, checkKey } from "../api/_core.mjs";
 
 const PORT = process.env.PORT || 8787;
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || "*";
@@ -40,8 +40,12 @@ const server = createServer(async (req, res) => {
 
   const path = (req.url || "/").split("?")[0];
 
-  // Lille health-check
-  if (req.method === "GET" && (path === "/" || path === "/health")) {
+  // GET /api/visualize = let nøgle-tjek; GET / eller /health = simpel status.
+  if (req.method === "GET") {
+    if (path === "/api/visualize") {
+      const { status, payload } = await checkKey(process.env.OPENAI_API_KEY);
+      return sendJson(res, status, payload);
+    }
     return sendJson(res, 200, { ok: true, service: "green-light-visualize-proxy" });
   }
 
