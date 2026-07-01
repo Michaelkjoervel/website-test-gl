@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="400" height="300">
+  <defs>
+    <radialGradient id="g" cx="50%" cy="40%" r="65%">
+      <stop offset="0%" stop-color="#FFF9E6"/>
+      <stop offset="100%" stop-color="#F4F8E8"/>
+    </radialGradient>
+  </defs>
+  <rect width="400" height="300" fill="url(#g)"/>
+  <line x1="130" y1="40" x2="130" y2="132" stroke="#3D4A33" stroke-width="3"/>
+  <line x1="270" y1="40" x2="270" y2="132" stroke="#3D4A33" stroke-width="3"/>
+  <rect x="70" y="132" width="260" height="30" rx="10" fill="#3D4A33"/>
+  <rect x="78" y="162" width="244" height="10" rx="5" fill="#FCFBEF"/>
+  <rect x="78" y="162" width="244" height="10" rx="5" fill="#9FC34A" opacity="0.4"/>
+  <ellipse cx="200" cy="205" rx="150" ry="20" fill="#9FC34A" opacity="0.18"/>
+  <text x="200" y="272" font-family="Inter, sans-serif" font-size="15" font-weight="600" fill="#65802A" text-anchor="middle">Lineær / pendel</text>
+</svg>

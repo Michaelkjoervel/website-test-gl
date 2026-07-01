@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="400" height="300">
+  <defs>
+    <radialGradient id="g" cx="50%" cy="60%" r="70%">
+      <stop offset="0%" stop-color="#EAF3FF"/>
+      <stop offset="100%" stop-color="#F4F8E8"/>
+    </radialGradient>
+    <linearGradient id="beam" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="#CFE0FF" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#CFE0FF" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="300" fill="url(#g)"/>
+  <rect x="120" y="40" width="30" height="220" fill="#E5EBDD"/>
+  <polygon points="150,190 150,50 250,60 250,180" fill="url(#beam)"/>
+  <rect x="150" y="176" width="60" height="26" rx="5" fill="#3D4A33"/>
+  <rect x="156" y="180" width="48" height="8" rx="4" fill="#EAF3FF"/>
+  <rect x="156" y="180" width="48" height="8" rx="4" fill="#7FA8FF" opacity="0.55"/>
+  <text x="200" y="278" font-family="Inter, sans-serif" font-size="15" font-weight="600" fill="#65802A" text-anchor="middle">Facade / væg</text>
+</svg>

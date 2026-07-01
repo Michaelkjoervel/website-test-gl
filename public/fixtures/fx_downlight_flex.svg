@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="400" height="300">
+  <defs>
+    <radialGradient id="g" cx="50%" cy="30%" r="65%">
+      <stop offset="0%" stop-color="#FFF4DE"/>
+      <stop offset="100%" stop-color="#F4F8E8"/>
+    </radialGradient>
+    <linearGradient id="beam" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFE1A6" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#FFE1A6" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="300" fill="url(#g)"/>
+  <polygon points="200,96 128,250 272,250" fill="url(#beam)"/>
+  <circle cx="200" cy="96" r="46" fill="#3D4A33"/>
+  <circle cx="200" cy="96" r="34" fill="#0F1A0A"/>
+  <circle cx="200" cy="96" r="26" fill="#FFF3D6"/>
+  <circle cx="200" cy="96" r="26" fill="#FFCF7A" opacity="0.5"/>
+  <text x="200" y="278" font-family="Inter, sans-serif" font-size="15" font-weight="600" fill="#65802A" text-anchor="middle">Downlight</text>
+</svg>

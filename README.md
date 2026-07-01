@@ -63,27 +63,102 @@ src/
 │   ├── AppShell.tsx       – Sidebar + header layout
 │   ├── Confidence.tsx     – Sikkerhedsindikatorer
 │   ├── Field.tsx          – Felt-wrapper med tooltips
-│   └── Stepper.tsx        – Wizard-stepper
+│   ├── Stepper.tsx        – Wizard-stepper
+│   ├── ImageDropzone.tsx  – Klik/træk billed-upload (auto-nedskalering)
+│   ├── BeforeAfterSlider.tsx – Før/efter-slider
+│   ├── PlacementEditor.tsx   – Interaktiv armaturplacering på rumbillede
+│   └── FixtureForm.tsx    – Opret/redigér armatur i universet
 ├── pages/                 – Routede sider
 │   ├── Dashboard.tsx
 │   ├── NewEstimate.tsx    – Trinvist flow
 │   ├── EstimateDetail.tsx – Visning + faktisk resultat + PDF-download
 │   ├── History.tsx
-│   └── ImportPage.tsx
+│   ├── ImportPage.tsx
+│   ├── Univers.tsx        – Produktbibliotek af armaturer
+│   ├── NewVisualization.tsx  – Visualiserings-wizard (6 trin)
+│   ├── Visualizations.tsx    – Galleri af gemte visualiseringer
+│   └── VisualizationDetail.tsx – Før/efter + specs + download
 └── lib/                   – Adskilt logik
-    ├── types.ts           – Datamodel (TypeScript interfaces)
+    ├── types.ts           – Datamodel (estimat)
     ├── pricingConfig.ts   – Central prisconfig (PLACEHOLDER)
     ├── estimateEngine.ts  – Pris-, energi- og sikkerhedsberegning
     ├── learningModel.ts   – Læringsmodul / forberedt til AI
-    ├── storage.ts         – Repository for localStorage
+    ├── storage.ts         – Repository for localStorage (estimater)
     ├── importer.ts        – CSV/JSON-parser
     ├── pdf.ts             – PDF-generering
     ├── mockData.ts        – Demo historiske tilbud
-    └── format.ts          – Dansk talformat & dato
+    ├── format.ts          – Dansk talformat & dato
+    ├── visualizationTypes.ts    – Datamodel (armatur + visualisering)
+    ├── visualizationStorage.ts  – Repository for universet + visualiseringer
+    ├── fixtureSeed.ts     – Realistiske pladsholder-armaturer
+    ├── visualizationProvider.ts – AI-motor (mock + proxy) + prompt-bygger
+    └── image.ts           – Billed-nedskalering til localStorage
 ```
 
 UI, beregning og data er **bevidst adskilt**, så hver del kan udskiftes
 uafhængigt.
+
+---
+
+## Visualiseringsunivers
+
+Et modul til at vise kunden, hvordan en belysningsløsning kommer til at se ud i
+**deres eget lokale** – *før* den er sat op. Findes i sidebaren under
+**Visualisering**.
+
+### Universet (produktbibliotek) · `/univers`
+
+Green lights armaturer med **produktbillede, datablad, fotometri (IES/LDT) og
+specs** (lumen, watt, lm/W, kelvin, CRI, spredning, IP, UGR, montering, pris).
+Seedes med 6 realistiske pladsholder-armaturer første gang (reception,
+administration/kontor, kontorlandskab, industri/lager). Tilføj, redigér og slet
+frit – gemmes lokalt via samme repository-mønster som estimatværktøjet.
+
+### Visualiserings-flow · `/ny-visualisering`
+
+En 6-trins wizard:
+
+1. **Projekt** – kunde, lokale, rumtype, valgfri kobling til et estimat.
+2. **Rum** – upload et billede af kundens lokale (+ valgfri **plantegning**).
+3. **Armaturer** – vælg fra universet og sæt antal.
+4. **Placering** – **AI foreslår** placeringen automatisk; uploades en
+   plantegning, **styrer den** placeringen; eller **markér selv** punkter på
+   billedet.
+5. **Generér** – vælg lysscenarie (dag/aften/nat) og motor; se den præcise
+   AI-prompt.
+6. **Resultat** – **før/efter-slider**, forbehold, gem, download.
+
+Rummet bevares (samme vægge, møbler, perspektiv) – kun belysningen ændres.
+
+### AI-motoren (pluggbar)
+
+Motoren ligger bag en provider-grænseflade i
+[`src/lib/visualizationProvider.ts`](src/lib/visualizationProvider.ts), så den kan
+skiftes uden at røre UI'et:
+
+| Motor | Hvad den gør |
+|-------|--------------|
+| **Demo-simulering** (standard) | Simulerer "lys tændt" direkte i browseren via canvas. Ingen backend, ingen nøgle. Til at afprøve flowet og vise før/efter. **Ikke fotometrisk eksakt** (stemplet som simulering). |
+| **Live AI (proxy)** | POST'er rumbillede + prompt til en server-funktion, der kalder et rigtigt inpainting-billed-API. Aktiveres ved at sætte `VITE_VISUALIZATION_ENDPOINT`. |
+
+`buildVisualizationPrompt()` samler en præcis prompt, der beder modellen om at
+**bevare rummet** og kun ændre belysningen ud fra de valgte armaturers specs og
+lyskarakter.
+
+**Sådan kobles live-AI på senere:** byg en lille server-funktion (fx
+Netlify/Vercel) der holder API-nøglen skjult, tager JSON'en fra `proxyProvider`
+og returnerer `{ imageData: "data:image/...;base64,..." }`. Sæt derefter
+`VITE_VISUALIZATION_ENDPOINT=https://…` og bygg – motoren skifter automatisk.
+
+### Vigtigt / forbehold
+
+- Visualiseringen er **illustrativ**, ikke en garanteret gengivelse – samme
+  forbeholdslinje som estimatet ("kvalificeret estimat, ikke bindende tilbud").
+- Billeder gemmes **nedskaleret** i browserens `localStorage` (~5 MB). Til
+  mange/store visualiseringer bør data flyttes til en backend (samme
+  repository-skift som `storage.ts`).
+- Kundefotos er forretnings-/persondata – ved en backend skal opbevaring,
+  adgang, samtykke og sletning håndteres (GDPR).
 
 ---
 

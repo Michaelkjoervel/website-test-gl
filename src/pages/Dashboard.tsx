@@ -80,6 +80,22 @@ export function Dashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Visualiseringsunivers – banner */}
+      <div className="card p-5 md:p-6 bc-hero text-white flex flex-col md:flex-row md:items-center gap-4 overflow-hidden">
+        <div className="flex-1 min-w-0">
+          <div className="text-[11px] uppercase tracking-wider text-white/70">Nyt · Visualisering</div>
+          <h2 className="text-lg md:text-xl font-bold mt-0.5">Vis kunden løsningen – før den er sat op</h2>
+          <p className="text-sm text-white/85 mt-1 max-w-2xl">
+            Upload et billede af kundens lokale, vælg armaturer fra universet, og få en fotorealistisk
+            før/efter-visualisering af, hvordan belysningen kommer til at se ud.
+          </p>
+        </div>
+        <div className="flex gap-2 shrink-0">
+          <Link to="/univers" className="btn bg-white/15 text-white hover:bg-white/25 backdrop-blur">Universet</Link>
+          <Link to="/ny-visualisering" className="btn bg-white text-brand-800 hover:bg-white/90 font-semibold">Ny visualisering →</Link>
+        </div>
+      </div>
+
       {/* KPI cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <KpiCard label="Estimater oprettet" value={num.format(stats.count)} />

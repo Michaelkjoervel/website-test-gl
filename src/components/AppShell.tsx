@@ -1,18 +1,40 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 
-const nav = [
-  { to: "/", label: "Dashboard", icon: DashboardIcon },
-  { to: "/nyt-estimat", label: "Nyt estimat", icon: PlusIcon },
-  { to: "/historik", label: "Historik", icon: ListIcon },
-  { to: "/import", label: "Importér data", icon: ImportIcon },
+type NavItem = { to: string; label: string; icon: () => JSX.Element };
+
+const navSections: { heading?: string; items: NavItem[] }[] = [
+  {
+    items: [
+      { to: "/", label: "Dashboard", icon: DashboardIcon },
+      { to: "/nyt-estimat", label: "Nyt estimat", icon: PlusIcon },
+      { to: "/historik", label: "Historik", icon: ListIcon },
+      { to: "/import", label: "Importér data", icon: ImportIcon },
+    ],
+  },
+  {
+    heading: "Visualisering",
+    items: [
+      { to: "/univers", label: "Universet", icon: GridIcon },
+      { to: "/ny-visualisering", label: "Ny visualisering", icon: SparkIcon },
+      { to: "/visualiseringer", label: "Visualiseringer", icon: GalleryIcon },
+    ],
+  },
 ];
+
+// Sidetitel: længste matchende nav-sti, med særlige detalje-ruter.
+function resolveTitle(pathname: string): string {
+  if (pathname.startsWith("/visualisering/")) return "Visualisering";
+  if (pathname.startsWith("/estimat/")) return "Estimat";
+  const items = navSections.flatMap((s) => s.items);
+  const match = items
+    .filter((n) => (n.to === "/" ? pathname === "/" : pathname === n.to || pathname.startsWith(n.to + "/")))
+    .sort((a, b) => b.to.length - a.to.length)[0];
+  return match?.label ?? "green light";
+}
 
 export function AppShell() {
   const loc = useLocation();
-  const pageTitle =
-    nav.find((n) =>
-      n.to === "/" ? loc.pathname === "/" : loc.pathname.startsWith(n.to),
-    )?.label ?? "Estimat";
+  const pageTitle = resolveTitle(loc.pathname);
 
   return (
     <div className="min-h-screen flex">
@@ -28,22 +50,29 @@ export function AppShell() {
           </div>
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-1">
-          {nav.map((n) => (
-            <NavLink
-              key={n.to}
-              to={n.to}
-              end={n.to === "/"}
-              className={({ isActive }) =>
-                `nav-link ${isActive ? "active" : ""}`
-              }
-            >
-              <span className="text-ink-soft">
-                <n.icon />
-              </span>
-              <span>{n.label}</span>
-              <span className="ml-auto nav-dot" />
-            </NavLink>
+        <nav className="flex-1 px-3 py-4 space-y-4 overflow-y-auto">
+          {navSections.map((section, si) => (
+            <div key={si} className="space-y-1">
+              {section.heading && (
+                <div className="px-3 pt-1 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-ink-mute">
+                  {section.heading}
+                </div>
+              )}
+              {section.items.map((n) => (
+                <NavLink
+                  key={n.to}
+                  to={n.to}
+                  end={n.to === "/"}
+                  className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}
+                >
+                  <span className="text-ink-soft">
+                    <n.icon />
+                  </span>
+                  <span>{n.label}</span>
+                  <span className="ml-auto nav-dot" />
+                </NavLink>
+              ))}
+            </div>
           ))}
         </nav>
 
@@ -131,6 +160,41 @@ function ImportIcon() {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+    </svg>
+  );
+}
+
+function GridIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+      <rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.6" />
+      <rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.6" />
+      <rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.6" />
+      <rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.6" />
+    </svg>
+  );
+}
+
+function SparkIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+      <path
+        d="M12 3l1.8 4.7L18.5 9l-4.7 1.3L12 15l-1.8-4.7L5.5 9l4.7-1.3L12 3z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      <path d="M18 15l.9 2.3 2.3.9-2.3.7L18 21l-.7-2.1-2.3-.7 2.3-.9L18 15z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function GalleryIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+      <rect x="3" y="4" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M3 14l4-4 4 4 3-3 4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="9" cy="9" r="1.2" fill="currentColor" />
     </svg>
   );
 }

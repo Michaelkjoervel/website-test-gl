@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="400" height="300">
+  <defs>
+    <radialGradient id="g" cx="50%" cy="38%" r="60%">
+      <stop offset="0%" stop-color="#FFF9E6"/>
+      <stop offset="100%" stop-color="#F4F8E8"/>
+    </radialGradient>
+  </defs>
+  <rect width="400" height="300" fill="url(#g)"/>
+  <ellipse cx="200" cy="235" rx="150" ry="26" fill="#9FC34A" opacity="0.16"/>
+  <rect x="96" y="86" width="208" height="128" rx="8" fill="#3D4A33"/>
+  <rect x="104" y="94" width="192" height="112" rx="5" fill="#FCFBEF"/>
+  <rect x="104" y="94" width="192" height="112" rx="5" fill="#9FC34A" opacity="0.14"/>
+  <line x1="104" y1="150" x2="296" y2="150" stroke="#E5EBDD" stroke-width="2"/>
+  <line x1="200" y1="94" x2="200" y2="206" stroke="#E5EBDD" stroke-width="2"/>
+  <text x="200" y="272" font-family="Inter, sans-serif" font-size="15" font-weight="600" fill="#65802A" text-anchor="middle">LED-panel</text>
+</svg>
