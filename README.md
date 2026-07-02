@@ -67,7 +67,10 @@ src/
 │   ├── ImageDropzone.tsx  – Klik/træk billed-upload (auto-nedskalering)
 │   ├── BeforeAfterSlider.tsx – Før/efter-slider
 │   ├── PlacementEditor.tsx   – Interaktiv armaturplacering på rumbillede
-│   └── FixtureForm.tsx    – Opret/redigér armatur i universet
+│   ├── FixtureForm.tsx    – Opret/redigér armatur i universet
+│   ├── FixtureImport.tsx  – Bulk-import (CSV/JSON) af armaturer
+│   ├── AuthProvider.tsx   – Supabase-session (context)
+│   └── RequireAuth.tsx    – Login-spærring + login-skærm
 ├── pages/                 – Routede sider
 │   ├── Dashboard.tsx
 │   ├── NewEstimate.tsx    – Trinvist flow
@@ -93,6 +96,8 @@ src/
     ├── fixtureSeed.ts     – Realistiske pladsholder-armaturer
     ├── visualizationProvider.ts – AI-motor (mock + proxy) + prompt-bygger
     ├── visualizationConfig.ts   – Runtime-konfig af live-AI-proxyens URL
+    ├── fixtureImporter.ts – Bulk-import parser (CSV/JSON → armaturer)
+    ├── supabase.ts        – Supabase-klient + access-token (login)
     └── image.ts           – Billed-nedskalering til localStorage
 
 api/
@@ -121,6 +126,11 @@ specs** (lumen, watt, lm/W, kelvin, CRI, spredning, IP, UGR, montering, pris).
 Seedes med 6 realistiske pladsholder-armaturer første gang (reception,
 administration/kontor, kontorlandskab, industri/lager). Tilføj, redigér og slet
 frit – gemmes lokalt via samme repository-mønster som estimatværktøjet.
+
+**Bulk-import:** knappen *Importér* på universet-siden læser mange armaturer på én
+gang fra **CSV** eller **JSON** (kun `name` er påkrævet; billeder angives som URL i
+`productImage`). Hent skabelon/eksempel direkte i import-vinduet. Parseren ligger i
+[`src/lib/fixtureImporter.ts`](src/lib/fixtureImporter.ts).
 
 ### Visualiserings-flow · `/ny-visualisering`
 
@@ -213,6 +223,49 @@ Begge veje bruger samme kerne ([`api/_core.mjs`](api/_core.mjs)) og er
 provider-agnostiske: vil man bruge en anden model (Flux, Gemini m.fl.), ændrer
 man blot kernen til at kalde det API — kontrakten ud mod appen (`{ imageData }`)
 er den samme.
+
+### Adgangskontrol (login med Supabase)
+
+Visualiseringen kan låses, så kun green light-brugere har adgang — og så kun
+loggede-ind brugere kan bruge jeres OpenAI-credits. Beskyttelsen sker **to steder**:
+
+- **Frontend**: visualiserings-siderne kræver login (Supabase Auth). Er Supabase
+  ikke konfigureret, er login slået fra, og alt virker som før.
+- **Proxy (server)**: proxyen verificerer brugerens Supabase-token mod
+  `/auth/v1/user`, *før* den kalder OpenAI. Uden gyldigt login → `401`. Det er den
+  rigtige beskyttelse — en frontend-lås alene kan omgås.
+
+Opsætning:
+
+1. **Supabase-projekt**: brug et eksisterende eller opret et. Notér *Project URL*
+   og *anon/publishable key* (Settings → API). Slå offentlig signup fra og opret
+   sælgernes brugere (Authentication → Users), evt. begræns til jeres domæne.
+2. **Frontend-config** (offentlige værdier): sæt som GitHub *Actions Variables*
+   (se udrulning nedenfor) — `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.
+3. **Proxy-config** (i Vercel → Environment Variables):
+   - `SUPABASE_URL` = samme projekt-URL
+   - `SUPABASE_ANON_KEY` = samme anon-nøgle
+   - `ALLOWED_EMAIL_DOMAIN` = fx `green-light.dk` (valgfri – kun disse e-mails får adgang)
+   - *Redeploy* bagefter.
+
+Anon-nøglen er offentlig og sikker i klienten; den er ikke en hemmelighed.
+
+### Udrulning til hele teamet
+
+For at alle sælgere får Live AI + login uden manuel opsætning bygges konfigurationen
+ind i Pages-deployet. Deploy-workflowet ([`.github/workflows/deploy.yml`](.github/workflows/deploy.yml))
+læser tre **Actions Variables** ved build (GitHub → Settings → Secrets and
+variables → Actions → **Variables**):
+
+| Variabel | Værdi |
+|----------|-------|
+| `VITE_VISUALIZATION_ENDPOINT` | `https://<projekt>.vercel.app/api/visualize` |
+| `VITE_SUPABASE_URL` | din Supabase Project URL |
+| `VITE_SUPABASE_ANON_KEY` | din Supabase anon-nøgle |
+
+Alle tre er offentlige værdier (derfor *Variables*, ikke *Secrets*). Når de er sat,
+udløser næste push til `main` et deploy, hvor Live AI er slået til og login kræves
+for hele holdet. Er de ikke sat, kører appen videre med demo-motor og uden login.
 
 ### Vigtigt / forbehold
 

@@ -12,7 +12,7 @@
 // server/proxy.mjs — den bruger samme kerne.
 // =============================================================================
 
-import { runVisualize, checkKey } from "./_core.mjs";
+import { runVisualize, checkKey, authorize } from "./_core.mjs";
 
 export const config = {
   maxDuration: 60, // gpt-image-1-redigeringer tager typisk 10-40 s
@@ -20,8 +20,8 @@ export const config = {
 
 function setCors(res) {
   res.setHeader("Access-Control-Allow-Origin", process.env.ALLOWED_ORIGIN || "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   res.setHeader("Access-Control-Max-Age", "86400");
 }
 
@@ -49,6 +49,11 @@ export default async function handler(req, res) {
   } catch {
     return res.status(400).json({ error: "Ugyldig JSON i request." });
   }
+
+  // Verificér login (håndhæves når SUPABASE_* er sat i miljøet).
+  const token = (req.headers?.authorization || "").replace(/^Bearer\s+/i, "");
+  const auth = await authorize(token);
+  if (!auth.ok) return res.status(auth.status).json({ error: auth.reason });
 
   const { status, payload } = await runVisualize({
     prompt: body?.prompt,

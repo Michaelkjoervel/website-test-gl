@@ -12,6 +12,45 @@
 
 const OPENAI_EDITS_URL = "https://api.openai.com/v1/images/edits";
 
+/**
+ * Verificér brugerens Supabase-login, FØR OpenAI kaldes (så kun green light-
+ * brugere kan bruge jeres credits). Er auth ikke konfigureret (env-variabler
+ * mangler), returneres ok:true → bagudkompatibel/åben, indtil I slår det til.
+ *
+ * Env: SUPABASE_URL, SUPABASE_ANON_KEY (påkrævet for at håndhæve login),
+ *      ALLOWED_EMAIL_DOMAIN (valgfri, fx "green-light.dk").
+ */
+export async function authorize(token) {
+  const url = (process.env.SUPABASE_URL || "").replace(/\/$/, "");
+  const anon = process.env.SUPABASE_ANON_KEY;
+  if (!url || !anon) return { ok: true }; // login ikke konfigureret → åben
+  if (!token) return { ok: false, status: 401, reason: "Log ind kræves." };
+
+  let r;
+  try {
+    r = await fetch(`${url}/auth/v1/user`, {
+      headers: { Authorization: `Bearer ${token}`, apikey: anon },
+    });
+  } catch (e) {
+    return { ok: false, status: 502, reason: `Kunne ikke verificere login: ${e.message}` };
+  }
+  if (!r.ok) return { ok: false, status: 401, reason: "Ugyldig eller udløbet session – log ind igen." };
+
+  let user;
+  try {
+    user = await r.json();
+  } catch {
+    return { ok: false, status: 401, reason: "Kunne ikke læse brugeren." };
+  }
+
+  const domain = (process.env.ALLOWED_EMAIL_DOMAIN || "").trim().toLowerCase();
+  const email = String(user?.email || "").toLowerCase();
+  if (domain && !email.endsWith(`@${domain}`)) {
+    return { ok: false, status: 403, reason: "Din konto har ikke adgang til værktøjet." };
+  }
+  return { ok: true, email };
+}
+
 export function dataUrlToParts(dataUrl) {
   const m = /^data:([^;]+);base64,(.*)$/s.exec(dataUrl || "");
   if (!m) throw new Error("roomPhoto skal være en base64 dataURL.");

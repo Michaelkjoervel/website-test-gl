@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import type { Fixture, FixtureCategory } from "../lib/visualizationTypes";
 import { vizStorage } from "../lib/visualizationStorage";
 import { FixtureForm } from "../components/FixtureForm";
+import { FixtureImport } from "../components/FixtureImport";
 import { dkkInt, num } from "../lib/format";
 
 const ALL_CATEGORIES: (FixtureCategory | "Alle")[] = [
@@ -20,6 +21,7 @@ export function Univers() {
   const [fixtures, setFixtures] = useState<Fixture[]>(() => vizStorage.listFixtures());
   const [editing, setEditing] = useState<Fixture | null>(null);
   const [creating, setCreating] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [cat, setCat] = useState<(typeof ALL_CATEGORIES)[number]>("Alle");
   const [q, setQ] = useState("");
 
@@ -78,6 +80,7 @@ export function Univers() {
         </div>
         <div className="flex gap-2">
           <button className="btn-outline" onClick={resetDemo}>Nulstil demo</button>
+          <button className="btn-outline" onClick={() => setImporting(true)}>Importér</button>
           <button className="btn-primary" onClick={() => setCreating(true)}>+ Tilføj armatur</button>
         </div>
       </div>
@@ -132,6 +135,19 @@ export function Univers() {
             onCancel={() => {
               setCreating(false);
               setEditing(null);
+            }}
+          />
+        </Modal>
+      )}
+
+      {importing && (
+        <Modal title="Importér armaturer" onClose={() => setImporting(false)}>
+          <FixtureImport
+            onCancel={() => setImporting(false)}
+            onDone={(n) => {
+              setImporting(false);
+              refresh();
+              if (n > 0) alert(`${n} armaturer importeret.`);
             }}
           />
         </Modal>

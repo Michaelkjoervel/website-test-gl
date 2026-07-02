@@ -30,7 +30,13 @@ jobs:
 
       - run: npm ci
 
+      # Byg med visualiserings-konfiguration (offentlige værdier – ikke hemmelige).
+      # Sæt disse under Settings → Secrets and variables → Actions → Variables.
       - run: npm run build
+        env:
+          VITE_VISUALIZATION_ENDPOINT: ${{ vars.VITE_VISUALIZATION_ENDPOINT }}
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
 
       # Saml ét samlet site:
       #   - tidsregistreringen (anden branch) i roden -> /app.html bevares uændret

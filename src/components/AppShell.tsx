@@ -1,4 +1,5 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { useAuth } from "./AuthProvider";
 
 type NavItem = { to: string; label: string; icon: () => JSX.Element };
 
@@ -35,6 +36,7 @@ function resolveTitle(pathname: string): string {
 export function AppShell() {
   const loc = useLocation();
   const pageTitle = resolveTitle(loc.pathname);
+  const { session, user, signOut } = useAuth();
 
   return (
     <div className="min-h-screen flex">
@@ -77,6 +79,15 @@ export function AppShell() {
         </nav>
 
         <div className="px-6 py-5 border-t border-surface-line">
+          {session ? (
+            <div className="mb-3">
+              <div className="text-[11px] uppercase tracking-wider text-ink-mute mb-1">Logget ind</div>
+              <div className="text-xs text-ink-soft truncate">{user?.email}</div>
+              <button onClick={() => signOut()} className="mt-1 text-xs font-medium text-brand-700 hover:underline">
+                Log ud
+              </button>
+            </div>
+          ) : null}
           <div className="text-[11px] uppercase tracking-wider text-ink-mute mb-1">
             Version
           </div>
