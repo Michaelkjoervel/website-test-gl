@@ -26,6 +26,7 @@ import type {
 } from "./visualizationTypes";
 import { loadImage, downscaleImage } from "./image";
 import { getEndpoint } from "./visualizationConfig";
+import { getAccessToken } from "./supabase";
 
 export interface SelectedFixtureRef {
   fixture: Fixture;
@@ -304,11 +305,14 @@ export const proxyProvider: VisualizationProvider = {
   async generate(input) {
     const endpoint = getEndpoint();
     if (!endpoint) throw new Error("Live-AI er ikke konfigureret. Indsæt proxy-URL under “Live AI-opsætning”.");
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    const token = await getAccessToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
     let res: Response;
     try {
       res = await fetch(endpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           prompt: input.prompt,
           roomPhoto: input.roomPhoto,

@@ -81,6 +81,15 @@ export const vizStorage = {
     writeKey(FIXTURES_KEY, all);
   },
 
+  // Bulk-tilføj (import). Nye armaturer lægges forrest. Returnerer antal tilføjet.
+  addFixtures(fixtures: Fixture[]): number {
+    if (!fixtures.length) return 0;
+    const all = [...fixtures, ...this.listFixtures()];
+    writeKey(FIXTURES_KEY, all);
+    localStorage.setItem(SEEDED_FLAG, "1");
+    return fixtures.length;
+  },
+
   resetFixtures(): Fixture[] {
     const seeded = seedFixtures();
     writeKey(FIXTURES_KEY, seeded);

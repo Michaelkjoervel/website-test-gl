@@ -14,15 +14,15 @@
 // =============================================================================
 
 import { createServer } from "node:http";
-import { runVisualize, checkKey } from "../api/_core.mjs";
+import { runVisualize, checkKey, authorize } from "../api/_core.mjs";
 
 const PORT = process.env.PORT || 8787;
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || "*";
 
 function cors(res) {
   res.setHeader("Access-Control-Allow-Origin", ALLOWED_ORIGIN);
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   res.setHeader("Access-Control-Max-Age", "86400");
 }
 
@@ -62,6 +62,11 @@ const server = createServer(async (req, res) => {
     } catch {
       return sendJson(res, 400, { error: "Ugyldig JSON i request." });
     }
+    // Verificér login (håndhæves når SUPABASE_* er sat i miljøet).
+    const token = (req.headers.authorization || "").replace(/^Bearer\s+/i, "");
+    const auth = await authorize(token);
+    if (!auth.ok) return sendJson(res, auth.status, { error: auth.reason });
+
     const { status, payload } = await runVisualize({
       prompt: body?.prompt,
       roomPhoto: body?.roomPhoto,
