@@ -11,9 +11,13 @@
 // =============================================================================
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { appConfig } from "../appConfig";
 
-const url = ((import.meta.env.VITE_SUPABASE_URL as string | undefined) || "").trim();
-const anonKey = ((import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) || "").trim();
+const url = ((import.meta.env.VITE_SUPABASE_URL as string | undefined) || appConfig.supabaseUrl || "")
+  .trim()
+  .replace(/\/rest\/v1\/?$/, "") // tåler at der er indsat et REST-endpoint
+  .replace(/\/$/, "");
+const anonKey = ((import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) || appConfig.supabaseAnonKey || "").trim();
 
 export const authEnabled = Boolean(url && anonKey);
 

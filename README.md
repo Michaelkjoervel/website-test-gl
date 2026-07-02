@@ -59,6 +59,7 @@ Node 18+ kræves. Ingen miljøvariabler kræves.
 ```
 src/
 ├── main.tsx               – Router og app-bootstrap
+├── appConfig.ts           – Offentlig klient-config (Supabase + proxy-URL)
 ├── components/            – Genbrugelige UI-komponenter
 │   ├── AppShell.tsx       – Sidebar + header layout
 │   ├── Confidence.tsx     – Sikkerhedsindikatorer
@@ -240,32 +241,28 @@ Opsætning:
 1. **Supabase-projekt**: brug et eksisterende eller opret et. Notér *Project URL*
    og *anon/publishable key* (Settings → API). Slå offentlig signup fra og opret
    sælgernes brugere (Authentication → Users), evt. begræns til jeres domæne.
-2. **Frontend-config** (offentlige værdier): sæt som GitHub *Actions Variables*
-   (se udrulning nedenfor) — `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.
+2. **Frontend-config**: de offentlige klient-værdier (Supabase URL + anon-nøgle +
+   proxy-endpoint) ligger i [`src/appConfig.ts`](src/appConfig.ts). Er de sat der
+   (eller via `VITE_*` build-env, som vinder), er login slået til for hele holdet
+   ved næste deploy — ingen GitHub Variables nødvendige.
 3. **Proxy-config** (i Vercel → Environment Variables):
    - `SUPABASE_URL` = samme projekt-URL
    - `SUPABASE_ANON_KEY` = samme anon-nøgle
    - `ALLOWED_EMAIL_DOMAIN` = fx `green-light.dk` (valgfri – kun disse e-mails får adgang)
+   - `OPENAI_API_KEY` (den hemmelige – kun her, aldrig i klienten)
    - *Redeploy* bagefter.
 
 Anon-nøglen er offentlig og sikker i klienten; den er ikke en hemmelighed.
 
 ### Udrulning til hele teamet
 
-For at alle sælgere får Live AI + login uden manuel opsætning bygges konfigurationen
-ind i Pages-deployet. Deploy-workflowet ([`.github/workflows/deploy.yml`](.github/workflows/deploy.yml))
-læser tre **Actions Variables** ved build (GitHub → Settings → Secrets and
-variables → Actions → **Variables**):
-
-| Variabel | Værdi |
-|----------|-------|
-| `VITE_VISUALIZATION_ENDPOINT` | `https://<projekt>.vercel.app/api/visualize` |
-| `VITE_SUPABASE_URL` | din Supabase Project URL |
-| `VITE_SUPABASE_ANON_KEY` | din Supabase anon-nøgle |
-
-Alle tre er offentlige værdier (derfor *Variables*, ikke *Secrets*). Når de er sat,
-udløser næste push til `main` et deploy, hvor Live AI er slået til og login kræves
-for hele holdet. Er de ikke sat, kører appen videre med demo-motor og uden login.
+De offentlige klient-værdier er bygget ind i [`src/appConfig.ts`](src/appConfig.ts),
+så alle sælgere får **Live AI + login** automatisk ved næste deploy — uden manuel
+opsætning pr. bruger. Vil man i stedet styre dem uden at commite værdier, kan de
+sættes som GitHub *Actions Variables* (`VITE_VISUALIZATION_ENDPOINT`,
+`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) — build-env vinder over `appConfig`.
+Det eneste, der SKAL sættes i et dashboard, er proxyens server-miljø i Vercel
+(ovenfor), fordi `OPENAI_API_KEY` er hemmelig.
 
 ### Vigtigt / forbehold
 

@@ -9,12 +9,14 @@
 // for at koble proxyen på – man indsætter bare URL'en i "Live AI-opsætning".
 // =============================================================================
 
+import { appConfig } from "../appConfig";
+
 const ENDPOINT_KEY = "gl.viz.endpoint.v1";
 
 export function getEndpoint(): string {
   const stored = (typeof localStorage !== "undefined" && localStorage.getItem(ENDPOINT_KEY)) || "";
   const envValue = (import.meta.env.VITE_VISUALIZATION_ENDPOINT as string | undefined) || "";
-  return (stored || envValue).trim();
+  return (stored || envValue || appConfig.visualizationEndpoint || "").trim();
 }
 
 export function setEndpoint(url: string): void {
