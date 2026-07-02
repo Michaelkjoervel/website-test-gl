@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "./AuthProvider";
 
@@ -33,50 +34,71 @@ function resolveTitle(pathname: string): string {
   return match?.label ?? "green light";
 }
 
+function NavList({ onNavigate }: { onNavigate?: () => void }) {
+  return (
+    <nav className="flex-1 px-3 py-4 space-y-4 overflow-y-auto">
+      {navSections.map((section, si) => (
+        <div key={si} className="space-y-1">
+          {section.heading && (
+            <div className="px-3 pt-1 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-ink-mute">
+              {section.heading}
+            </div>
+          )}
+          {section.items.map((n) => (
+            <NavLink
+              key={n.to}
+              to={n.to}
+              end={n.to === "/"}
+              onClick={onNavigate}
+              className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}
+            >
+              <span className="text-ink-soft">
+                <n.icon />
+              </span>
+              <span>{n.label}</span>
+              <span className="ml-auto nav-dot" />
+            </NavLink>
+          ))}
+        </div>
+      ))}
+    </nav>
+  );
+}
+
+function BrandMark() {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="w-9 h-9 rounded-xl bg-brand-500 flex items-center justify-center text-white font-bold text-sm shadow-glow">
+        gl
+      </div>
+      <div className="leading-tight">
+        <div className="font-bold text-ink text-[15px]">green light</div>
+        <div className="text-[11px] text-ink-mute">Estimatværktøj</div>
+      </div>
+    </div>
+  );
+}
+
 export function AppShell() {
   const loc = useLocation();
   const pageTitle = resolveTitle(loc.pathname);
   const { session, user, signOut } = useAuth();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Luk mobilmenuen ved rutenavigation (også via browserens tilbage-knap).
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [loc.pathname]);
 
   return (
     <div className="min-h-screen flex">
-      {/* Sidebar */}
+      {/* Sidebar (desktop) */}
       <aside className="hidden md:flex w-64 flex-col border-r border-surface-line bg-white">
-        <div className="flex items-center gap-3 px-6 py-5 border-b border-surface-line">
-          <div className="w-9 h-9 rounded-xl bg-brand-500 flex items-center justify-center text-white font-bold text-sm shadow-glow">
-            gl
-          </div>
-          <div className="leading-tight">
-            <div className="font-bold text-ink text-[15px]">green light</div>
-            <div className="text-[11px] text-ink-mute">Estimatværktøj</div>
-          </div>
+        <div className="px-6 py-5 border-b border-surface-line">
+          <BrandMark />
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-4 overflow-y-auto">
-          {navSections.map((section, si) => (
-            <div key={si} className="space-y-1">
-              {section.heading && (
-                <div className="px-3 pt-1 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-ink-mute">
-                  {section.heading}
-                </div>
-              )}
-              {section.items.map((n) => (
-                <NavLink
-                  key={n.to}
-                  to={n.to}
-                  end={n.to === "/"}
-                  className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}
-                >
-                  <span className="text-ink-soft">
-                    <n.icon />
-                  </span>
-                  <span>{n.label}</span>
-                  <span className="ml-auto nav-dot" />
-                </NavLink>
-              ))}
-            </div>
-          ))}
-        </nav>
+        <NavList />
 
         <div className="px-6 py-5 border-t border-surface-line">
           {session ? (
@@ -95,15 +117,48 @@ export function AppShell() {
         </div>
       </aside>
 
+      {/* Mobilmenu (skuffe) */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-40 md:hidden">
+          <div className="absolute inset-0 bg-ink/40 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
+          <div className="absolute inset-y-0 left-0 w-72 max-w-[85vw] bg-white shadow-card flex flex-col">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-surface-line">
+              <BrandMark />
+              <button className="btn-ghost px-2 py-1" onClick={() => setMobileOpen(false)} aria-label="Luk menu">
+                ✕
+              </button>
+            </div>
+            <NavList onNavigate={() => setMobileOpen(false)} />
+            {session && (
+              <div className="px-5 py-4 border-t border-surface-line">
+                <div className="text-xs text-ink-soft truncate">{user?.email}</div>
+                <button onClick={() => signOut()} className="mt-1 text-xs font-medium text-brand-700 hover:underline">
+                  Log ud
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
         <header className="sticky top-0 z-10 bg-white/80 backdrop-blur border-b border-surface-line">
-          <div className="flex items-center justify-between px-6 md:px-10 py-4">
-            <div>
-              <div className="text-[11px] uppercase tracking-wider text-ink-mute">
-                green light · estimat
+          <div className="flex items-center justify-between gap-3 px-4 md:px-10 py-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <button
+                className="md:hidden shrink-0 w-10 h-10 rounded-xl border border-surface-line bg-white flex items-center justify-center text-ink-soft"
+                onClick={() => setMobileOpen(true)}
+                aria-label="Menu"
+              >
+                <MenuIcon />
+              </button>
+              <div className="min-w-0">
+                <div className="text-[11px] uppercase tracking-wider text-ink-mute">
+                  green light · estimat
+                </div>
+                <h1 className="text-xl font-bold text-ink mt-0.5 truncate">{pageTitle}</h1>
               </div>
-              <h1 className="text-xl font-bold text-ink mt-0.5">{pageTitle}</h1>
             </div>
             <NavLink to="/nyt-estimat" className="btn-primary hidden sm:inline-flex">
               <PlusIcon /> Nyt estimat
@@ -130,6 +185,14 @@ function PlusIcon() {
         strokeWidth="2"
         strokeLinecap="round"
       />
+    </svg>
+  );
+}
+
+function MenuIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   );
 }

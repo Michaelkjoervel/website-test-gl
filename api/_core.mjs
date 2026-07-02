@@ -14,16 +14,29 @@ const OPENAI_EDITS_URL = "https://api.openai.com/v1/images/edits";
 
 /**
  * Verificér brugerens Supabase-login, FØR OpenAI kaldes (så kun green light-
- * brugere kan bruge jeres credits). Er auth ikke konfigureret (env-variabler
- * mangler), returneres ok:true → bagudkompatibel/åben, indtil I slår det til.
+ * brugere kan bruge jeres credits).
+ *
+ * FEJLER LUKKET: er auth ikke konfigureret (env mangler), afvises alle kald
+ * med 503, så en glemt env-variabel aldrig efterlader et betalings-endpoint
+ * åbent for internettet. Til lokal udvikling kan ALLOW_ANONYMOUS=1 sættes
+ * eksplicit for at køre uden login.
  *
  * Env: SUPABASE_URL, SUPABASE_ANON_KEY (påkrævet for at håndhæve login),
- *      ALLOWED_EMAIL_DOMAIN (valgfri, fx "green-light.dk").
+ *      ALLOWED_EMAIL_DOMAIN (valgfri, fx "green-light.dk"),
+ *      ALLOW_ANONYMOUS=1 (kun til lokal test – åbner endpointet).
  */
 export async function authorize(token) {
   const url = (process.env.SUPABASE_URL || "").replace(/\/$/, "");
   const anon = process.env.SUPABASE_ANON_KEY;
-  if (!url || !anon) return { ok: true }; // login ikke konfigureret → åben
+  if (!url || !anon) {
+    const anonOk = ["1", "true", "yes"].includes(String(process.env.ALLOW_ANONYMOUS || "").toLowerCase());
+    if (anonOk) return { ok: true };
+    return {
+      ok: false,
+      status: 503,
+      reason: "Login er ikke konfigureret på serveren (SUPABASE_URL/SUPABASE_ANON_KEY mangler) – endpointet er lukket af sikkerhedshensyn.",
+    };
+  }
   if (!token) return { ok: false, status: 401, reason: "Log ind kræves." };
 
   let r;
@@ -49,6 +62,58 @@ export async function authorize(token) {
     return { ok: false, status: 403, reason: "Din konto har ikke adgang til værktøjet." };
   }
   return { ok: true, email };
+}
+
+// ---------------------------------------------------------------------------
+// Rate limiting (best effort, i hukommelsen)
+// ---------------------------------------------------------------------------
+// Serverless-instanser deler ikke hukommelse, så dette er en per-instans
+// bremse mod løbske scripts/uheld – ikke en garanti. Skal loftet være hårdt
+// på tværs af instanser, kræver det et eksternt lager (fx Upstash/KV).
+// Env-overrides: RATE_LIMIT_PER_HOUR (pr. bruger), RATE_LIMIT_GLOBAL_PER_DAY.
+
+const RL_PER_USER = Math.max(1, Number(process.env.RATE_LIMIT_PER_HOUR) || 20);
+const RL_GLOBAL_PER_DAY = Math.max(1, Number(process.env.RATE_LIMIT_GLOBAL_PER_DAY) || 300);
+const HOUR = 60 * 60 * 1000;
+const DAY = 24 * HOUR;
+const rlPerUser = new Map(); // email -> [timestamps]
+let rlGlobal = []; // [timestamps]
+
+export function rateLimit(key) {
+  const now = Date.now();
+  rlGlobal = rlGlobal.filter((t) => now - t < DAY);
+  if (rlGlobal.length >= RL_GLOBAL_PER_DAY) {
+    return { ok: false, status: 429, reason: "Dagens samlede grænse for AI-genereringer er nået. Prøv igen i morgen, eller kontakt administratoren." };
+  }
+  const k = String(key || "anonymous").toLowerCase();
+  const mine = (rlPerUser.get(k) || []).filter((t) => now - t < HOUR);
+  if (mine.length >= RL_PER_USER) {
+    return { ok: false, status: 429, reason: `Grænsen på ${RL_PER_USER} genereringer pr. time er nået. Vent lidt, og prøv igen.` };
+  }
+  mine.push(now);
+  rlPerUser.set(k, mine);
+  rlGlobal.push(now);
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// CORS
+// ---------------------------------------------------------------------------
+// Returnér den Allow-Origin der skal sættes for et givent request-origin.
+// Default-allowlisten er appens rigtige adresser; ALLOWED_ORIGIN-env kan
+// tilføje én ekstra (eller sættes til "*" for helt åben, fx lokal test).
+
+const DEFAULT_ORIGINS = [
+  "https://michaelkjoervel.github.io",
+  "http://localhost:5173",
+  "http://localhost:4173",
+];
+
+export function corsOrigin(requestOrigin) {
+  const extra = (process.env.ALLOWED_ORIGIN || "").trim();
+  if (extra === "*") return "*";
+  const allow = extra ? [extra, ...DEFAULT_ORIGINS] : DEFAULT_ORIGINS;
+  return allow.includes(requestOrigin) ? requestOrigin : allow[0];
 }
 
 export function dataUrlToParts(dataUrl) {
@@ -105,6 +170,13 @@ export async function runVisualize({ prompt, roomPhoto, quality, apiKey }) {
     img = dataUrlToParts(roomPhoto);
   } catch (e) {
     return { status: 400, payload: { error: e.message } };
+  }
+
+  if (!img.mime.startsWith("image/")) {
+    return { status: 400, payload: { error: "roomPhoto skal være et billede (png/jpeg/webp)." } };
+  }
+  if (img.buffer.length > 8 * 1024 * 1024) {
+    return { status: 413, payload: { error: "Billedet er for stort (maks 8 MB). Appen nedskalerer normalt automatisk – prøv igen med et mindre billede." } };
   }
 
   const size = pickSize(imageSize(img.buffer, img.mime));
