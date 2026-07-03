@@ -5,7 +5,8 @@ import { Field } from "../components/Field";
 import { ImageDropzone } from "../components/ImageDropzone";
 import { PlacementEditor } from "../components/PlacementEditor";
 import { BeforeAfterSlider } from "../components/BeforeAfterSlider";
-import { vizStorage, newVizId, StorageQuotaError, hasStorageRoom } from "../lib/visualizationStorage";
+import { newVizId, StorageQuotaError, hasStorageRoom } from "../lib/visualizationStorage";
+import { vizData, type DataMode } from "../lib/vizData";
 import { storage } from "../lib/storage";
 import { num } from "../lib/format";
 import type {
@@ -101,8 +102,26 @@ function readDraft(): WizardDraft | null {
 
 export function NewVisualization() {
   const navigate = useNavigate();
-  const library = useMemo(() => vizStorage.listFixtures(), []);
+  const [library, setLibrary] = useState<Fixture[]>([]);
+  const [dataMode, setDataMode] = useState<DataMode>("local");
   const estimates = useMemo(() => storage.listEstimates(), []);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const [m, lib] = await Promise.all([vizData.mode(), vizData.listFixtures()]);
+        if (!alive) return;
+        setDataMode(m);
+        setLibrary(lib);
+      } catch (e) {
+        if (alive) setError(e instanceof Error ? e.message : "Kunne ikke hente kataloget.");
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
   // Genberegnes når live-AI-opsætningen ændres (cfgTick).
   const [cfgTick, setCfgTick] = useState(0);
   const providers = useMemo(() => availableProviders(), [cfgTick]);
@@ -209,9 +228,9 @@ export function NewVisualization() {
       setError("Vælg mindst ét armatur først (trin Armaturer).");
       return;
     }
-    // Kvote-tjek FØR den betalte generering: er der ikke plads til at gemme
-    // resultatet bagefter, skal der ikke bruges penge på at lave det.
-    if (!hasStorageRoom()) {
+    // Kvote-tjek FØR den betalte generering (kun relevant når der gemmes
+    // lokalt – i delt tilstand gemmes i databasen uden browserkvote).
+    if (dataMode === "local" && !hasStorageRoom()) {
       setError(
         "Browserens lager er næsten fuldt – et nyt billede ville ikke kunne gemmes. Slet en eller flere gamle visualiseringer (under Visualiseringer), og prøv igen.",
       );
@@ -238,10 +257,13 @@ export function NewVisualization() {
     }
   };
 
-  const save = () => {
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
     setError(null);
+    setSaving(true);
     try {
-      vizStorage.saveVisualization({ ...viz, updatedAt: iso() });
+      await vizData.saveVisualization({ ...viz, updatedAt: iso() });
       try {
         localStorage.removeItem(DRAFT_KEY);
       } catch {
@@ -256,6 +278,8 @@ export function NewVisualization() {
             ? e.message
             : "Kunne ikke gemme.",
       );
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -505,7 +529,9 @@ export function NewVisualization() {
                   Download billede
                 </a>
               )}
-              <button className="btn-primary flex-1 py-3" onClick={save} disabled={!latestRender}>Gem visualisering</button>
+              <button className="btn-primary flex-1 py-3" onClick={save} disabled={!latestRender || saving}>
+                {saving ? "Gemmer…" : "Gem visualisering"}
+              </button>
             </div>
           </div>
         )}

@@ -93,7 +93,8 @@ src/
     ├── mockData.ts        – Demo historiske tilbud
     ├── format.ts          – Dansk talformat & dato
     ├── visualizationTypes.ts    – Datamodel (armatur + visualisering)
-    ├── visualizationStorage.ts  – Repository for universet + visualiseringer
+    ├── visualizationStorage.ts  – Lokalt repository (localStorage-bagende)
+    ├── vizData.ts         – Fælles datalag: Supabase (delt) m. lokal fallback
     ├── fixtureSeed.ts     – Realistiske pladsholder-armaturer
     ├── visualizationProvider.ts – AI-motor (mock + proxy) + prompt-bygger
     ├── visualizationConfig.ts   – Runtime-konfig af live-AI-proxyens URL
@@ -106,6 +107,8 @@ api/
 └── visualize.js          – Vercel-adapter (holder nøglen skjult)
 server/
 └── proxy.mjs             – Node-server-udgave (fx til GitHub Codespaces)
+supabase/
+└── schema.sql            – Tabeller + RLS til fælles katalog/visualiseringer
 vercel.json               – Funktions-timeout (60 s) til proxyen
 ```
 
@@ -237,6 +240,35 @@ provider-agnostiske: vil man bruge en anden model (Flux, Gemini m.fl.), ændrer
 man blot kernen til at kalde det API — kontrakten ud mod appen (`{ imageData }`)
 er den samme.
 
+### Fælles katalog & backup (Supabase-database)
+
+Når en sælger er logget ind, gemmes **armaturkataloget og alle visualiseringer i
+en fælles Supabase-database** i stedet for browserens localStorage. Det betyder:
+
+- **Hele teamet ser det samme katalog** — ét sted at vedligeholde armaturer.
+- **Ingen datatab** ved ryddet browser, nyt device eller ny telefon.
+- **Ingen 5 MB-grænse** — kvote-tjekket før generering gælder kun lokal tilstand.
+- **Migration:** første gang en logget-ind bruger åbner værktøjet mod en tom
+  database, uploades de eksisterende lokale data (katalog + visualiseringer)
+  automatisk, så intet går tabt ved skiftet.
+- Skriv-semantik: sidste-skriver-vinder **pr. element** (upsert på id).
+
+**Engangsopsætning:** kør [`supabase/schema.sql`](supabase/schema.sql) i
+Supabase → **SQL Editor** → New query → indsæt filen → **Run**. Scriptet
+opretter to tabeller (`viz_fixtures`, `viz_visualizations`) med Row Level
+Security, så **kun loggede-ind brugere** kan læse/skrive — anonyme kald afvises,
+selvom anon-nøglen er offentlig. Scriptet kan køres igen uden skade.
+
+Siderne viser en lille badge — **☁ Fælles** (databasen) eller **Kun denne
+browser** (lokal tilstand, fx testbuilds) — så man altid ved, hvor data bor.
+Datalaget ligger i [`src/lib/vizData.ts`](src/lib/vizData.ts); uden login falder
+det automatisk tilbage til det hidtidige localStorage-repository.
+
+Billeder gemmes inline i rækkerne (nedskaleret JPEG, typisk 200–500 KB pr.
+billede). Supabase' gratis plan har 500 MB database — rigeligt til at starte;
+ved stor volumen kan billederne senere flyttes til Supabase Storage uden at
+ændre resten.
+
 ### Adgangskontrol (login med Supabase)
 
 Visualiseringen kan låses, så kun green light-brugere har adgang — og så kun
@@ -291,11 +323,12 @@ Det eneste, der SKAL sættes i et dashboard, er proxyens server-miljø i Vercel
 
 - Visualiseringen er **illustrativ**, ikke en garanteret gengivelse – samme
   forbeholdslinje som estimatet ("kvalificeret estimat, ikke bindende tilbud").
-- Billeder gemmes **nedskaleret** i browserens `localStorage` (~5 MB). Til
-  mange/store visualiseringer bør data flyttes til en backend (samme
-  repository-skift som `storage.ts`).
-- Kundefotos er forretnings-/persondata – ved en backend skal opbevaring,
-  adgang, samtykke og sletning håndteres (GDPR).
+- Logget ind gemmes data i den **fælles Supabase-database** (se ovenfor);
+  uden login (testbuilds) bruges browserens `localStorage` (~5 MB, nedskalerede
+  billeder).
+- Kundefotos er forretnings-/persondata – opbevaring (Supabase-region),
+  samtykke og sletning skal håndteres (GDPR), og fotos sendes til OpenAI (USA)
+  ved live-AI-generering.
 
 ---
 
