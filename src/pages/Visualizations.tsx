@@ -1,11 +1,30 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { vizStorage } from "../lib/visualizationStorage";
+import { vizData, type DataMode } from "../lib/vizData";
+import { DataModeBadge } from "../components/DataModeBadge";
 import { formatDate, num } from "../lib/format";
 import type { Visualization } from "../lib/visualizationTypes";
 
 export function Visualizations() {
-  const [items, setItems] = useState<Visualization[]>(() => vizStorage.listVisualizations());
+  const [items, setItems] = useState<Visualization[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [mode, setMode] = useState<DataMode>("local");
+
+  const refresh = async () => {
+    try {
+      setMode(await vizData.mode());
+      setItems(await vizData.listVisualizations());
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Kunne ikke hente visualiseringer.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const stats = useMemo(
     () => ({
@@ -15,18 +34,25 @@ export function Visualizations() {
     [items],
   );
 
-  const remove = (v: Visualization) => {
-    if (confirm(`Slet "${v.projectName}"?`)) {
-      vizStorage.deleteVisualization(v.id);
-      setItems(vizStorage.listVisualizations());
+  const remove = async (v: Visualization) => {
+    if (!confirm(`Slet "${v.projectName}"?${mode === "shared" ? " (Slettes for hele teamet.)" : ""}`)) return;
+    try {
+      await vizData.deleteVisualization(v.id);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Kunne ikke slette.");
+      return;
     }
+    refresh();
   };
 
   return (
     <div className="space-y-6">
       <div className="card p-5 md:p-6 flex flex-col md:flex-row md:items-center gap-4">
         <div className="flex-1">
-          <div className="text-[11px] uppercase tracking-wider text-ink-mute">Visualisering</div>
+          <div className="flex items-center gap-2">
+            <div className="text-[11px] uppercase tracking-wider text-ink-mute">Visualisering</div>
+            <DataModeBadge mode={mode} />
+          </div>
           <h2 className="text-lg font-bold text-ink mt-0.5">Kundevisualiseringer</h2>
           <p className="text-sm text-ink-soft mt-1">
             {num.format(stats.total)} gemte · {num.format(stats.generated)} genereret. Vis kunden præcis, hvordan løsningen kommer til at se ud.
@@ -38,7 +64,12 @@ export function Visualizations() {
         </div>
       </div>
 
-      {items.length === 0 ? (
+      {loading ? (
+        <div className="card p-10 flex items-center justify-center gap-3 text-ink-mute">
+          <span className="w-4 h-4 rounded-full border-2 border-brand-500 border-t-transparent animate-spin" />
+          Henter visualiseringer…
+        </div>
+      ) : items.length === 0 ? (
         <div className="card p-12 text-center space-y-4">
           <div className="w-14 h-14 rounded-2xl bg-brand-50 mx-auto flex items-center justify-center">
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" className="text-brand-500">

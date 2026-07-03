@@ -5,7 +5,8 @@ import {
   fixtureJsonSample,
   type FixtureImportResult,
 } from "../lib/fixtureImporter";
-import { vizStorage, StorageQuotaError } from "../lib/visualizationStorage";
+import { StorageQuotaError } from "../lib/visualizationStorage";
+import { vizData } from "../lib/vizData";
 
 function downloadText(filename: string, text: string, mime: string) {
   const blob = new Blob([text], { type: mime });
@@ -38,13 +39,18 @@ export function FixtureImport({ onDone, onCancel }: FixtureImportProps) {
     setText(await file.text());
   };
 
-  const doImport = () => {
+  const [busy, setBusy] = useState(false);
+
+  const doImport = async () => {
     setError(null);
+    setBusy(true);
     try {
-      const { added, skipped } = vizStorage.addFixtures(result.fixtures);
+      const { added, skipped } = await vizData.addFixtures(result.fixtures);
       onDone(added, skipped);
     } catch (e) {
       setError(e instanceof StorageQuotaError ? e.message : e instanceof Error ? e.message : "Import fejlede.");
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -115,10 +121,10 @@ export function FixtureImport({ onDone, onCancel }: FixtureImportProps) {
         <button className="btn-ghost" onClick={onCancel}>Annullér</button>
         <button
           className="btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
-          disabled={result.fixtures.length === 0}
+          disabled={result.fixtures.length === 0 || busy}
           onClick={doImport}
         >
-          Importér {result.fixtures.length || ""} armaturer
+          {busy ? "Importerer…" : `Importér ${result.fixtures.length || ""} armaturer`}
         </button>
       </div>
     </div>

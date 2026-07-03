@@ -1,9 +1,10 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import type { Fixture, FixtureCategory } from "../lib/visualizationTypes";
-import { vizStorage } from "../lib/visualizationStorage";
+import { vizData, type DataMode } from "../lib/vizData";
 import { FixtureForm } from "../components/FixtureForm";
 import { FixtureImport } from "../components/FixtureImport";
+import { DataModeBadge } from "../components/DataModeBadge";
 import { dkkInt, num } from "../lib/format";
 
 const ALL_CATEGORIES: (FixtureCategory | "Alle")[] = [
@@ -18,14 +19,30 @@ const ALL_CATEGORIES: (FixtureCategory | "Alle")[] = [
 ];
 
 export function Univers() {
-  const [fixtures, setFixtures] = useState<Fixture[]>(() => vizStorage.listFixtures());
+  const [fixtures, setFixtures] = useState<Fixture[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [mode, setMode] = useState<DataMode>("local");
   const [editing, setEditing] = useState<Fixture | null>(null);
   const [creating, setCreating] = useState(false);
   const [importing, setImporting] = useState(false);
   const [cat, setCat] = useState<(typeof ALL_CATEGORIES)[number]>("Alle");
   const [q, setQ] = useState("");
 
-  const refresh = () => setFixtures(vizStorage.listFixtures());
+  const refresh = async () => {
+    try {
+      setMode(await vizData.mode());
+      setFixtures(await vizData.listFixtures());
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Kunne ikke hente kataloget.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -39,9 +56,9 @@ export function Univers() {
     );
   }, [fixtures, cat, q]);
 
-  const saveFixture = (fx: Fixture) => {
+  const saveFixture = async (fx: Fixture) => {
     try {
-      vizStorage.saveFixture(fx);
+      await vizData.saveFixture(fx);
     } catch (e) {
       alert(e instanceof Error ? e.message : "Kunne ikke gemme armaturet.");
       return;
@@ -51,16 +68,27 @@ export function Univers() {
     refresh();
   };
 
-  const remove = (fx: Fixture) => {
-    if (confirm(`Slet "${fx.name}" fra universet?`)) {
-      vizStorage.deleteFixture(fx.id);
-      refresh();
+  const remove = async (fx: Fixture) => {
+    if (!confirm(`Slet "${fx.name}" fra universet?${mode === "shared" ? " (Slettes for hele teamet.)" : ""}`)) return;
+    try {
+      await vizData.deleteFixture(fx.id);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Kunne ikke slette.");
+      return;
     }
+    refresh();
   };
 
-  const resetDemo = () => {
-    if (confirm("Nulstil universet til demo-armaturerne? Dine egne ændringer i universet slettes.")) {
-      setFixtures(vizStorage.resetFixtures());
+  const resetDemo = async () => {
+    const warn =
+      mode === "shared"
+        ? "Nulstil universet til demo-armaturerne? Dette sletter HELE TEAMETS katalog og kan ikke fortrydes."
+        : "Nulstil universet til demo-armaturerne? Dine egne ændringer i universet slettes.";
+    if (!confirm(warn)) return;
+    try {
+      setFixtures(await vizData.resetFixtures());
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Kunne ikke nulstille.");
     }
   };
 
@@ -71,7 +99,10 @@ export function Univers() {
       {/* Intro */}
       <div className="card p-5 md:p-6 flex flex-col md:flex-row md:items-center gap-4">
         <div className="flex-1">
-          <div className="text-[11px] uppercase tracking-wider text-ink-mute">Visualisering</div>
+          <div className="flex items-center gap-2">
+            <div className="text-[11px] uppercase tracking-wider text-ink-mute">Visualisering</div>
+            <DataModeBadge mode={mode} />
+          </div>
           <h2 className="text-lg font-bold text-ink mt-0.5">Universet · produktbibliotek</h2>
           <p className="text-sm text-ink-soft mt-1 max-w-2xl">
             Jeres armaturer med datablade, billeder, fotometri (IES/LDT) og specs. Grundlaget som
@@ -107,7 +138,12 @@ export function Univers() {
       </div>
 
       {/* Grid */}
-      {filtered.length === 0 ? (
+      {loading ? (
+        <div className="card p-10 flex items-center justify-center gap-3 text-ink-mute">
+          <span className="w-4 h-4 rounded-full border-2 border-brand-500 border-t-transparent animate-spin" />
+          Henter kataloget…
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="card p-10 text-center text-ink-mute">Ingen armaturer matcher. Justér filteret, eller tilføj et nyt.</div>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -1,17 +1,50 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { vizStorage } from "../lib/visualizationStorage";
+import { vizData } from "../lib/vizData";
 import { BeforeAfterSlider } from "../components/BeforeAfterSlider";
 import { VISUALIZATION_DISCLAIMER } from "../lib/visualizationProvider";
 import { formatDate, num } from "../lib/format";
-import type { Fixture } from "../lib/visualizationTypes";
+import type { Fixture, Visualization } from "../lib/visualizationTypes";
 
 export function VisualizationDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const viz = useMemo(() => (id ? vizStorage.getVisualization(id) : undefined), [id]);
-  const library = useMemo(() => vizStorage.listFixtures(), []);
-  const [renderIdx, setRenderIdx] = useState<number>((viz?.renders.length ?? 1) - 1);
+  const [viz, setViz] = useState<Visualization | undefined>(undefined);
+  const [library, setLibrary] = useState<Fixture[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [renderIdx, setRenderIdx] = useState(0);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const [v, lib] = await Promise.all([
+          id ? vizData.getVisualization(id) : Promise.resolve(undefined),
+          vizData.listFixtures(),
+        ]);
+        if (!alive) return;
+        setViz(v);
+        setLibrary(lib);
+        setRenderIdx((v?.renders.length ?? 1) - 1);
+      } catch (e) {
+        if (alive) alert(e instanceof Error ? e.message : "Kunne ikke hente visualiseringen.");
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="card p-10 flex items-center justify-center gap-3 text-ink-mute">
+        <span className="w-4 h-4 rounded-full border-2 border-brand-500 border-t-transparent animate-spin" />
+        Henter visualiseringen…
+      </div>
+    );
+  }
 
   if (!viz) {
     return (
@@ -35,10 +68,13 @@ export function VisualizationDetail() {
   const totalLumen = fixtures.reduce((n, x) => n + x.f.specs.lumen * x.qty, 0);
   const totalCount = fixtures.reduce((n, x) => n + x.qty, 0);
 
-  const remove = () => {
-    if (confirm("Slet denne visualisering?")) {
-      vizStorage.deleteVisualization(viz.id);
+  const remove = async () => {
+    if (!confirm("Slet denne visualisering?")) return;
+    try {
+      await vizData.deleteVisualization(viz.id);
       navigate("/visualiseringer");
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Kunne ikke slette.");
     }
   };
 
