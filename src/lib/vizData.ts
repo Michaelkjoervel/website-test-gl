@@ -29,9 +29,15 @@ const VIZ_TABLE = "viz_visualizations";
 export type DataMode = "shared" | "local";
 
 function friendly(error: { code?: string; message?: string }): Error {
-  if (error?.code === "42P01") {
+  // 42P01 = tabel findes ikke; PGRST205/"schema cache" = PostgREST kender den
+  // ikke (endnu) – begge betyder i praksis "kør schema.sql først".
+  if (
+    error?.code === "42P01" ||
+    error?.code === "PGRST205" ||
+    /schema cache/i.test(error?.message ?? "")
+  ) {
     return new Error(
-      "Databasen mangler tabellerne. Kør supabase/schema.sql i Supabase → SQL Editor (se README), og prøv igen.",
+      "Databasen mangler tabellerne. Kør supabase/schema.sql i Supabase → SQL Editor (se README). Er scriptet lige kørt, så vent ét minut og genindlæs.",
     );
   }
   if (error?.code === "42501" || /row-level security/i.test(error?.message ?? "")) {
