@@ -24,9 +24,11 @@ import type {
   PlacementMode,
   PlacementPoint,
 } from "./visualizationTypes";
-import { loadImage, downscaleImage } from "./image";
+import { loadImage, downscaleImage, stampBadge } from "./image";
 import { getEndpoint } from "./visualizationConfig";
 import { getAccessToken } from "./supabase";
+
+export type RenderQuality = "low" | "medium" | "high";
 
 export interface SelectedFixtureRef {
   fixture: Fixture;
@@ -41,6 +43,7 @@ export interface VizRenderInput {
   placementMode: PlacementMode;
   roomType: string;
   scenario: LightingScenario;
+  quality?: RenderQuality; // AI-kvalitet (styrer også prisen pr. billede)
 }
 
 export interface GeneratedRenderResult {
@@ -316,6 +319,7 @@ export const proxyProvider: VisualizationProvider = {
         body: JSON.stringify({
           prompt: input.prompt,
           roomPhoto: input.roomPhoto,
+          quality: input.quality ?? "medium",
           floorPlan: input.floorPlan,
           placementMode: input.placementMode,
           placements: input.placements,
@@ -345,8 +349,10 @@ export const proxyProvider: VisualizationProvider = {
     const data = (await res.json()) as { imageData?: string; image?: string };
     const raw = data.imageData ?? data.image;
     if (!raw) throw new Error("Live-AI returnerede intet billede.");
-    // Komprimér til et gemme-venligt format inden det lægges i localStorage.
-    const imageData = await downscaleImage(raw, 1600, 0.85, "image/jpeg").catch(() => raw);
+    // Komprimér til et gemme-venligt format, og AI-mærk billedet (kundevendte
+    // AI-billeder skal kunne kendes som AI-genererede).
+    const compact = await downscaleImage(raw, 1600, 0.85, "image/jpeg").catch(() => raw);
+    const imageData = await stampBadge(compact, "AI-visualisering").catch(() => compact);
     return { imageData, provider: this.id, prompt: input.prompt };
   },
 };
@@ -360,4 +366,4 @@ export function defaultProvider(): VisualizationProvider {
 }
 
 export const VISUALIZATION_DISCLAIMER =
-  "Illustrativ visualisering til inspiration – ikke en garanteret, fotometrisk gengivelse. Endeligt lysresultat kan afvige.";
+  "AI-genereret visualisering til inspiration – ikke en garanteret, fotometrisk gengivelse. Faktisk lysvirkning, produktudseende og armaturplacering kan afvige fra det viste.";

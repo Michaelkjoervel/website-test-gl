@@ -1,11 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Stepper } from "../components/Stepper";
 import { Field } from "../components/Field";
 import { ImageDropzone } from "../components/ImageDropzone";
 import { PlacementEditor } from "../components/PlacementEditor";
 import { BeforeAfterSlider } from "../components/BeforeAfterSlider";
-import { vizStorage, newVizId, StorageQuotaError } from "../lib/visualizationStorage";
+import { vizStorage, newVizId, StorageQuotaError, hasStorageRoom } from "../lib/visualizationStorage";
 import { storage } from "../lib/storage";
 import { num } from "../lib/format";
 import type {
@@ -21,6 +21,7 @@ import {
   buildVisualizationPrompt,
   defaultProvider,
   VISUALIZATION_DISCLAIMER,
+  type RenderQuality,
   type SelectedFixtureRef,
   type VizRenderInput,
 } from "../lib/visualizationProvider";
@@ -57,16 +58,18 @@ const SCENARIOS: LightingScenario[] = [
 
 const iso = () => new Date().toISOString();
 
-export function NewVisualization() {
-  const navigate = useNavigate();
-  const library = useMemo(() => vizStorage.listFixtures(), []);
-  const estimates = useMemo(() => storage.listEstimates(), []);
-  // Genberegnes når live-AI-opsætningen ændres (cfgTick).
-  const [cfgTick, setCfgTick] = useState(0);
-  const providers = useMemo(() => availableProviders(), [cfgTick]);
+// Kladde-autosave: wizard-tilstanden gemmes løbende, så et reload/lukket vindue
+// aldrig smider indtastninger eller allerede-betalte AI-renders væk.
+const DRAFT_KEY = "gl.viz.draft.v1";
 
-  const [step, setStep] = useState(1);
-  const [viz, setViz] = useState<Visualization>(() => ({
+interface WizardDraft {
+  viz: Visualization;
+  step: number;
+  quality: RenderQuality;
+}
+
+function freshViz(): Visualization {
+  return {
     id: newVizId("viz"),
     createdAt: iso(),
     updatedAt: iso(),
@@ -79,13 +82,64 @@ export function NewVisualization() {
     scenario: "Dagslys, tændt",
     renders: [],
     status: "Kladde",
-  }));
+  };
+}
+
+function readDraft(): WizardDraft | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    const d = JSON.parse(raw) as WizardDraft;
+    if (!d?.viz?.id) return null;
+    // En helt urørt kladde er ikke værd at gendanne.
+    const touched = d.viz.customerName || d.viz.projectName || d.viz.roomPhoto || d.viz.renders.length;
+    return touched ? d : null;
+  } catch {
+    return null;
+  }
+}
+
+export function NewVisualization() {
+  const navigate = useNavigate();
+  const library = useMemo(() => vizStorage.listFixtures(), []);
+  const estimates = useMemo(() => storage.listEstimates(), []);
+  // Genberegnes når live-AI-opsætningen ændres (cfgTick).
+  const [cfgTick, setCfgTick] = useState(0);
+  const providers = useMemo(() => availableProviders(), [cfgTick]);
+
+  const draft = useMemo(readDraft, []);
+  const [step, setStep] = useState(() => draft?.step ?? 1);
+  const [viz, setViz] = useState<Visualization>(() => draft?.viz ?? freshViz());
+  const [quality, setQuality] = useState<RenderQuality>(() => draft?.quality ?? "medium");
+  const [draftRestored, setDraftRestored] = useState(() => draft !== null);
   const [providerId, setProviderId] = useState(() => defaultProvider().id);
   const [showPrompt, setShowPrompt] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [endpointInput, setEndpointInput] = useState(() => getEndpoint());
   const [showAiSetup, setShowAiSetup] = useState(false);
+
+  // Autosave (best effort – kvotefejl må aldrig vælte selve wizarden).
+  useEffect(() => {
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ viz, step, quality } satisfies WizardDraft));
+    } catch {
+      /* lager fuldt – kladden må vige */
+    }
+  }, [viz, step, quality]);
+
+  const discardDraft = () => {
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+    } catch {
+      /* ignore */
+    }
+    setViz(freshViz());
+    setStep(1);
+    setQuality("medium");
+    setDraftRestored(false);
+    setError(null);
+  };
 
   const saveEndpoint = () => {
     setEndpoint(endpointInput);
@@ -120,6 +174,7 @@ export function NewVisualization() {
     placementMode: viz.placementMode,
     roomType: viz.roomType,
     scenario: viz.scenario,
+    quality,
   };
   const prompt = buildVisualizationPrompt(renderInput);
 
@@ -154,6 +209,14 @@ export function NewVisualization() {
       setError("Vælg mindst ét armatur først (trin Armaturer).");
       return;
     }
+    // Kvote-tjek FØR den betalte generering: er der ikke plads til at gemme
+    // resultatet bagefter, skal der ikke bruges penge på at lave det.
+    if (!hasStorageRoom()) {
+      setError(
+        "Browserens lager er næsten fuldt – et nyt billede ville ikke kunne gemmes. Slet en eller flere gamle visualiseringer (under Visualiseringer), og prøv igen.",
+      );
+      return;
+    }
     const provider = providers.find((p) => p.id === providerId) ?? defaultProvider();
     setGenerating(true);
     try {
@@ -179,6 +242,11 @@ export function NewVisualization() {
     setError(null);
     try {
       vizStorage.saveVisualization({ ...viz, updatedAt: iso() });
+      try {
+        localStorage.removeItem(DRAFT_KEY);
+      } catch {
+        /* ignore */
+      }
       navigate(`/visualisering/${viz.id}`);
     } catch (e) {
       setError(
@@ -193,6 +261,17 @@ export function NewVisualization() {
 
   return (
     <div className="max-w-4xl mx-auto">
+      {draftRestored && (
+        <div className="mb-4 rounded-xl bg-brand-50 border border-brand-100 px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-2">
+          <span className="text-sm text-brand-800 flex-1">
+            Din kladde fra sidst er gendannet{viz.renders.length > 0 ? " – inklusive genererede billeder" : ""}.
+          </span>
+          <div className="flex gap-2 shrink-0">
+            <button className="btn-ghost px-3 py-1.5 text-xs" onClick={() => setDraftRestored(false)}>Fortsæt kladden</button>
+            <button className="btn-outline px-3 py-1.5 text-xs" onClick={discardDraft}>Kassér & start forfra</button>
+          </div>
+        </div>
+      )}
       <Stepper current={step} steps={STEPS} />
 
       <div className="card p-5 md:p-7">
@@ -306,8 +385,8 @@ export function NewVisualization() {
         {/* --- Trin 5: Generér --- */}
         {step === 5 && (
           <div className="space-y-5">
-            <StepHead title="Generér visualisering" desc="Vælg lysscenarie og motor, og lav visualiseringen." />
-            <div className="grid sm:grid-cols-2 gap-4">
+            <StepHead title="Generér visualisering" desc="Vælg lysscenarie, motor og kvalitet, og lav visualiseringen." />
+            <div className="grid sm:grid-cols-3 gap-4">
               <Field label="Lysscenarie">
                 <select className="select" value={viz.scenario} onChange={(e) => set({ scenario: e.target.value as LightingScenario })}>
                   {SCENARIOS.map((s) => (
@@ -320,6 +399,13 @@ export function NewVisualization() {
                   {providers.map((p) => (
                     <option key={p.id} value={p.id}>{p.label}</option>
                   ))}
+                </select>
+              </Field>
+              <Field label="Kvalitet" hint="Styrer også prisen pr. AI-billede.">
+                <select className="select" value={quality} onChange={(e) => setQuality(e.target.value as RenderQuality)}>
+                  <option value="low">Udkast (hurtig & billig)</option>
+                  <option value="medium">Standard</option>
+                  <option value="high">Høj (dyrest)</option>
                 </select>
               </Field>
             </div>
@@ -372,8 +458,14 @@ export function NewVisualization() {
             {error && <ErrorBox msg={error} />}
 
             <button className="btn-primary w-full py-3 disabled:opacity-50" onClick={generate} disabled={generating}>
-              {generating ? "Genererer…" : viz.renders.length ? "Generér igen" : "Generér visualisering"}
+              {generating ? "Genererer… (tager typisk 10–40 sekunder)" : viz.renders.length ? "Generér igen" : "Generér visualisering"}
             </button>
+            {generating && (
+              <div className="flex items-center gap-3 rounded-xl bg-surface-soft border border-surface-line px-4 py-3">
+                <span className="w-4 h-4 rounded-full border-2 border-brand-500 border-t-transparent animate-spin shrink-0" />
+                <span className="text-[13px] text-ink-soft">AI'en arbejder på billedet – lad siden være åben imens.</span>
+              </div>
+            )}
 
             {latestRender && (
               <div className="pt-2">
@@ -404,6 +496,15 @@ export function NewVisualization() {
 
             <div className="flex flex-col sm:flex-row gap-2">
               <button className="btn-outline flex-1" onClick={() => setStep(5)}>← Justér & generér igen</button>
+              {latestRender && (
+                <a
+                  href={latestRender.imageData}
+                  download={`${viz.customerName || "visualisering"}-${viz.projectName || viz.id}.jpg`}
+                  className="btn-outline flex-1 justify-center"
+                >
+                  Download billede
+                </a>
+              )}
               <button className="btn-primary flex-1 py-3" onClick={save} disabled={!latestRender}>Gem visualisering</button>
             </div>
           </div>

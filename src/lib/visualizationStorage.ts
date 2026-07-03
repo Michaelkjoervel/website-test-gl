@@ -81,13 +81,31 @@ export const vizStorage = {
     writeKey(FIXTURES_KEY, all);
   },
 
-  // Bulk-tilføj (import). Nye armaturer lægges forrest. Returnerer antal tilføjet.
-  addFixtures(fixtures: Fixture[]): number {
-    if (!fixtures.length) return 0;
-    const all = [...fixtures, ...this.listFixtures()];
-    writeKey(FIXTURES_KEY, all);
-    localStorage.setItem(SEEDED_FLAG, "1");
-    return fixtures.length;
+  // Bulk-tilføj (import). Dublerer ikke: armaturer med samme SKU (eller samme
+  // navn, hvis SKU mangler) som et eksisterende springes over, så gentagen
+  // import af samme fil ikke fylder kataloget med kopier.
+  addFixtures(fixtures: Fixture[]): { added: number; skipped: number } {
+    if (!fixtures.length) return { added: 0, skipped: 0 };
+    const existing = this.listFixtures();
+    const keyOf = (f: Fixture) =>
+      f.sku?.trim() ? `sku:${f.sku.trim().toLowerCase()}` : `name:${f.name.trim().toLowerCase()}`;
+    const seen = new Set(existing.map(keyOf));
+    const fresh: Fixture[] = [];
+    let skipped = 0;
+    for (const f of fixtures) {
+      const k = keyOf(f);
+      if (seen.has(k)) {
+        skipped++;
+        continue;
+      }
+      seen.add(k);
+      fresh.push(f);
+    }
+    if (fresh.length) {
+      writeKey(FIXTURES_KEY, [...fresh, ...existing]);
+      localStorage.setItem(SEEDED_FLAG, "1");
+    }
+    return { added: fresh.length, skipped };
   },
 
   resetFixtures(): Fixture[] {
@@ -128,4 +146,25 @@ export function newVizId(prefix: "fx" | "viz" | "pt" | "rnd"): string {
   return `${prefix}_${Date.now().toString(36)}_${Math.random()
     .toString(36)
     .slice(2, 8)}`;
+}
+
+/**
+ * Tjek om der er plads i localStorage til (mindst) `bytes` mere – ved at
+ * prøve. Bruges FØR en betalt AI-generering, så et billede aldrig genereres
+ * uden at kunne gemmes bagefter.
+ */
+export function hasStorageRoom(bytes = 700_000): boolean {
+  const key = "gl.viz.__quotatest";
+  try {
+    localStorage.setItem(key, "x".repeat(bytes));
+    localStorage.removeItem(key);
+    return true;
+  } catch {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      /* ignore */
+    }
+    return false;
+  }
 }

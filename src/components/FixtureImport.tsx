@@ -18,7 +18,7 @@ function downloadText(filename: string, text: string, mime: string) {
 }
 
 interface FixtureImportProps {
-  onDone: (count: number) => void;
+  onDone: (added: number, skipped: number) => void;
   onCancel: () => void;
 }
 
@@ -41,8 +41,8 @@ export function FixtureImport({ onDone, onCancel }: FixtureImportProps) {
   const doImport = () => {
     setError(null);
     try {
-      const n = vizStorage.addFixtures(result.fixtures);
-      onDone(n);
+      const { added, skipped } = vizStorage.addFixtures(result.fixtures);
+      onDone(added, skipped);
     } catch (e) {
       setError(e instanceof StorageQuotaError ? e.message : e instanceof Error ? e.message : "Import fejlede.");
     }

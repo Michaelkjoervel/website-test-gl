@@ -130,7 +130,9 @@ frit – gemmes lokalt via samme repository-mønster som estimatværktøjet.
 
 **Bulk-import:** knappen *Importér* på universet-siden læser mange armaturer på én
 gang fra **CSV** eller **JSON** (kun `name` er påkrævet; billeder angives som URL i
-`productImage`). Hent skabelon/eksempel direkte i import-vinduet. Parseren ligger i
+`productImage`). Hent skabelon/eksempel direkte i import-vinduet. Import er
+**dublet-sikker**: armaturer med samme SKU (eller navn) som et eksisterende
+springes over, så samme fil kan importeres igen uden kopier. Parseren ligger i
 [`src/lib/fixtureImporter.ts`](src/lib/fixtureImporter.ts).
 
 ### Visualiserings-flow · `/ny-visualisering`
@@ -143,11 +145,19 @@ En 6-trins wizard:
 4. **Placering** – **AI foreslår** placeringen automatisk; uploades en
    plantegning, **styrer den** placeringen; eller **markér selv** punkter på
    billedet.
-5. **Generér** – vælg lysscenarie (dag/aften/nat) og motor; se den præcise
+5. **Generér** – vælg lysscenarie (dag/aften/nat), motor og **kvalitet**
+   (udkast/standard/høj – styrer også prisen pr. AI-billede); se den præcise
    AI-prompt.
 6. **Resultat** – **før/efter-slider**, forbehold, gem, download.
 
 Rummet bevares (samme vægge, møbler, perspektiv) – kun belysningen ændres.
+
+Wizarden **autosaver en kladde** løbende (inkl. genererede billeder), så et
+reload eller lukket vindue aldrig koster et betalt AI-billede — kladden
+gendannes ved næste besøg og ryddes ved gem. Før hver generering tjekkes der
+desuden, at der er **plads i browserens lager** til at gemme resultatet, så
+der aldrig genereres (og betales) forgæves. Live-AI-billeder **AI-mærkes**
+automatisk med et lille badge i hjørnet.
 
 ### AI-motoren (pluggbar)
 
@@ -183,10 +193,12 @@ Opsætning (engangsarbejde):
    - `OPENAI_API_KEY` = din OpenAI API-nøgle (påkrævet)
    - `ALLOWED_ORIGIN` = `https://michaelkjoervel.github.io` (valgfri, strammer CORS)
    - Deploy. Din funktion får en URL som `https://<projekt>.vercel.app/api/visualize`.
-3. **Tjek nøglen** (gratis, genererer intet billede): åbn funktions-URL'en i en
-   browser (et **GET**-kald). Svarer den `{"keyValid":true}`, er nøglen sat
-   rigtigt. `{"keyValid":false, "reason": …}` fortæller hvorfor (fx nøgle ikke
-   sat → husk *Redeploy* efter du tilføjer den, eller 401 = forkert nøgle).
+3. **Tjek status** (gratis, genererer intet billede): åbn funktions-URL'en i en
+   browser (et **GET**-kald). Når login er slået til, svarer den
+   `{"authRequired":true,"keyConfigured":true/false}` — nøglens *gyldighed*
+   røbes bevidst ikke uden login (ellers er endpointet et orakel for
+   angribere). Loggede-ind kald (eller `ALLOW_ANONYMOUS=1` lokalt) får det
+   fulde `{"keyValid":…}`-tjek.
 4. **Kobl appen på**: i visualiserings-wizardens trin *Generér* → **"Live AI-opsætning"**
    → indsæt funktions-URL'en → *Gem & slå til*. Motoren skifter til "Live AI".
    (URL'en gemmes i browseren; ingen genbygning nødvendig. Alternativt sæt
@@ -230,11 +242,22 @@ er den samme.
 Visualiseringen kan låses, så kun green light-brugere har adgang — og så kun
 loggede-ind brugere kan bruge jeres OpenAI-credits. Beskyttelsen sker **to steder**:
 
-- **Frontend**: visualiserings-siderne kræver login (Supabase Auth). Er Supabase
-  ikke konfigureret, er login slået fra, og alt virker som før.
+- **Frontend**: visualiserings-siderne kræver login (Supabase Auth). Til lokal
+  test kan login slås fra med `VITE_SUPABASE_URL=off` ved build.
 - **Proxy (server)**: proxyen verificerer brugerens Supabase-token mod
   `/auth/v1/user`, *før* den kalder OpenAI. Uden gyldigt login → `401`. Det er den
   rigtige beskyttelse — en frontend-lås alene kan omgås.
+
+Proxyen **fejler lukket**: mangler `SUPABASE_URL`/`SUPABASE_ANON_KEY` i miljøet,
+afvises *alle* kald med `503` (en glemt env-variabel efterlader aldrig et
+betalings-endpoint åbent). Til lokal test kan `ALLOW_ANONYMOUS=1` sættes
+eksplicit. Derudover er der en **forbrugsbremse**: maks.
+`RATE_LIMIT_PER_HOUR` (default 20) genereringer pr. bruger pr. time og
+`RATE_LIMIT_GLOBAL_PER_DAY` (default 300) i alt pr. dag (best effort pr.
+serverless-instans — sæt desuden et hårdt forbrugsloft + budget-alarm direkte
+hos OpenAI som sidste bremse). CORS er som standard begrænset til appens egne
+adresser; `ALLOWED_ORIGIN` kan tilføje én ekstra (eller `*` til lokal test).
+Billeder over 8 MB og ikke-billed-payloads afvises før OpenAI kaldes.
 
 Opsætning:
 

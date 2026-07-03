@@ -55,6 +55,37 @@ export async function downscaleImage(
 }
 
 /**
+ * Stempl et lille badge (fx "AI-visualisering") i billedets nederste højre
+ * hjørne. Bruges til at AI-mærke kundevendte billeder, jf. god skik og
+ * markedsføringsloven – kunden skal kunne se, at billedet er AI-genereret.
+ */
+export async function stampBadge(src: string, label: string): Promise<string> {
+  const img = await loadImage(src);
+  const w = img.naturalWidth || img.width;
+  const h = img.naturalHeight || img.height;
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return src;
+  ctx.drawImage(img, 0, 0, w, h);
+
+  const pad = Math.max(8, Math.round(Math.min(w, h) * 0.02));
+  const fs = Math.max(12, Math.round(Math.min(w, h) * 0.022));
+  ctx.font = `600 ${fs}px Inter, system-ui, sans-serif`;
+  ctx.textBaseline = "alphabetic";
+  const tw = ctx.measureText(label).width;
+  const boxW = tw + pad * 1.4;
+  const boxH = fs + pad;
+  ctx.fillStyle = "rgba(15,26,10,0.55)";
+  ctx.fillRect(w - boxW - pad, h - boxH - pad, boxW, boxH);
+  ctx.fillStyle = "rgba(255,255,255,0.92)";
+  ctx.fillText(label, w - boxW - pad + pad * 0.7, h - pad - pad * 0.5);
+
+  return canvas.toDataURL("image/jpeg", 0.88);
+}
+
+/**
  * Læs en fil, nedskalér den og returnér en gemme-venlig dataURL.
  * PNG bevares som PNG (så gennemsigtighed på fx produktbilleder ikke bliver
  * til sort baggrund); alt andet komprimeres som JPEG.

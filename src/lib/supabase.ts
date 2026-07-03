@@ -13,11 +13,19 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { appConfig } from "../appConfig";
 
-const url = ((import.meta.env.VITE_SUPABASE_URL as string | undefined) || appConfig.supabaseUrl || "")
-  .trim()
-  .replace(/\/rest\/v1\/?$/, "") // tåler at der er indsat et REST-endpoint
-  .replace(/\/$/, "");
-const anonKey = ((import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) || appConfig.supabaseAnonKey || "").trim();
+// VITE_SUPABASE_URL=off slår login helt fra i bygningen (kun til lokal test).
+const rawEnvUrl = ((import.meta.env.VITE_SUPABASE_URL as string | undefined) || "").trim();
+const authDisabled = rawEnvUrl.toLowerCase() === "off";
+
+const url = authDisabled
+  ? ""
+  : (rawEnvUrl || appConfig.supabaseUrl || "")
+      .trim()
+      .replace(/\/rest\/v1\/?$/, "") // tåler at der er indsat et REST-endpoint
+      .replace(/\/$/, "");
+const anonKey = authDisabled
+  ? ""
+  : ((import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) || appConfig.supabaseAnonKey || "").trim();
 
 export const authEnabled = Boolean(url && anonKey);
 

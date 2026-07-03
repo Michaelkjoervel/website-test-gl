@@ -144,10 +144,14 @@ export function Univers() {
         <Modal title="Importér armaturer" onClose={() => setImporting(false)}>
           <FixtureImport
             onCancel={() => setImporting(false)}
-            onDone={(n) => {
+            onDone={(added, skipped) => {
               setImporting(false);
               refresh();
-              if (n > 0) alert(`${n} armaturer importeret.`);
+              if (added > 0 || skipped > 0) {
+                alert(
+                  `${added} armaturer importeret${skipped > 0 ? `, ${skipped} sprunget over (findes allerede med samme SKU/navn)` : ""}.`,
+                );
+              }
             }}
           />
         </Modal>
