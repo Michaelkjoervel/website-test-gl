@@ -96,6 +96,8 @@ const server = createServer(async (req, res) => {
       prompt: body?.prompt,
       roomPhoto: body?.roomPhoto,
       quality: body?.quality,
+      fixtureImages: body?.fixtureImages,
+      autoPrompt: body?.autoPrompt,
       apiKey: process.env.OPENAI_API_KEY,
     });
     return sendJson(res, status, payload);

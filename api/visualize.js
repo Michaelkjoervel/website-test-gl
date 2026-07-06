@@ -84,6 +84,8 @@ export default async function handler(req, res) {
     prompt: body?.prompt,
     roomPhoto: body?.roomPhoto,
     quality: body?.quality,
+    fixtureImages: body?.fixtureImages,
+    autoPrompt: body?.autoPrompt,
     apiKey: process.env.OPENAI_API_KEY,
   });
   return res.status(status).json(payload);
