@@ -126,8 +126,12 @@ export function FixtureForm({ initial, onSave, onCancel }: FixtureFormProps) {
   const extractFromPdf = async (file: File) => {
     setExtractError(null);
     setExtractNote(null);
-    if (file.size > 15 * 1024 * 1024) {
-      setExtractError("PDF'en er for stor (maks 15 MB).");
+    // Vercel afviser request-bodies over ~4,5 MB FØR vores kode kører, og
+    // base64 gør PDF'en ~37 % større – så loftet er reelt ~3 MB rå PDF.
+    if (file.size > 3 * 1024 * 1024) {
+      setExtractError(
+        `PDF'en er for stor til serveren (${(file.size / 1024 / 1024).toFixed(1)} MB – maks ca. 3 MB). Komprimér den først, fx via "Print til PDF" eller producentens web-version af databladet.`,
+      );
       return;
     }
     const endpoint = getExtractEndpoint();
@@ -155,7 +159,15 @@ export function FixtureForm({ initial, onSave, onCancel }: FixtureFormProps) {
         `Felterne er udfyldt fra databladet${missing > 4 ? ` (${missing} felter fremgik ikke og er uændrede)` : ""} – gennemgå dem, før du gemmer.`,
       );
     } catch (e) {
-      setExtractError(e instanceof Error ? e.message : "Kunne ikke læse databladet.");
+      // "Failed to fetch" = browseren fik slet ikke svar (typisk: funktionen
+      // er ikke deployet endnu, eller svaret manglede CORS-headers).
+      const msg =
+        e instanceof TypeError || (e instanceof Error && /failed to fetch/i.test(e.message))
+          ? "Kunne ikke nå AI-serveren. Tjek at den nyeste version er deployet på Vercel (åbn …/api/extract i browseren – den skal svare med JSON), og prøv igen om et minut."
+          : e instanceof Error
+            ? e.message
+            : "Kunne ikke læse databladet.";
+      setExtractError(msg);
     } finally {
       setExtracting(false);
     }
