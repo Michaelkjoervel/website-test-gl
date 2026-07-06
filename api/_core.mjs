@@ -59,10 +59,27 @@ export async function authorize(token) {
     return { ok: false, status: 401, reason: "Kunne ikke læse brugeren." };
   }
 
-  const domain = (process.env.ALLOWED_EMAIL_DOMAIN || "").trim().toLowerCase();
+  // ALLOWED_EMAIL_DOMAIN: komma-/semikolon-/mellemrumssepareret liste af
+  // domæner og/eller hele e-mails. Tolerant over for "@"-præfiks og luft:
+  //   "green-light.dk"                        → alle @green-light.dk
+  //   "green-light.dk, mkj@gmail.com"         → domænet + én bestemt konto
+  const rawAllow = (process.env.ALLOWED_EMAIL_DOMAIN || "").toLowerCase();
+  const entries = rawAllow.split(/[\s,;]+/).map((s) => s.trim()).filter(Boolean);
   const email = String(user?.email || "").toLowerCase();
-  if (domain && !email.endsWith(`@${domain}`)) {
-    return { ok: false, status: 403, reason: "Din konto har ikke adgang til værktøjet." };
+  if (entries.length) {
+    const allowed = entries.some((entry) => {
+      // Tolerér indsatte anførselstegn og @-præfiks ("green-light.dk", @green-light.dk).
+      const e = entry.replace(/^["'@]+|["']+$/g, "");
+      // Indeholder værdien selv et "@", er det en hel e-mail; ellers et domæne.
+      return e.includes("@") ? email === e : email.endsWith(`@${e}`);
+    });
+    if (!allowed) {
+      return {
+        ok: false,
+        status: 403,
+        reason: `Din konto (${email || "ukendt"}) har ikke adgang til værktøjet. Kontakt administratoren, hvis den skal tilføjes.`,
+      };
+    }
   }
   return { ok: true, email };
 }
