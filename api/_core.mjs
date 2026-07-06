@@ -68,7 +68,8 @@ export async function authorize(token) {
   const email = String(user?.email || "").toLowerCase();
   if (entries.length) {
     const allowed = entries.some((entry) => {
-      const e = entry.replace(/^@+/, "");
+      // Tolerér indsatte anførselstegn og @-præfiks ("green-light.dk", @green-light.dk).
+      const e = entry.replace(/^["'@]+|["']+$/g, "");
       // Indeholder værdien selv et "@", er det en hel e-mail; ellers et domæne.
       return e.includes("@") ? email === e : email.endsWith(`@${e}`);
     });
