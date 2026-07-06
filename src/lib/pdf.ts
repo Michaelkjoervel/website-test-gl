@@ -10,6 +10,8 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import type { CustomerEstimate } from "./types";
+import { controlLabel } from "./estimateEngine";
+import { resolveProduct } from "./pricingConfig";
 import { dkkInt, formatDate, num, pct } from "./format";
 
 const BRAND = {
@@ -137,7 +139,11 @@ export function generateEstimatePdf(est: CustomerEstimate): jsPDF {
     body: [
       ["Områdetype", t.areaType],
       ["Antal armaturer", num.format(t.luminaireCount)],
-      ["Styring", t.controlType],
+      [
+        "Armatur",
+        resolveProduct(t.areaType, t.luminaireProductId)?.name ?? "—",
+      ],
+      ["Styring", controlLabel(t)],
       ["Lux-niveau", `${typeof t.luxLevel === "number" ? t.luxLevel : t.luxLevel} lux`],
       ["Kelvin", String(t.kelvin)],
       ["Årlig brændetid", `${num.format(t.annualBurnHours)} timer`],

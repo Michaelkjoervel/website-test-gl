@@ -13,6 +13,7 @@
 //   --> ERSTAT findSimilar() med en rigtig ML-inference når data er klar.
 // =============================================================================
 
+import { controlLabel } from "./estimateEngine";
 import type { CustomerEstimate, HistoricalOffer, TechnicalInput } from "./types";
 
 export interface SimilarMatch {
@@ -42,7 +43,8 @@ export function estimatesToHistoricalShape(
       projectName: e.projectName,
       areaType: e.technical.areaType,
       luminaireCount: e.technical.luminaireCount,
-      controlType: e.technical.controlType,
+      // Historisk form bruger én streng – flere valg joines med " + ".
+      controlType: controlLabel(e.technical),
       luxLevel:
         typeof e.technical.luxLevel === "number" ? e.technical.luxLevel : 300,
       kelvin: typeof e.technical.kelvin === "number" ? e.technical.kelvin : 4000,
@@ -65,7 +67,22 @@ function scoreSimilarity(a: TechnicalInput, b: HistoricalOffer): number {
   };
 
   add(0.3, a.areaType === b.areaType ? 1 : 0);
-  add(0.25, a.controlType === b.controlType ? 1 : 0);
+
+  // Styring: overlap mellem valgte styringsformer og den historiske streng.
+  // (Historiske tilbud gemmer styring som én streng, evt. "A + B".)
+  const aControls = (a.controlTypes ?? []).map((c) => c.toLowerCase());
+  const bControls = String(b.controlType ?? "")
+    .split("+")
+    .map((c) => c.trim().toLowerCase())
+    .filter(Boolean);
+  const controlUnion = new Set([...aControls, ...bControls]);
+  const controlOverlap = aControls.filter((c) =>
+    bControls.includes(c),
+  ).length;
+  add(
+    0.25,
+    controlUnion.size === 0 ? 1 : controlOverlap / controlUnion.size,
+  );
 
   const countDiff =
     Math.abs(a.luminaireCount - b.luminaireCount) /

@@ -3,6 +3,8 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { storage } from "../lib/storage";
 import { downloadEstimatePdf } from "../lib/pdf";
 import { ConfidenceBadge, ConfidenceMeter } from "../components/Confidence";
+import { controlLabel } from "../lib/estimateEngine";
+import { resolveProduct } from "../lib/pricingConfig";
 import { dkkInt, formatDate, num, pct } from "../lib/format";
 import type {
   ActualResult,
@@ -140,7 +142,14 @@ export function EstimateDetail() {
             items={[
               ["Områdetype", est.technical.areaType],
               ["Antal armaturer", num.format(est.technical.luminaireCount)],
-              ["Styring", est.technical.controlType],
+              [
+                "Armatur",
+                resolveProduct(
+                  est.technical.areaType,
+                  est.technical.luminaireProductId,
+                )?.name ?? "—",
+              ],
+              ["Styring", controlLabel(est.technical)],
               [
                 "Lux",
                 typeof est.technical.luxLevel === "number"

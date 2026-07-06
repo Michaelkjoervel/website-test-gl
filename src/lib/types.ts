@@ -1,24 +1,36 @@
 // Core type definitions for the green light estimator.
 // All persisted data conforms to these interfaces.
 
+// Styringsformer. "Systemer" (DALI-familien, Casambi, MasterConnect,
+// SmartScan) udelukker hinanden – øvrige kan kombineres frit.
 export type ControlType =
-  | "Ingen styring"
   | "Simpel on/off"
-  | "Dagslysstyring"
   | "Bevægelsessensor"
   | "Trådløs styring"
   | "DALI"
+  | "DALI-2"
+  | "DALI+"
+  | "Casambi"
   | "MasterConnect"
+  | "SmartScan"
   | "Andet";
 
-export type KelvinValue = 3000 | 4000 | 5000 | "Tunable White";
+export type KelvinValue =
+  | 3000
+  | 4000
+  | 5000
+  | "Tunable White"
+  | "Tunable White + Gateway";
 
 export type LuxLevel = 150 | 200 | 300 | 500 | 750 | number;
 
+// Fokusområder i v1 er Kontor og Industri – resten bevares for
+// bagudkompatibilitet med historiske data og kan aktiveres senere.
 export type AreaType =
+  | "Kontor"
+  | "Industri"
   | "Lager"
   | "Produktion"
-  | "Kontor"
   | "Butik"
   | "Skole"
   | "Sportshal"
@@ -46,7 +58,10 @@ export interface TechnicalInput {
   areaType: AreaType;
   areaSqm?: number;
   luminaireCount: number;
-  controlType: ControlType;
+  // Valgt armaturprodukt (id fra pricingConfig.luminaireProducts).
+  luminaireProductId?: string;
+  // Flere styringsformer kan vælges; tom liste = ingen styring.
+  controlTypes: ControlType[];
   luxLevel: LuxLevel;
   kelvin: KelvinValue;
   annualBurnHours: number;

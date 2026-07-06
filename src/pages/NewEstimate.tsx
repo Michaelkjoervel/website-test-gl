@@ -9,6 +9,7 @@ import {
   calculateEnergy,
   calculateEnergyComparison,
   calculatePricing,
+  controlLabel,
 } from "../lib/estimateEngine";
 import { suggestAdjustment } from "../lib/learningModel";
 import {
@@ -17,7 +18,7 @@ import {
   formatPayback,
   type BusinessCaseResult,
 } from "../lib/businessCase";
-import { pricingConfig } from "../lib/pricingConfig";
+import { pricingConfig, productsForArea } from "../lib/pricingConfig";
 import type {
   AreaType,
   ControlType,
@@ -29,30 +30,30 @@ import type {
 } from "../lib/types";
 import { dkkInt, num, pct } from "../lib/format";
 
-const AREAS: AreaType[] = [
-  "Lager",
-  "Produktion",
-  "Kontor",
-  "Butik",
-  "Skole",
-  "Sportshal",
-  "Parkering",
-  "Udendørs",
-  "Andet",
-];
+// Fokusområder i v1 – styres fra pricingConfig (flere kan aktiveres senere)
+const AREAS: AreaType[] = pricingConfig.focusAreas;
 
+// Rækkefølge i UI: kombinerbare tilvalg først, derefter systemerne
 const CONTROLS: ControlType[] = [
-  "Ingen styring",
   "Simpel on/off",
-  "Dagslysstyring",
   "Bevægelsessensor",
   "Trådløs styring",
   "DALI",
+  "DALI-2",
+  "DALI+",
+  "Casambi",
   "MasterConnect",
+  "SmartScan",
   "Andet",
 ];
 
-const KELVINS: KelvinValue[] = [3000, 4000, 5000, "Tunable White"];
+const KELVINS: KelvinValue[] = [
+  3000,
+  4000,
+  5000,
+  "Tunable White",
+  "Tunable White + Gateway",
+];
 
 const LUX_PRESETS = [150, 200, 300, 500, 750];
 
@@ -83,7 +84,8 @@ export function NewEstimate() {
   const [technical, setTechnical] = useState<TechnicalInput>({
     areaType: pricingConfig.defaults.areaType,
     luminaireCount: 0,
-    controlType: pricingConfig.defaults.controlType,
+    luminaireProductId: productsForArea(pricingConfig.defaults.areaType)[0]?.id,
+    controlTypes: pricingConfig.defaults.controlTypes,
     luxLevel: pricingConfig.defaults.luxLevel,
     kelvin: pricingConfig.defaults.kelvin,
     annualBurnHours: 0,
@@ -91,6 +93,36 @@ export function NewEstimate() {
     budgetWish: undefined,
     notes: "",
   });
+
+  // Skift styringsform til/fra. Systemer (exclusive) udelukker hinanden;
+  // øvrige kan kombineres frit.
+  const toggleControl = (c: ControlType) => {
+    setTechnical((t) => {
+      const selected = t.controlTypes ?? [];
+      if (selected.includes(c)) {
+        return { ...t, controlTypes: selected.filter((x) => x !== c) };
+      }
+      const isExclusive = pricingConfig.controlSurcharge[c]?.exclusive;
+      const next = isExclusive
+        ? selected.filter((x) => !pricingConfig.controlSurcharge[x]?.exclusive)
+        : selected;
+      return { ...t, controlTypes: [...next, c] };
+    });
+  };
+
+  // Ved områdeskift: vælg områdets første produkt, hvis det nuværende
+  // produkt ikke findes i det nye område.
+  const setArea = (area: AreaType) => {
+    setTechnical((t) => {
+      const products = productsForArea(area);
+      const keep = products.some((p) => p.id === t.luminaireProductId);
+      return {
+        ...t,
+        areaType: area,
+        luminaireProductId: keep ? t.luminaireProductId : products[0]?.id,
+      };
+    });
+  };
 
   const [customLux, setCustomLux] = useState(false);
 
@@ -237,14 +269,15 @@ export function NewEstimate() {
             <Field
               label="Område"
               required
-              tooltip="Områdetypen påvirker installations- og kompleksitetsfaktor."
+              tooltip="Fokus i første version er kontor og industri. Flere områder tilføjes senere."
+              hint="Flere områdetyper (lager, butik, sportshal m.fl.) kommer senere."
             >
               <div className="flex flex-wrap gap-2">
                 {AREAS.map((a) => (
                   <button
                     type="button"
                     key={a}
-                    onClick={() => setTechnical({ ...technical, areaType: a })}
+                    onClick={() => setArea(a)}
                     className={`chip border ${
                       technical.areaType === a
                         ? "bg-brand-500 text-white border-brand-500"
@@ -349,23 +382,66 @@ export function NewEstimate() {
                 </div>
               </Field>
 
-              <Field label="Ønske til styring" tooltip="Styringssystemet påvirker pris og energibesparelse.">
-                <select
-                  className="select"
-                  value={technical.controlType}
-                  onChange={(e) =>
-                    setTechnical({
-                      ...technical,
-                      controlType: e.target.value as ControlType,
-                    })
-                  }
-                >
-                  {CONTROLS.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
+              <Field
+                label="Armatur"
+                tooltip="Vælg armaturprodukt for det valgte område. Prisen pr. stk. indgår i materialeprisen."
+              >
+                <div className="flex flex-wrap gap-2">
+                  {productsForArea(technical.areaType).map((p) => (
+                    <button
+                      type="button"
+                      key={p.id}
+                      onClick={() =>
+                        setTechnical({
+                          ...technical,
+                          luminaireProductId: p.id,
+                        })
+                      }
+                      className={`chip border ${
+                        technical.luminaireProductId === p.id
+                          ? "bg-brand-500 text-white border-brand-500"
+                          : "bg-white text-ink-soft border-surface-line hover:border-brand-300"
+                      }`}
+                    >
+                      {p.name} · {dkkInt(p.pricePerUnit)}
+                    </button>
                   ))}
-                </select>
+                </div>
+              </Field>
+
+              <Field
+                label="Ønske til styring"
+                tooltip="Vælg gerne flere. Systemerne (DALI, DALI-2, DALI+, Casambi, MasterConnect, SmartScan) udelukker hinanden. Ingen valg = ingen styring."
+                hint={
+                  (technical.controlTypes ?? []).length === 0
+                    ? "Ingen styring valgt."
+                    : `Valgt: ${controlLabel(technical)}`
+                }
+              >
+                <div className="flex flex-wrap gap-2">
+                  {CONTROLS.map((c) => {
+                    const selected = (technical.controlTypes ?? []).includes(c);
+                    const exclusive =
+                      pricingConfig.controlSurcharge[c]?.exclusive;
+                    return (
+                      <button
+                        type="button"
+                        key={c}
+                        onClick={() => toggleControl(c)}
+                        className={`chip border ${
+                          selected
+                            ? "bg-brand-500 text-white border-brand-500"
+                            : exclusive
+                            ? "bg-brand-50/50 text-ink-soft border-surface-line hover:border-brand-300"
+                            : "bg-white text-ink-soft border-surface-line hover:border-brand-300"
+                        }`}
+                      >
+                        {selected ? "✓ " : ""}
+                        {c}
+                      </button>
+                    );
+                  })}
+                </div>
               </Field>
 
               <Field label="Ønske til lux" tooltip="Det ønskede belysningsniveau på arbejdsplanen.">
@@ -872,7 +948,7 @@ export function NewEstimate() {
                   label="Antal armaturer"
                   value={num.format(technical.luminaireCount)}
                 />
-                <Row label="Styring" value={technical.controlType} />
+                <Row label="Styring" value={controlLabel(technical)} />
                 <Row
                   label="Lux / Kelvin"
                   value={`${technical.luxLevel} lux · ${String(

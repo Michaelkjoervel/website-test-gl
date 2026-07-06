@@ -285,16 +285,17 @@ export function formatPayback(years: number | null): string {
 // -----------------------------------------------------------------------------
 export function buildDemoEstimate(): CustomerEstimate {
   const technical: TechnicalInput = {
-    areaType: "Lager",
+    areaType: "Industri",
     areaSqm: 4200,
     luminaireCount: 240,
-    controlType: "MasterConnect",
+    luminaireProductId: "foxx",
+    controlTypes: ["MasterConnect"],
     luxLevel: 300,
     kelvin: 4000,
     annualBurnHours: 4000,
     electricityPrice: 2.1,
     budgetWish: 550000,
-    notes: "Demo – udskiftning af lysstofarmaturer i højlager.",
+    notes: "Demo – udskiftning af lysstofarmaturer i industrihal.",
   };
 
   const pricing = calculatePricing(technical);

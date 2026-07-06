@@ -12,7 +12,7 @@
 // Alle beregninger her er bevidst rene funktioner – ingen side-effekter.
 // =============================================================================
 
-import { pricingConfig } from "./pricingConfig";
+import { pricingConfig, resolveProduct } from "./pricingConfig";
 import type {
   EnergyCalculation,
   EnergyComparisonInput,
@@ -21,6 +21,18 @@ import type {
   PricingResult,
   TechnicalInput,
 } from "./types";
+
+// Læsevenlig etiket for styringsvalget. Håndterer også ældre gemte
+// estimater, hvor styringen lå som en enkelt streng (controlType).
+export function controlLabel(technical: {
+  controlTypes?: string[];
+  controlType?: string;
+}): string {
+  const list =
+    technical.controlTypes ??
+    (technical.controlType ? [technical.controlType] : []);
+  return list.length > 0 ? list.join(" + ") : "Ingen styring";
+}
 
 const round = (n: number, decimals = 0) => {
   const f = Math.pow(10, decimals);
@@ -56,16 +68,20 @@ export function calculatePricing(input: TechnicalInput): PricingResult {
   const luxFactor = lookupFactor(cfg.luxFactor, luxNum, "factor");
   const areaMult = cfg.areaFactor[input.areaType] ?? 1;
 
-  // Materiale: armaturpris * antal * luxfaktor
-  const luminaireUnitCost = cfg.luminaireBaseCost + kelvinSurcharge;
+  // Materiale: valgt produktpris (fallback: basispris) + kelvin-tillæg.
+  // Lux-faktoren er bevidst tæt på 1 – lux påvirker primært energien.
+  const product = resolveProduct(input.areaType, input.luminaireProductId);
+  const unitPrice = product?.pricePerUnit ?? cfg.luminaireBaseCost;
+  const luminaireUnitCost = unitPrice + kelvinSurcharge;
   const materialCost = luminaireUnitCost * count * luxFactor;
 
-  // Styring – pr. armatur + fast tillæg
-  const ctrl = cfg.controlSurcharge[input.controlType] ?? {
-    perLuminaire: 0,
-    fixed: 0,
-  };
-  const controlCost = ctrl.perLuminaire * count + ctrl.fixed;
+  // Styring – summen af alle valgte styringsformer (pr. armatur + fast).
+  // Det er her, prisen for alvor flytter sig.
+  const controlCost = (input.controlTypes ?? []).reduce((sum, key) => {
+    const ctrl = cfg.controlSurcharge[key];
+    if (!ctrl) return sum;
+    return sum + ctrl.perLuminaire * count + ctrl.fixed;
+  }, 0);
 
   // Installation – pr. armatur * områdefaktor
   const installationCost = cfg.installationPerLuminaire * count * areaMult;
@@ -198,7 +214,7 @@ export function calculateConfidence(
       },
       {
         key: "control",
-        ok: !!input.controlType,
+        ok: (input.controlTypes ?? []).length > 0,
         label: "Styringsønske",
         weight: 12,
       },

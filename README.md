@@ -349,22 +349,36 @@ Det eneste, der SKAL sættes i et dashboard, er proxyens server-miljø i Vercel
 Alle satser ligger samlet i [`src/lib/pricingConfig.ts`](src/lib/pricingConfig.ts).
 
 ```ts
-// pris pr. armatur, basis
-luminaireBaseCost: 1450,
+// fokusområder i v1 (flere aktiveres ved at udvide listen)
+focusAreas: ["Kontor", "Industri"],
 
-// pr.-armatur tillæg pr. styringstype + fast tillæg
+// armaturprodukter pr. område – pris pr. stk. er materialeprisen
+luminaireProducts: {
+  Kontor:   [ { id: "vivid", name: "Vivid", pricePerUnit: 1500 },
+              { id: "rio2",  name: "Rio 2", pricePerUnit: 1000 } ],
+  Industri: [ { id: "foxx",  name: "Foxx",  pricePerUnit: 1000 },
+              { id: "linda", name: "Linda", pricePerUnit: 1400 },
+              { id: "forte", name: "Forte", pricePerUnit: 1200 } ],
+},
+
+// styringsformer – den store prisdriver. exclusive: true = systemer,
+// der udelukker hinanden (DALI, DALI-2, DALI+, Casambi, MasterConnect,
+// SmartScan); øvrige kan kombineres frit
 controlSurcharge: {
-  MasterConnect: { perLuminaire: 290, fixed: 5500 },
+  MasterConnect: { perLuminaire: 290, fixed: 5500, exclusive: true },
   // …
 },
+
+// kelvin-tillæg – kun Tunable White (især med gateway) flytter prisen
+luminaireByKelvin: { "Tunable White": 250, "Tunable White + Gateway": 700, … },
 
 // installationspris pr. armatur
 installationPerLuminaire: 520,
 
 // områdefaktorer (multiplikator på installationen)
-areaFactor: { Lager: 1.0, Produktion: 1.15, … },
+areaFactor: { Kontor: 1.05, Industri: 1.15, … },
 
-// lux-/watt-tabeller
+// lux-/watt-tabeller – lux flytter mest på energi, minimalt på pris
 luxFactor:        [{ lux: 300, factor: 1.0 }, …],
 wattLuxMultiplier:[{ lux: 300, multiplier: 1.0 }, …],
 

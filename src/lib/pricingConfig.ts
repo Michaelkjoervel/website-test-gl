@@ -16,11 +16,33 @@
 
 import type { AreaType, ControlType, KelvinValue } from "./types";
 
+export interface LuminaireProduct {
+  id: string;
+  name: string;
+  pricePerUnit: number; // DKK pr. stk.
+}
+
+export interface ControlOption {
+  perLuminaire: number;
+  fixed: number;
+  // Systemer (DALI-familien, Casambi, MasterConnect, SmartScan) udelukker
+  // hinanden – kun ét system kan vælges ad gangen. Øvrige kan kombineres.
+  exclusive: boolean;
+}
+
 export interface PricingConfig {
   currency: "DKK";
-  // Pris pr. armatur (basis) – placeholder
+  // Fokusområder i v1 – kun disse vises i UI'et. Udvid listen når flere
+  // områder (Lager, Butik, Sportshal…) skal aktiveres.
+  focusAreas: AreaType[];
+  // Armaturprodukter pr. områdetype. Prisen pr. stk. er den primære
+  // materialepris – udskiftes/udvides med rigtige produktdata senere.
+  luminaireProducts: Partial<Record<AreaType, LuminaireProduct[]>>;
+  // Fallback-pris pr. armatur hvis intet produkt er valgt
   luminaireBaseCost: number;
-  // Tillæg pr. armatur afhængigt af farvetemperatur
+  // Tillæg pr. armatur afhængigt af farvetemperatur.
+  // Kelvin flytter bevidst kun lidt på prisen – undtagen Tunable White,
+  // hvor gateway-varianten er dyrere.
   luminaireByKelvin: Record<string, number>;
   // Watt-estimat pr. armatur ved 100% effekt (bruges til energi)
   luminaireDefaultWatt: number;
@@ -30,10 +52,12 @@ export interface PricingConfig {
   installationPerLuminaire: number;
   // Tillæg ved store/komplekse områder
   areaFactor: Record<string, number>; // multiplikator på installation
-  // Lux-faktor (højere lux -> evt. flere/stærkere armaturer påvirker pris)
+  // Lux-faktor – bevidst tæt på 1: lux flytter mest på energiforbruget,
+  // kun minimalt på prisen.
   luxFactor: { lux: number; factor: number }[];
-  // Styringssystem – pr. armatur tillæg + et evt. fast tillæg
-  controlSurcharge: Record<string, { perLuminaire: number; fixed: number }>;
+  // Styringsformer – pr. armatur tillæg + fast tillæg. Det er styringen
+  // (og antallet af armaturer), der for alvor rykker prisen.
+  controlSurcharge: Record<string, ControlOption>;
   // Margin / budgetinterval – ±%
   budgetRangePct: number;
   // Energibesparelse ved tilvalg af styring (før/efter-beregner)
@@ -67,7 +91,7 @@ export interface PricingConfig {
     annualBurnHours: number;
     electricityPrice: number;
     luminaireCount: number;
-    controlType: ControlType;
+    controlTypes: ControlType[];
     areaType: AreaType;
   };
 }
@@ -75,14 +99,31 @@ export interface PricingConfig {
 export const pricingConfig: PricingConfig = {
   currency: "DKK",
 
-  // PLACEHOLDER – udskiftes med rigtige armaturpriser pr. produktkategori
-  luminaireBaseCost: 1450,
+  focusAreas: ["Kontor", "Industri"],
 
+  luminaireProducts: {
+    Kontor: [
+      { id: "vivid", name: "Vivid", pricePerUnit: 1500 },
+      { id: "rio2", name: "Rio 2", pricePerUnit: 1000 },
+    ],
+    Industri: [
+      { id: "foxx", name: "Foxx", pricePerUnit: 1000 },
+      { id: "linda", name: "Linda", pricePerUnit: 1400 },
+      { id: "forte", name: "Forte", pricePerUnit: 1200 },
+    ],
+  },
+
+  // Fallback hvis intet produkt er valgt (fx historiske/ukendte områder)
+  luminaireBaseCost: 1200,
+
+  // Kelvin gør ikke det store ved prisen – gateway-varianten af Tunable
+  // White er den mærkbare undtagelse.
   luminaireByKelvin: {
     "3000": 0,
     "4000": 0,
-    "5000": 50,
-    "Tunable White": 380,
+    "5000": 0,
+    "Tunable White": 250,
+    "Tunable White + Gateway": 700,
   },
 
   luminaireDefaultWatt: 35,
@@ -98,9 +139,11 @@ export const pricingConfig: PricingConfig = {
   installationPerLuminaire: 520,
 
   areaFactor: {
+    Kontor: 1.05,
+    Industri: 1.15,
+    // Bevaret til historiske data / senere aktivering:
     Lager: 1.0,
     Produktion: 1.15,
-    Kontor: 1.05,
     Butik: 1.1,
     Skole: 1.1,
     Sportshal: 1.25,
@@ -109,23 +152,28 @@ export const pricingConfig: PricingConfig = {
     Andet: 1.05,
   },
 
+  // Lux flytter mest på energien – kun minimalt på prisen.
   luxFactor: [
-    { lux: 150, factor: 0.92 },
-    { lux: 200, factor: 0.97 },
+    { lux: 150, factor: 0.99 },
+    { lux: 200, factor: 0.995 },
     { lux: 300, factor: 1.0 },
-    { lux: 500, factor: 1.12 },
-    { lux: 750, factor: 1.25 },
+    { lux: 500, factor: 1.01 },
+    { lux: 750, factor: 1.02 },
   ],
 
+  // Styringen er den store prisdriver. Systemer (exclusive: true)
+  // udelukker hinanden; øvrige kan kombineres frit.
   controlSurcharge: {
-    "Ingen styring": { perLuminaire: 0, fixed: 0 },
-    "Simpel on/off": { perLuminaire: 35, fixed: 0 },
-    Dagslysstyring: { perLuminaire: 180, fixed: 2500 },
-    Bevægelsessensor: { perLuminaire: 220, fixed: 1500 },
-    "Trådløs styring": { perLuminaire: 260, fixed: 4500 },
-    DALI: { perLuminaire: 310, fixed: 6500 },
-    MasterConnect: { perLuminaire: 290, fixed: 5500 },
-    Andet: { perLuminaire: 150, fixed: 2000 },
+    "Simpel on/off": { perLuminaire: 35, fixed: 0, exclusive: false },
+    Bevægelsessensor: { perLuminaire: 220, fixed: 1500, exclusive: false },
+    "Trådløs styring": { perLuminaire: 260, fixed: 4500, exclusive: false },
+    DALI: { perLuminaire: 310, fixed: 6500, exclusive: true },
+    "DALI-2": { perLuminaire: 340, fixed: 7000, exclusive: true },
+    "DALI+": { perLuminaire: 380, fixed: 7500, exclusive: true },
+    Casambi: { perLuminaire: 320, fixed: 6000, exclusive: true },
+    MasterConnect: { perLuminaire: 290, fixed: 5500, exclusive: true },
+    SmartScan: { perLuminaire: 350, fixed: 8000, exclusive: true },
+    Andet: { perLuminaire: 150, fixed: 2000, exclusive: false },
   },
 
   budgetRangePct: 12,
@@ -161,7 +209,20 @@ export const pricingConfig: PricingConfig = {
     annualBurnHours: 2500,
     electricityPrice: 2.1,
     luminaireCount: 50,
-    controlType: "MasterConnect",
-    areaType: "Lager",
+    controlTypes: [],
+    areaType: "Kontor",
   },
 };
+
+// Hjælpere til produktopslag – bruges af beregningsmotor og UI.
+export function productsForArea(area: AreaType): LuminaireProduct[] {
+  return pricingConfig.luminaireProducts[area] ?? [];
+}
+
+export function resolveProduct(
+  area: AreaType,
+  productId?: string,
+): LuminaireProduct | undefined {
+  const products = productsForArea(area);
+  return products.find((p) => p.id === productId) ?? products[0];
+}

@@ -1,12 +1,13 @@
 // Demo-data så Dashboard ikke står tomt ved første åbning.
 // Indlæses kun hvis brugeren ikke allerede har data i localStorage.
+// Områder og styringsformer matcher v1-fokus: Kontor og Industri.
 
 import type { HistoricalOffer } from "./types";
 
 export const sampleHistorical: HistoricalOffer[] = [
   {
-    projectName: "Aalborg Lager A",
-    areaType: "Lager",
+    projectName: "Industrihal Aalborg",
+    areaType: "Industri",
     luminaireCount: 120,
     controlType: "MasterConnect",
     luxLevel: 300,
@@ -21,7 +22,7 @@ export const sampleHistorical: HistoricalOffer[] = [
     projectName: "Kontorhus Vest",
     areaType: "Kontor",
     luminaireCount: 85,
-    controlType: "DALI",
+    controlType: "DALI-2",
     luxLevel: 500,
     kelvin: 4000,
     annualBurnHours: 2400,
@@ -31,21 +32,8 @@ export const sampleHistorical: HistoricalOffer[] = [
     status: "Vundet",
   },
   {
-    projectName: "Sportshal Nord",
-    areaType: "Sportshal",
-    luminaireCount: 64,
-    controlType: "Trådløs styring",
-    luxLevel: 500,
-    kelvin: 5000,
-    annualBurnHours: 2800,
-    electricityPrice: 2.0,
-    estimatedPrice: 280000,
-    actualPrice: 312000,
-    status: "Vundet",
-  },
-  {
     projectName: "Produktion Esbjerg",
-    areaType: "Produktion",
+    areaType: "Industri",
     luminaireCount: 210,
     controlType: "MasterConnect",
     luxLevel: 300,
@@ -57,16 +45,29 @@ export const sampleHistorical: HistoricalOffer[] = [
     status: "Vundet",
   },
   {
-    projectName: "Detail Aarhus",
-    areaType: "Butik",
-    luminaireCount: 40,
-    controlType: "Dagslysstyring",
+    projectName: "Domicil Aarhus",
+    areaType: "Kontor",
+    luminaireCount: 140,
+    controlType: "Casambi",
     luxLevel: 500,
-    kelvin: 3000,
+    kelvin: 4000,
+    annualBurnHours: 2600,
+    electricityPrice: 2.4,
+    estimatedPrice: 510000,
+    actualPrice: 498000,
+    status: "Vundet",
+  },
+  {
+    projectName: "Værksted Kolding",
+    areaType: "Industri",
+    luminaireCount: 60,
+    controlType: "Bevægelsessensor",
+    luxLevel: 300,
+    kelvin: 5000,
     annualBurnHours: 3000,
-    electricityPrice: 2.5,
-    estimatedPrice: 180000,
-    actualPrice: 175000,
+    electricityPrice: 2.2,
+    estimatedPrice: 210000,
+    actualPrice: 232000,
     status: "Tabt",
   },
 ];
