@@ -5,8 +5,42 @@ import type {
   MountingType,
 } from "../lib/visualizationTypes";
 import { newVizId } from "../lib/visualizationStorage";
+import { getExtractEndpoint } from "../lib/visualizationConfig";
+import { getAccessToken } from "../lib/supabase";
+import { fileToDataUrl } from "../lib/image";
 import { Field } from "./Field";
 import { ImageDropzone } from "./ImageDropzone";
+
+// Svaret fra proxyens datablad-ekstraktion (alle felter kan være null).
+interface ExtractedFixture {
+  name: string | null;
+  sku: string | null;
+  category: string | null;
+  mounting: string | null;
+  lumen: number | null;
+  watt: number | null;
+  kelvin: number | null;
+  tunableWhite: boolean | null;
+  cri: number | null;
+  beamAngle: number | null;
+  ip: string | null;
+  ugr: number | null;
+  lifetimeHours: number | null;
+  dimmable: boolean | null;
+  dimensions: string | null;
+  description: string | null;
+  lightCharacter: string | null;
+  tags: string[] | null;
+}
+
+function matchOption<T extends string>(value: string | null, options: readonly T[]): T | null {
+  if (!value) return null;
+  const v = value.trim().toLowerCase();
+  return options.find((o) => o.toLowerCase() === v) ?? null;
+}
+
+const posNum = (n: number | null): number | null =>
+  typeof n === "number" && Number.isFinite(n) && n > 0 ? n : null;
 
 const CATEGORIES: FixtureCategory[] = [
   "LED-panel",
@@ -56,6 +90,77 @@ export function FixtureForm({ initial, onSave, onCancel }: FixtureFormProps) {
   const setSpec = (patch: Partial<Fixture["specs"]>) =>
     setF((prev) => ({ ...prev, specs: { ...prev.specs, ...patch } }));
 
+  // --- Auto-udfyld fra PDF-datablad ---------------------------------------
+  const [extracting, setExtracting] = useState(false);
+  const [extractNote, setExtractNote] = useState<string | null>(null);
+  const [extractError, setExtractError] = useState<string | null>(null);
+
+  const applyExtracted = (x: ExtractedFixture, fileName: string) => {
+    setF((prev) => ({
+      ...prev,
+      name: x.name?.trim() || prev.name,
+      sku: x.sku?.trim() || prev.sku,
+      category: matchOption(x.category, CATEGORIES) ?? prev.category,
+      mounting: matchOption(x.mounting, MOUNTINGS) ?? prev.mounting,
+      specs: {
+        ...prev.specs,
+        lumen: posNum(x.lumen) ?? prev.specs.lumen,
+        watt: posNum(x.watt) ?? prev.specs.watt,
+        kelvin: posNum(x.kelvin) ?? prev.specs.kelvin,
+        tunableWhite: x.tunableWhite ?? prev.specs.tunableWhite,
+        cri: posNum(x.cri) ?? prev.specs.cri,
+        beamAngle: posNum(x.beamAngle) ?? prev.specs.beamAngle,
+        ip: x.ip?.trim() || prev.specs.ip,
+        ugr: posNum(x.ugr) ?? prev.specs.ugr,
+        lifetimeHours: posNum(x.lifetimeHours) ?? prev.specs.lifetimeHours,
+        dimmable: x.dimmable ?? prev.specs.dimmable,
+        dimensions: x.dimensions?.trim() || prev.specs.dimensions,
+      },
+      description: x.description?.trim() || prev.description,
+      lightCharacter: x.lightCharacter?.trim() || prev.lightCharacter,
+      tags: x.tags && x.tags.length ? x.tags : prev.tags,
+      datasheetName: fileName,
+    }));
+  };
+
+  const extractFromPdf = async (file: File) => {
+    setExtractError(null);
+    setExtractNote(null);
+    if (file.size > 15 * 1024 * 1024) {
+      setExtractError("PDF'en er for stor (maks 15 MB).");
+      return;
+    }
+    const endpoint = getExtractEndpoint();
+    if (!endpoint) {
+      setExtractError("Live AI-proxyen er ikke konfigureret – den bruges til at læse databladet.");
+      return;
+    }
+    setExtracting(true);
+    try {
+      const pdf = await fileToDataUrl(file);
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      const token = await getAccessToken();
+      if (token) headers.Authorization = `Bearer ${token}`;
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ pdf, filename: file.name }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { fixture?: ExtractedFixture; error?: string };
+      if (!res.ok) throw new Error(data?.error || `Serveren svarede ${res.status}.`);
+      if (!data.fixture) throw new Error("Serveren returnerede ingen data.");
+      applyExtracted(data.fixture, file.name);
+      const missing = Object.values(data.fixture).filter((v) => v === null).length;
+      setExtractNote(
+        `Felterne er udfyldt fra databladet${missing > 4 ? ` (${missing} felter fremgik ikke og er uændrede)` : ""} – gennemgå dem, før du gemmer.`,
+      );
+    } catch (e) {
+      setExtractError(e instanceof Error ? e.message : "Kunne ikke læse databladet.");
+    } finally {
+      setExtracting(false);
+    }
+  };
+
   const lmPerW = f.specs.watt > 0 ? Math.round(f.specs.lumen / f.specs.watt) : 0;
   const canSave = f.name.trim().length > 0 && f.specs.lumen > 0 && f.specs.watt > 0;
 
@@ -68,6 +173,40 @@ export function FixtureForm({ initial, onSave, onCancel }: FixtureFormProps) {
 
   return (
     <div className="space-y-5">
+      {/* Auto-udfyld fra datablad */}
+      <div className="rounded-xl border border-dashed border-brand-300 bg-brand-50/60 p-3 flex flex-wrap items-center gap-3">
+        <label className={`btn-outline text-xs cursor-pointer ${extracting ? "opacity-60 pointer-events-none" : ""}`}>
+          {extracting ? (
+            <span className="inline-flex items-center gap-2">
+              <span className="w-3.5 h-3.5 rounded-full border-2 border-brand-500 border-t-transparent animate-spin" />
+              Læser datablad…
+            </span>
+          ) : (
+            "📄 Udfyld fra datablad (PDF)"
+          )}
+          <input
+            type="file"
+            accept="application/pdf,.pdf"
+            className="hidden"
+            disabled={extracting}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) extractFromPdf(file);
+              e.target.value = "";
+            }}
+          />
+        </label>
+        <span className="text-[11px] text-ink-mute flex-1 min-w-[180px]">
+          AI læser PDF'en og udfylder felterne automatisk – gennemgå dem altid, før du gemmer.
+        </span>
+      </div>
+      {extractNote && (
+        <div className="rounded-xl bg-brand-50 border border-brand-100 text-brand-800 text-sm px-4 py-2.5">{extractNote}</div>
+      )}
+      {extractError && (
+        <div className="rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-2.5">{extractError}</div>
+      )}
+
       <div className="grid sm:grid-cols-2 gap-4">
         <Field label="Navn" required>
           <input className="input" value={f.name} onChange={(e) => set({ name: e.target.value })} placeholder="fx GL Panel Pro 600" />
