@@ -28,3 +28,14 @@ export function setEndpoint(url: string): void {
 export function hasEndpoint(): boolean {
   return getEndpoint().length > 0;
 }
+
+/**
+ * Adressen på datablad-ekstraktionen. Afledes af visualiserings-endpointet
+ * (…/api/visualize → …/api/extract), så der kun er ÉN adresse at konfigurere.
+ */
+export function getExtractEndpoint(): string {
+  const base = getEndpoint();
+  if (!base) return "";
+  if (/\/visualize\/?$/.test(base)) return base.replace(/\/visualize\/?$/, "/extract");
+  return `${base.replace(/\/$/, "")}/extract`;
+}

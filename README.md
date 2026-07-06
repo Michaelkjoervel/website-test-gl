@@ -103,8 +103,9 @@ src/
     └── image.ts           – Billed-nedskalering til localStorage
 
 api/
-├── _core.mjs             – Delt proxy-logik (kald til OpenAI gpt-image-1)
-└── visualize.js          – Vercel-adapter (holder nøglen skjult)
+├── _core.mjs             – Delt proxy-logik (billed-generering + datablad-læsning)
+├── visualize.js          – Vercel-adapter: AI-visualisering
+└── extract.js            – Vercel-adapter: PDF-datablad → armaturdata
 server/
 └── proxy.mjs             – Node-server-udgave (fx til GitHub Codespaces)
 supabase/
@@ -137,6 +138,17 @@ gang fra **CSV** eller **JSON** (kun `name` er påkrævet; billeder angives som 
 **dublet-sikker**: armaturer med samme SKU (eller navn) som et eksisterende
 springes over, så samme fil kan importeres igen uden kopier. Parseren ligger i
 [`src/lib/fixtureImporter.ts`](src/lib/fixtureImporter.ts).
+
+**Auto-udfyld fra PDF-datablad:** i *Tilføj/redigér armatur*-formularen kan man
+uploade et **PDF-datablad**, hvorefter AI læser det (inkl. tabeller og grafik)
+og udfylder felterne automatisk — navn, SKU, kategori, montering, lumen, watt,
+kelvin, CRI, spredning, IP, UGR, levetid, mål, beskrivelse og lyskarakter.
+Felter, der ikke fremgår af databladet, røres ikke, og man gennemgår altid
+resultatet før *Gem*. Teknisk: PDF'en sendes til proxyens `/api/extract`
+(`api/extract.js` → `runExtract` i `_core.mjs`), som kalder en billig
+OpenAI-model (default `gpt-5-mini`, override med `EXTRACT_MODEL`-env) med
+fil-input + strengt JSON-schema. Kræver login og kører på sin egen
+rate-limit-spand; typisk pris under 10 øre pr. datablad.
 
 ### Visualiserings-flow · `/ny-visualisering`
 

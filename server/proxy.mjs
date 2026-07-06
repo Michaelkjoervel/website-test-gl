@@ -16,7 +16,7 @@
 // =============================================================================
 
 import { createServer } from "node:http";
-import { runVisualize, checkKey, authorize, rateLimit, corsOrigin } from "../api/_core.mjs";
+import { runVisualize, runExtract, checkKey, authorize, rateLimit, corsOrigin } from "../api/_core.mjs";
 
 const PORT = process.env.PORT || 8787;
 
@@ -60,7 +60,7 @@ const server = createServer(async (req, res) => {
     return sendJson(res, 200, { ok: true, service: "green-light-visualize-proxy" });
   }
 
-  if (req.method === "POST" && (path === "/api/visualize" || path === "/")) {
+  if (req.method === "POST" && (path === "/api/visualize" || path === "/api/extract" || path === "/")) {
     let raw = "";
     try {
       for await (const chunk of req) raw += chunk;
@@ -77,6 +77,17 @@ const server = createServer(async (req, res) => {
     // Login håndhæves altid (fejler lukket hvis SUPABASE_* mangler).
     const auth = await authorize(token);
     if (!auth.ok) return sendJson(res, auth.status, { error: auth.reason });
+
+    if (path === "/api/extract") {
+      const rl = rateLimit(`extract:${auth.email || "anonymous"}`);
+      if (!rl.ok) return sendJson(res, rl.status, { error: rl.reason });
+      const { status, payload } = await runExtract({
+        pdf: body?.pdf,
+        filename: body?.filename,
+        apiKey: process.env.OPENAI_API_KEY,
+      });
+      return sendJson(res, status, payload);
+    }
 
     const rl = rateLimit(auth.email);
     if (!rl.ok) return sendJson(res, rl.status, { error: rl.reason });

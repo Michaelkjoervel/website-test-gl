@@ -2,15 +2,18 @@
 // api/_core.mjs  ·  Delt kerne for visualiserings-proxyen
 // -----------------------------------------------------------------------------
 // Ren logik uden HTTP-framework, så SAMME kode kan bruges af:
-//   - api/visualize.js      (Vercel-funktion)
-//   - server/proxy.mjs      (almindelig Node-server, fx i GitHub Codespaces)
+//   - api/visualize.js + api/extract.js  (Vercel-funktioner)
+//   - server/proxy.mjs                   (Node-server, fx GitHub Codespaces)
 //
-// Kalder OpenAI gpt-image-1's billed-redigerings-endpoint (/v1/images/edits)
-// med kundens rumfoto + input_fidelity:high, så rummet bevares og kun
-// belysningen ændres. Filnavn starter med "_" så Vercel ikke gør det til en rute.
+// runVisualize: OpenAI gpt-image-1's billed-redigering (/v1/images/edits) med
+// kundens rumfoto + input_fidelity:high, så rummet bevares.
+// runExtract:   læser et PDF-datablad med en billig tekst/vision-model og
+// returnerer armaturets specs som struktureret JSON.
+// Filnavn starter med "_" så Vercel ikke gør det til en rute.
 // =============================================================================
 
 const OPENAI_EDITS_URL = "https://api.openai.com/v1/images/edits";
+const OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions";
 
 /**
  * Verificér brugerens Supabase-login, FØR OpenAI kaldes (så kun green light-
@@ -258,4 +261,132 @@ export async function checkKey(apiKey) {
     /* ignore */
   }
   return { status: 200, payload: { keyValid: false, reason: `OpenAI svarede ${r.status}. ${detail}`.trim() } };
+}
+
+// ---------------------------------------------------------------------------
+// Datablad-ekstraktion (PDF → armaturdata)
+// ---------------------------------------------------------------------------
+// Sender PDF'en direkte til en billig OpenAI-model med fil-input og et strengt
+// JSON-schema, så svaret altid er maskinlæsbart. Modellen kan overstyres med
+// EXTRACT_MODEL-env (default gpt-5-mini).
+
+const EXTRACT_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    name: { type: ["string", "null"], description: "Armaturets produktnavn" },
+    sku: { type: ["string", "null"], description: "Varenummer/typebetegnelse" },
+    category: { type: ["string", "null"], description: "En af: LED-panel, Downlight, Lineær / pendel, Highbay / lavbay, Spot / skinne, Facade / væg, Udendørs" },
+    mounting: { type: ["string", "null"], description: "En af: Indbygning, Påbygning, Pendel, Væg, Skinne, Mast / stander" },
+    lumen: { type: ["number", "null"], description: "Systemlysstrøm i lumen" },
+    watt: { type: ["number", "null"], description: "Systemeffekt i watt" },
+    kelvin: { type: ["number", "null"], description: "Farvetemperatur i Kelvin (ved flere varianter: vælg 4000 hvis muligt)" },
+    tunableWhite: { type: ["boolean", "null"] },
+    cri: { type: ["number", "null"], description: "Farvegengivelse Ra/CRI" },
+    beamAngle: { type: ["number", "null"], description: "Spredningsvinkel i grader" },
+    ip: { type: ["string", "null"], description: "Kapslingsklasse, fx IP20" },
+    ugr: { type: ["number", "null"], description: "Blændingstal UGR" },
+    lifetimeHours: { type: ["number", "null"], description: "Levetid i timer, fx L80B10-tallet" },
+    dimmable: { type: ["boolean", "null"] },
+    dimensions: { type: ["string", "null"], description: "Fysiske mål, fx 595×595×28 mm" },
+    description: { type: ["string", "null"], description: "1-2 sætningers dansk produktbeskrivelse" },
+    lightCharacter: { type: ["string", "null"], description: "Kort dansk beskrivelse af lysets karakter til AI-visualisering" },
+    tags: { type: ["array", "null"], items: { type: "string" }, description: "2-4 danske anvendelses-tags, fx kontor, lager" },
+  },
+  required: [
+    "name", "sku", "category", "mounting", "lumen", "watt", "kelvin", "tunableWhite",
+    "cri", "beamAngle", "ip", "ugr", "lifetimeHours", "dimmable", "dimensions",
+    "description", "lightCharacter", "tags",
+  ],
+};
+
+export async function runExtract({ pdf, filename, apiKey }) {
+  if (!apiKey) {
+    return { status: 500, payload: { error: "Serveren mangler OPENAI_API_KEY." } };
+  }
+  if (!pdf) {
+    return { status: 400, payload: { error: "'pdf' (dataURL) er påkrævet." } };
+  }
+  let parts;
+  try {
+    parts = dataUrlToParts(pdf);
+  } catch {
+    return { status: 400, payload: { error: "pdf skal være en base64 dataURL." } };
+  }
+  if (!parts.mime.includes("pdf")) {
+    return { status: 400, payload: { error: "Filen skal være en PDF (application/pdf)." } };
+  }
+  if (parts.buffer.length > 15 * 1024 * 1024) {
+    return { status: 413, payload: { error: "PDF'en er for stor (maks 15 MB)." } };
+  }
+
+  const model = process.env.EXTRACT_MODEL || "gpt-5-mini";
+  const body = {
+    model,
+    messages: [
+      {
+        role: "system",
+        content:
+          "Du er en præcis dataekstraktør for belysningsarmaturer. Du læser producent-datablade (ofte tabeller og varianter) og returnerer ét armaturs data. Findes flere varianter, så vælg den mest repræsentative (4000 K, standardflux) og nævn varianterne i description. Brug null for alt, der ikke fremgår – gæt aldrig. Fritekst-felter skrives på dansk.",
+      },
+      {
+        role: "user",
+        content: [
+          { type: "file", file: { filename: filename || "datablad.pdf", file_data: pdf } },
+          {
+            type: "text",
+            text: "Udtræk armaturets data fra dette datablad. lumen = systemlysstrøm, watt = systemeffekt. category og mounting skal vælges fra listerne i schemaet, hvis muligt.",
+          },
+        ],
+      },
+    ],
+    response_format: {
+      type: "json_schema",
+      json_schema: { name: "fixture_extract", strict: true, schema: EXTRACT_SCHEMA },
+    },
+  };
+
+  let res;
+  try {
+    res = await fetch(OPENAI_CHAT_URL, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch (e) {
+    return { status: 502, payload: { error: `Kunne ikke nå OpenAI: ${e.message}` } };
+  }
+
+  if (!res.ok) {
+    let detail = "";
+    try {
+      const err = await res.json();
+      detail = err?.error?.message || JSON.stringify(err);
+    } catch {
+      detail = await res.text().catch(() => "");
+    }
+    return {
+      status: res.status === 401 ? 401 : 502,
+      payload: { error: `OpenAI-fejl (${res.status}): ${String(detail).slice(0, 300)}` },
+    };
+  }
+
+  let json;
+  try {
+    json = await res.json();
+  } catch {
+    return { status: 502, payload: { error: "Uventet svar fra OpenAI." } };
+  }
+
+  const msg = json?.choices?.[0]?.message;
+  if (msg?.refusal) {
+    return { status: 422, payload: { error: `Modellen afviste databladet: ${msg.refusal}` } };
+  }
+  let fixture;
+  try {
+    fixture = JSON.parse(msg?.content ?? "");
+  } catch {
+    return { status: 502, payload: { error: "Kunne ikke tolke svaret fra modellen." } };
+  }
+  return { status: 200, payload: { fixture, model } };
 }
