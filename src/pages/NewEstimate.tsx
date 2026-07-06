@@ -33,10 +33,9 @@ import { dkkInt, num, pct } from "../lib/format";
 // Fokusområder i v1 – styres fra pricingConfig (flere kan aktiveres senere)
 const AREAS: AreaType[] = pricingConfig.focusAreas;
 
-// Rækkefølge i UI: kombinerbare tilvalg først, derefter systemerne
-const CONTROLS: ControlType[] = [
+// Styringssystemer – inkluderet i armaturprisen, vælg ét
+const CONTROL_SYSTEMS: ControlType[] = [
   "Simpel on/off",
-  "Bevægelsessensor",
   "Trådløs styring",
   "DALI",
   "DALI-2",
@@ -46,6 +45,9 @@ const CONTROLS: ControlType[] = [
   "SmartScan",
   "Andet",
 ];
+
+// Tilvalg – kan kombineres og koster ekstra pr. armatur
+const CONTROL_ADDONS: ControlType[] = ["Bevægelsessensor", "Dagslysstyring"];
 
 const KELVINS: KelvinValue[] = [
   3000,
@@ -409,40 +411,12 @@ export function NewEstimate() {
                 </div>
               </Field>
 
-              <Field
-                label="Ønske til styring"
-                tooltip="Vælg gerne flere. Systemerne (DALI, DALI-2, DALI+, Casambi, MasterConnect, SmartScan) udelukker hinanden. Ingen valg = ingen styring."
-                hint={
-                  (technical.controlTypes ?? []).length === 0
-                    ? "Ingen styring valgt."
-                    : `Valgt: ${controlLabel(technical)}`
-                }
-              >
-                <div className="flex flex-wrap gap-2">
-                  {CONTROLS.map((c) => {
-                    const selected = (technical.controlTypes ?? []).includes(c);
-                    const exclusive =
-                      pricingConfig.controlSurcharge[c]?.exclusive;
-                    return (
-                      <button
-                        type="button"
-                        key={c}
-                        onClick={() => toggleControl(c)}
-                        className={`chip border ${
-                          selected
-                            ? "bg-brand-500 text-white border-brand-500"
-                            : exclusive
-                            ? "bg-brand-50/50 text-ink-soft border-surface-line hover:border-brand-300"
-                            : "bg-white text-ink-soft border-surface-line hover:border-brand-300"
-                        }`}
-                      >
-                        {selected ? "✓ " : ""}
-                        {c}
-                      </button>
-                    );
-                  })}
-                </div>
-              </Field>
+              <div className="md:col-span-2">
+                <ControlSelector
+                  selected={technical.controlTypes ?? []}
+                  onToggle={toggleControl}
+                />
+              </div>
 
               <Field label="Ønske til lux" tooltip="Det ønskede belysningsniveau på arbejdsplanen.">
                 <div className="flex flex-wrap gap-2">
@@ -836,7 +810,10 @@ export function NewEstimate() {
                 label="Installation"
                 value={dkkInt(pricing.installationCost)}
               />
-              <SmallStat label="Styring" value={dkkInt(pricing.controlCost)} />
+              <SmallStat
+                label="Styringstilvalg"
+                value={dkkInt(pricing.controlCost)}
+              />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -996,6 +973,138 @@ export function NewEstimate() {
           </div>
         </div>
       </aside>
+    </div>
+  );
+}
+
+// Grupperet styringsvælger: systemer (inkl. i armaturprisen, vælg ét)
+// og tilvalg (koster ekstra, kan kombineres).
+function ControlSelector({
+  selected,
+  onToggle,
+}: {
+  selected: ControlType[];
+  onToggle: (c: ControlType) => void;
+}) {
+  return (
+    <div className="rounded-2xl border border-surface-line overflow-hidden">
+      <div className="px-4 py-3 bg-surface-soft border-b border-surface-line flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <div className="text-sm font-semibold text-ink">Ønske til styring</div>
+          <div className="text-[11px] text-ink-mute mt-0.5">
+            {selected.length === 0
+              ? "Intet valgt endnu – vælg system og eventuelle tilvalg."
+              : `Valgt: ${selected.join(" + ")}`}
+          </div>
+        </div>
+      </div>
+
+      <div className="p-4 space-y-5">
+        {/* Systemer */}
+        <div>
+          <div className="flex items-center gap-2 mb-2.5">
+            <span className="text-xs font-semibold text-ink-soft uppercase tracking-wider">
+              Styringssystem
+            </span>
+            <span className="chip bg-brand-50 text-brand-700 text-[10px]">
+              Inkluderet i armaturprisen · vælg ét
+            </span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {CONTROL_SYSTEMS.map((c) => {
+              const isSelected = selected.includes(c);
+              return (
+                <button
+                  type="button"
+                  key={c}
+                  onClick={() => onToggle(c)}
+                  className={`flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left text-sm transition-all ${
+                    isSelected
+                      ? "border-brand-500 bg-brand-50 text-ink font-semibold shadow-glow"
+                      : "border-surface-line bg-white text-ink-soft hover:border-brand-300"
+                  }`}
+                >
+                  <span
+                    className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                      isSelected
+                        ? "border-brand-500 bg-brand-500"
+                        : "border-surface-line bg-white"
+                    }`}
+                  >
+                    {isSelected && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                    )}
+                  </span>
+                  <span className="truncate">{c}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Tilvalg */}
+        <div>
+          <div className="flex items-center gap-2 mb-2.5">
+            <span className="text-xs font-semibold text-ink-soft uppercase tracking-wider">
+              Tilvalg
+            </span>
+            <span className="chip bg-amber-50 text-amber-700 text-[10px]">
+              Koster ekstra · kan kombineres
+            </span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {CONTROL_ADDONS.map((c) => {
+              const isSelected = selected.includes(c);
+              const price =
+                pricingConfig.controlSurcharge[c]?.perLuminaire ?? 0;
+              return (
+                <button
+                  type="button"
+                  key={c}
+                  onClick={() => onToggle(c)}
+                  className={`flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left text-sm transition-all ${
+                    isSelected
+                      ? "border-brand-500 bg-brand-50 text-ink font-semibold shadow-glow"
+                      : "border-surface-line bg-white text-ink-soft hover:border-brand-300"
+                  }`}
+                >
+                  <span
+                    className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${
+                      isSelected
+                        ? "border-brand-500 bg-brand-500"
+                        : "border-surface-line bg-white"
+                    }`}
+                  >
+                    {isSelected && (
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
+                        <path
+                          d="M5 13l4 4L19 7"
+                          stroke="#fff"
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    )}
+                  </span>
+                  <span className="flex-1 truncate">{c}</span>
+                  <span
+                    className={`text-[11px] font-semibold shrink-0 ${
+                      isSelected ? "text-brand-700" : "text-ink-mute"
+                    }`}
+                  >
+                    +{dkkInt(price)}/armatur
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-[11px] text-ink-mute mt-2.5">
+            Gateway vælges under Kelvin (Tunable White + Gateway) og fordyrer
+            ligeledes løsningen.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

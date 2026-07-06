@@ -209,9 +209,9 @@ export function generateEstimatePdf(est: CustomerEstimate): jsPDF {
     startY: y,
     head: [["Komponent", "Estimeret pris"]],
     body: [
-      ["Materiale (armaturer m.v.)", dkkInt(est.pricing.materialCost)],
+      ["Materiale (armaturer inkl. styringssystem)", dkkInt(est.pricing.materialCost)],
       ["Installation", dkkInt(est.pricing.installationCost)],
-      ["Styring", dkkInt(est.pricing.controlCost)],
+      ["Styringstilvalg (sensor m.v.)", dkkInt(est.pricing.controlCost)],
       ["I alt", dkkInt(est.pricing.totalCost)],
     ],
     theme: "plain",

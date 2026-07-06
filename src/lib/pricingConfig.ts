@@ -25,8 +25,8 @@ export interface LuminaireProduct {
 export interface ControlOption {
   perLuminaire: number;
   fixed: number;
-  // Systemer (DALI-familien, Casambi, MasterConnect, SmartScan) udelukker
-  // hinanden – kun ét system kan vælges ad gangen. Øvrige kan kombineres.
+  // Systemer udelukker hinanden – kun ét system kan vælges ad gangen.
+  // Tilvalg (exclusive: false) kan kombineres frit.
   exclusive: boolean;
 }
 
@@ -55,8 +55,9 @@ export interface PricingConfig {
   // Lux-faktor – bevidst tæt på 1: lux flytter mest på energiforbruget,
   // kun minimalt på prisen.
   luxFactor: { lux: number; factor: number }[];
-  // Styringsformer – pr. armatur tillæg + fast tillæg. Det er styringen
-  // (og antallet af armaturer), der for alvor rykker prisen.
+  // Styringsformer. Selve styringssystemet er INKLUDERET i armaturprisen
+  // (0 kr). Det er tilvalgene – sensor og dagslysstyring – samt gateway
+  // (via Tunable White + Gateway), der fordyrer løsningen.
   controlSurcharge: Record<string, ControlOption>;
   // Margin / budgetinterval – ±%
   budgetRangePct: number;
@@ -161,19 +162,20 @@ export const pricingConfig: PricingConfig = {
     { lux: 750, factor: 1.02 },
   ],
 
-  // Styringen er den store prisdriver. Systemer (exclusive: true)
-  // udelukker hinanden; øvrige kan kombineres frit.
+  // Styringssystemet er inkluderet i armaturprisen (0 kr). Kun tilvalg
+  // koster ekstra: sensor og dagslysstyring (pr. armatur, placeholder).
   controlSurcharge: {
-    "Simpel on/off": { perLuminaire: 35, fixed: 0, exclusive: false },
-    Bevægelsessensor: { perLuminaire: 220, fixed: 1500, exclusive: false },
-    "Trådløs styring": { perLuminaire: 260, fixed: 4500, exclusive: false },
-    DALI: { perLuminaire: 310, fixed: 6500, exclusive: true },
-    "DALI-2": { perLuminaire: 340, fixed: 7000, exclusive: true },
-    "DALI+": { perLuminaire: 380, fixed: 7500, exclusive: true },
-    Casambi: { perLuminaire: 320, fixed: 6000, exclusive: true },
-    MasterConnect: { perLuminaire: 290, fixed: 5500, exclusive: true },
-    SmartScan: { perLuminaire: 350, fixed: 8000, exclusive: true },
-    Andet: { perLuminaire: 150, fixed: 2000, exclusive: false },
+    "Simpel on/off": { perLuminaire: 0, fixed: 0, exclusive: true },
+    "Trådløs styring": { perLuminaire: 0, fixed: 0, exclusive: true },
+    DALI: { perLuminaire: 0, fixed: 0, exclusive: true },
+    "DALI-2": { perLuminaire: 0, fixed: 0, exclusive: true },
+    "DALI+": { perLuminaire: 0, fixed: 0, exclusive: true },
+    Casambi: { perLuminaire: 0, fixed: 0, exclusive: true },
+    MasterConnect: { perLuminaire: 0, fixed: 0, exclusive: true },
+    SmartScan: { perLuminaire: 0, fixed: 0, exclusive: true },
+    Andet: { perLuminaire: 0, fixed: 0, exclusive: true },
+    Bevægelsessensor: { perLuminaire: 220, fixed: 0, exclusive: false },
+    Dagslysstyring: { perLuminaire: 180, fixed: 0, exclusive: false },
   },
 
   budgetRangePct: 12,

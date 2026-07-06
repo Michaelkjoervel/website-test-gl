@@ -1,11 +1,11 @@
 // Core type definitions for the green light estimator.
 // All persisted data conforms to these interfaces.
 
-// Styringsformer. "Systemer" (DALI-familien, Casambi, MasterConnect,
-// SmartScan) udelukker hinanden – øvrige kan kombineres frit.
+// Styringsformer. Styringssystemet er inkluderet i armaturprisen og
+// systemerne udelukker hinanden. Tilvalg (sensor, dagslysstyring) kan
+// kombineres frit og koster ekstra.
 export type ControlType =
   | "Simpel on/off"
-  | "Bevægelsessensor"
   | "Trådløs styring"
   | "DALI"
   | "DALI-2"
@@ -13,7 +13,9 @@ export type ControlType =
   | "Casambi"
   | "MasterConnect"
   | "SmartScan"
-  | "Andet";
+  | "Andet"
+  | "Bevægelsessensor"
+  | "Dagslysstyring";
 
 export type KelvinValue =
   | 3000

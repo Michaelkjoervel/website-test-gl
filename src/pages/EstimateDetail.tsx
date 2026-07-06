@@ -170,9 +170,9 @@ export function EstimateDetail() {
           </h3>
           <DefList
             items={[
-              ["Materiale", dkkInt(est.pricing.materialCost)],
+              ["Materiale (inkl. styringssystem)", dkkInt(est.pricing.materialCost)],
               ["Installation", dkkInt(est.pricing.installationCost)],
-              ["Styring", dkkInt(est.pricing.controlCost)],
+              ["Styringstilvalg", dkkInt(est.pricing.controlCost)],
               ["I alt", dkkInt(est.pricing.totalCost)],
             ]}
             highlightLast

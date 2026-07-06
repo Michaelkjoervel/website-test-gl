@@ -361,11 +361,14 @@ luminaireProducts: {
               { id: "forte", name: "Forte", pricePerUnit: 1200 } ],
 },
 
-// styringsformer – den store prisdriver. exclusive: true = systemer,
-// der udelukker hinanden (DALI, DALI-2, DALI+, Casambi, MasterConnect,
-// SmartScan); øvrige kan kombineres frit
+// styringsformer. Systemerne (DALI, DALI-2, DALI+, Casambi,
+// MasterConnect, SmartScan…) er INKLUDERET i armaturprisen (0 kr) og
+// udelukker hinanden (exclusive: true). Tilvalg koster ekstra og kan
+// kombineres: sensor og dagslysstyring – samt gateway via Tunable White
 controlSurcharge: {
-  MasterConnect: { perLuminaire: 290, fixed: 5500, exclusive: true },
+  MasterConnect:    { perLuminaire: 0,   fixed: 0, exclusive: true },
+  Bevægelsessensor: { perLuminaire: 220, fixed: 0, exclusive: false },
+  Dagslysstyring:   { perLuminaire: 180, fixed: 0, exclusive: false },
   // …
 },
 

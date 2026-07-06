@@ -75,8 +75,8 @@ export function calculatePricing(input: TechnicalInput): PricingResult {
   const luminaireUnitCost = unitPrice + kelvinSurcharge;
   const materialCost = luminaireUnitCost * count * luxFactor;
 
-  // Styring – summen af alle valgte styringsformer (pr. armatur + fast).
-  // Det er her, prisen for alvor flytter sig.
+  // Styring: systemet er inkluderet i armaturprisen (0 kr i config).
+  // Kun tilvalg (sensor, dagslysstyring) lægger til her.
   const controlCost = (input.controlTypes ?? []).reduce((sum, key) => {
     const ctrl = cfg.controlSurcharge[key];
     if (!ctrl) return sum;
