@@ -312,41 +312,67 @@ export const proxyProvider: VisualizationProvider = {
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     const token = await getAccessToken();
     if (token) headers.Authorization = `Bearer ${token}`;
+
+    // ---- Transport-optimering -------------------------------------------
+    // Vercel afviser request-bodies over ~4,5 MB FØR serverkoden kører
+    // (platform-413). Derfor komprimeres alt til forsendelsen: rumfotoet
+    // krympes ved behov (originalen bevares til før/efter i appen),
+    // produktreferencer sendes små (512 px er rigeligt som visuel reference),
+    // og plantegningen sendes slet ikke (serveren bruger den ikke).
+    const LIMIT = 4_200_000; // tegn ≈ bytes for JSON-body
+    let transportPhoto = input.roomPhoto;
+    if (transportPhoto.length > 2_600_000) {
+      transportPhoto = await downscaleImage(transportPhoto, 1600, 0.82, "image/jpeg").catch(() => transportPhoto);
+    }
+    const refsRaw = [
+      ...new Set(
+        input.fixtures
+          .map((f) => f.fixture.productImage || "")
+          .filter((u) => u.startsWith("data:image/")),
+      ),
+    ].slice(0, 3);
+    const refs: string[] = [];
+    for (const u of refsRaw) {
+      // Hvid baggrund: transparente PNG'er må ikke blive sorte som JPEG.
+      const small = await downscaleImage(u, 512, 0.8, "image/jpeg", "#fff").catch(() => null);
+      if (small) refs.push(small);
+    }
+
+    const bodyObj = {
+      prompt: input.prompt,
+      roomPhoto: transportPhoto,
+      quality: input.quality ?? "high",
+      // Serveren lader en vision-model se rummet og styre genereringen
+      // (ChatGPT-pipelinen); produktreferencer sendes som billeder.
+      autoPrompt: true,
+      fixtureImages: refs,
+      placementMode: input.placementMode,
+      placements: input.placements,
+      scenario: input.scenario,
+      roomType: input.roomType,
+      fixtures: input.fixtures.map((f) => ({
+        name: f.fixture.name,
+        category: f.fixture.category,
+        quantity: f.quantity,
+        specs: f.fixture.specs,
+      })),
+    };
+    let body = JSON.stringify(bodyObj);
+    if (body.length > LIMIT) {
+      bodyObj.fixtureImages = [];
+      body = JSON.stringify(bodyObj);
+    }
+    if (body.length > LIMIT) {
+      bodyObj.roomPhoto = await downscaleImage(transportPhoto, 1280, 0.75, "image/jpeg").catch(() => transportPhoto);
+      body = JSON.stringify(bodyObj);
+    }
+    if (body.length > 4_400_000) {
+      throw new Error("Billedmaterialet er for stort til serveren – prøv med et mindre rumbillede.");
+    }
+
     let res: Response;
     try {
-      res = await fetch(endpoint, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          prompt: input.prompt,
-          roomPhoto: input.roomPhoto,
-          quality: input.quality ?? "high",
-          // AI-lysdesigner: serveren lader en vision-model se rummet og
-          // skrive den optimale prompt (som ChatGPT gør internt).
-          autoPrompt: true,
-          // Produktreferencer: uploadede produktbilleder (dataURLs) sendes
-          // med, så det GENKENDELIGE armatur rendres. Eksterne URL'er kan
-          // ikke sendes (CORS) og springes over.
-          fixtureImages: [
-            ...new Set(
-              input.fixtures
-                .map((f) => f.fixture.productImage || "")
-                .filter((u) => u.startsWith("data:image/")),
-            ),
-          ].slice(0, 3),
-          floorPlan: input.floorPlan,
-          placementMode: input.placementMode,
-          placements: input.placements,
-          scenario: input.scenario,
-          roomType: input.roomType,
-          fixtures: input.fixtures.map((f) => ({
-            name: f.fixture.name,
-            category: f.fixture.category,
-            quantity: f.quantity,
-            specs: f.fixture.specs,
-          })),
-        }),
-      });
+      res = await fetch(endpoint, { method: "POST", headers, body });
     } catch (e) {
       throw new Error(`Kunne ikke nå proxyen. Tjek URL'en. (${e instanceof Error ? e.message : "netværksfejl"})`);
     }
@@ -355,8 +381,9 @@ export const proxyProvider: VisualizationProvider = {
       try {
         const err = (await res.json()) as { error?: string };
         if (err?.error) msg += ` ${err.error}`;
+        else if (res.status === 413) msg += " Billedmaterialet var for stort til serveren – prøv igen (appen komprimerer nu hårdere).";
       } catch {
-        /* ignore */
+        if (res.status === 413) msg += " Billedmaterialet var for stort til serveren – prøv igen (appen komprimerer nu hårdere).";
       }
       throw new Error(msg);
     }
