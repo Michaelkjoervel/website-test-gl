@@ -38,6 +38,7 @@ export async function downscaleImage(
   maxDim = 1400,
   quality = 0.82,
   mime: "image/jpeg" | "image/png" = "image/jpeg",
+  background?: string, // fx "#fff" – nødvendig når transparent PNG → JPEG
 ): Promise<string> {
   const img = await loadImage(src);
   const { width, height } = img;
@@ -50,6 +51,10 @@ export async function downscaleImage(
   canvas.height = h;
   const ctx = canvas.getContext("2d");
   if (!ctx) return src;
+  if (background) {
+    ctx.fillStyle = background;
+    ctx.fillRect(0, 0, w, h);
+  }
   ctx.drawImage(img, 0, 0, w, h);
   return canvas.toDataURL(mime, quality);
 }
