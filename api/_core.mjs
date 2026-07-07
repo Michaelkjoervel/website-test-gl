@@ -173,11 +173,62 @@ export function pickSize(dims) {
   return "1024x1024";
 }
 
+// ---------------------------------------------------------------------------
+// AI-lysdesigner: skriv den optimale redigerings-prompt UD FRA selve billedet
+// ---------------------------------------------------------------------------
+// Det er den afgørende forskel på "skabelon-prompt" og ChatGPT-kvalitet: en
+// vision-model KIGGER på kundens rum (og evt. produktbilleder) og formulerer
+// en skræddersyet instruks til gpt-image-1 – præcis som ChatGPT gør internt.
+// Fejler trinnet, falder vi tilbage til den strukturerede brief (blokerer
+// aldrig genereringen). Model: PROMPT_MODEL-env, default gpt-5-mini.
+
+const PROMPT_WRITER_SYSTEM = `You are an expert architectural lighting designer and prompt engineer for OpenAI's gpt-image-1 image EDITING endpoint. You are shown a photo of a customer's real room (first image). Any additional images show the EXACT luminaire products that will be installed.
+
+Write the single best English editing prompt that will:
+- keep the room EXACTLY as photographed: same geometry, walls, furniture, materials, camera angle and perspective — only add/replace the luminaires and render their realistic light
+- place the requested number and type of luminaires plausibly, referring to surfaces actually visible in THIS photo (e.g. "the white suspended ceiling", "the beam above the desks") — never invent rooms or furniture
+- describe realistic illumination for the requested scenario: correct light pools on floor/walls, soft shadows, the specified colour temperature, believable brightness falloff, no blown-out hotspots
+- if product reference images are provided, instruct the model to replicate those exact fixtures faithfully (shape, finish, proportions)
+- photorealistic, high detail, professional architectural photography look
+
+Output ONLY the final prompt text — no preamble, no quotes, max 180 words.`;
+
+export async function craftPrompt({ brief, roomPhoto, fixtureImages = [], apiKey }) {
+  const model = process.env.PROMPT_MODEL || "gpt-5-mini";
+  const content = [
+    { type: "image_url", image_url: { url: roomPhoto } },
+    ...fixtureImages.slice(0, 3).map((u) => ({ type: "image_url", image_url: { url: u } })),
+    { type: "text", text: `Requirements from the sales tool:\n${String(brief).slice(0, 8000)}` },
+  ];
+  try {
+    const res = await fetch(OPENAI_CHAT_URL, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: PROMPT_WRITER_SYSTEM },
+          { role: "user", content },
+        ],
+      }),
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    const text = json?.choices?.[0]?.message?.content?.trim();
+    return text && text.length > 40 ? text.slice(0, 4000) : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Kør én visualisering. Ren funktion: ingen req/res.
+ * fixtureImages: op til 3 produktbilleder (dataURLs) der sendes med som
+ * reference, så det GENKENDELIGE armatur rendres. autoPrompt (default true):
+ * lad AI-lysdesigneren skrive prompten ud fra billedet.
  * @returns {{ status: number, payload: object }}
  */
-export async function runVisualize({ prompt, roomPhoto, quality, apiKey }) {
+export async function runVisualize({ prompt, roomPhoto, quality, apiKey, fixtureImages, autoPrompt }) {
   if (!apiKey) {
     return { status: 500, payload: { error: "Serveren mangler OPENAI_API_KEY." } };
   }
@@ -199,15 +250,45 @@ export async function runVisualize({ prompt, roomPhoto, quality, apiKey }) {
     return { status: 413, payload: { error: "Billedet er for stort (maks 8 MB). Appen nedskalerer normalt automatisk – prøv igen med et mindre billede." } };
   }
 
+  // Produktreference-billeder: valider stille og roligt (ugyldige springes over).
+  const refs = [];
+  const refUrls = [];
+  for (const fi of (Array.isArray(fixtureImages) ? fixtureImages : []).slice(0, 3)) {
+    try {
+      const p = dataUrlToParts(fi);
+      if (p.mime.startsWith("image/") && p.buffer.length <= 4 * 1024 * 1024) {
+        refs.push(p);
+        refUrls.push(fi);
+      }
+    } catch {
+      /* skip */
+    }
+  }
+
+  // AI-lysdesigner-trin (fallback: den medsendte brief).
+  let finalPrompt = String(prompt);
+  if (autoPrompt !== false) {
+    const crafted = await craftPrompt({ brief: prompt, roomPhoto, fixtureImages: refUrls, apiKey });
+    if (crafted) finalPrompt = crafted;
+  }
+
   const size = pickSize(imageSize(img.buffer, img.mime));
   const ext = img.mime.includes("png") ? "png" : "jpg";
 
   const form = new FormData();
   form.append("model", "gpt-image-1");
-  form.append("image", new Blob([img.buffer], { type: img.mime }), `room.${ext}`);
-  form.append("prompt", String(prompt).slice(0, 32000));
+  if (refs.length) {
+    // Flere input-billeder: rummet først, derefter produktreferencer.
+    form.append("image[]", new Blob([img.buffer], { type: img.mime }), `room.${ext}`);
+    refs.forEach((p, i) =>
+      form.append("image[]", new Blob([p.buffer], { type: p.mime }), `product-${i + 1}.${p.mime.includes("png") ? "png" : "jpg"}`),
+    );
+  } else {
+    form.append("image", new Blob([img.buffer], { type: img.mime }), `room.${ext}`);
+  }
+  form.append("prompt", finalPrompt.slice(0, 32000));
   form.append("size", size);
-  form.append("quality", ["low", "medium", "high"].includes(quality) ? quality : "medium");
+  form.append("quality", ["low", "medium", "high"].includes(quality) ? quality : "high");
   form.append("input_fidelity", "high"); // bevar kundens rum bedst muligt
   form.append("n", "1");
 
@@ -246,7 +327,8 @@ export async function runVisualize({ prompt, roomPhoto, quality, apiKey }) {
   const b64 = json?.data?.[0]?.b64_json;
   if (!b64) return { status: 502, payload: { error: "OpenAI returnerede intet billede." } };
 
-  return { status: 200, payload: { imageData: `data:image/png;base64,${b64}` } };
+  // prompt returneres, så klienten kan gemme den FAKTISK brugte instruks.
+  return { status: 200, payload: { imageData: `data:image/png;base64,${b64}`, prompt: finalPrompt } };
 }
 
 /**

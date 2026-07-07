@@ -7,6 +7,7 @@ interface ImageDropzoneProps {
   label: string;
   hint?: string;
   maxDim?: number;
+  quality?: number; // JPEG-kvalitet (0..1) for nedskaleringen
   className?: string;
 }
 
@@ -20,6 +21,7 @@ export function ImageDropzone({
   label,
   hint,
   maxDim = 1400,
+  quality = 0.82,
   className = "",
 }: ImageDropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -31,13 +33,13 @@ export function ImageDropzone({
       if (!file || !file.type.startsWith("image/")) return;
       setBusy(true);
       try {
-        const url = await fileToScaledDataUrl(file, maxDim);
+        const url = await fileToScaledDataUrl(file, maxDim, quality);
         onChange(url);
       } finally {
         setBusy(false);
       }
     },
-    [maxDim, onChange],
+    [maxDim, quality, onChange],
   );
 
   return (

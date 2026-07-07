@@ -129,7 +129,7 @@ export function NewVisualization() {
   const draft = useMemo(readDraft, []);
   const [step, setStep] = useState(() => draft?.step ?? 1);
   const [viz, setViz] = useState<Visualization>(() => draft?.viz ?? freshViz());
-  const [quality, setQuality] = useState<RenderQuality>(() => draft?.quality ?? "medium");
+  const [quality, setQuality] = useState<RenderQuality>(() => draft?.quality ?? "high");
   const [draftRestored, setDraftRestored] = useState(() => draft !== null);
   const [providerId, setProviderId] = useState(() => defaultProvider().id);
   const [showPrompt, setShowPrompt] = useState(false);
@@ -338,6 +338,8 @@ export function NewVisualization() {
               value={viz.roomPhoto}
               onChange={(url) => set({ roomPhoto: url })}
               hint="Tag et billede i god opløsning, hvor loftet er synligt."
+              maxDim={2000}
+              quality={0.88}
             />
             <ImageDropzone
               label="Plantegning (valgfrit)"
@@ -427,9 +429,9 @@ export function NewVisualization() {
               </Field>
               <Field label="Kvalitet" hint="Styrer også prisen pr. AI-billede.">
                 <select className="select" value={quality} onChange={(e) => setQuality(e.target.value as RenderQuality)}>
+                  <option value="high">Høj (anbefalet til kundemøder)</option>
+                  <option value="medium">Standard (billigere)</option>
                   <option value="low">Udkast (hurtig & billig)</option>
-                  <option value="medium">Standard</option>
-                  <option value="high">Høj (dyrest)</option>
                 </select>
               </Field>
             </div>
@@ -472,8 +474,11 @@ export function NewVisualization() {
 
             <div>
               <button className="text-sm font-medium text-brand-700 hover:underline" onClick={() => setShowPrompt((s) => !s)}>
-                {showPrompt ? "Skjul" : "Vis"} AI-prompt ({num.format(prompt.length)} tegn)
+                {showPrompt ? "Skjul" : "Vis"} AI-brief ({num.format(prompt.length)} tegn)
               </button>
+              <span className="block text-[11px] text-ink-mute mt-1">
+                Briefen forfines automatisk af en AI-lysdesigner, der ser selve rumbilledet, før billedet genereres.
+              </span>
               {showPrompt && (
                 <pre className="mt-2 whitespace-pre-wrap text-[12px] leading-relaxed text-ink-soft bg-ink/5 rounded-xl p-4 max-h-64 overflow-auto">{prompt}</pre>
               )}

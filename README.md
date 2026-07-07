@@ -185,9 +185,15 @@ skiftes uden at røre UI'et:
 | **Demo-simulering** (standard) | Simulerer "lys tændt" direkte i browseren via canvas. Ingen backend, ingen nøgle. Til at afprøve flowet og vise før/efter. **Ikke fotometrisk eksakt** (stemplet som simulering). |
 | **Live AI (proxy)** | POST'er rumbillede + prompt til en server-funktion, der redigerer fotoet med et rigtigt billed-API og bevarer rummet. Aktiveres ved at indsætte proxy-URL'en i appen (eller via `VITE_VISUALIZATION_ENDPOINT`). |
 
-`buildVisualizationPrompt()` samler en præcis prompt, der beder modellen om at
-**bevare rummet** og kun ændre belysningen ud fra de valgte armaturers specs og
-lyskarakter.
+`buildVisualizationPrompt()` samler en struktureret **brief** (armaturer, antal,
+scenarie, placering). Før genereringen lader serveren en **AI-lysdesigner**
+(vision-model, default `gpt-5-mini`, override med `PROMPT_MODEL`-env) SE selve
+rumbilledet og skrive den optimale redigerings-prompt ud fra briefen – præcis
+som ChatGPT gør internt. Fejler trinnet, bruges briefen direkte (genereringen
+blokeres aldrig). Uploadede **produktbilleder** sendes desuden med som visuelle
+referencer (op til 3), så det genkendelige armatur rendres. Standardkvaliteten
+er **høj** (kundemøde-niveau); rumfotos sendes i op til 2000 px, og resultatet
+gemmes i op til 2048 px.
 
 ### Slå ægte fotorealistisk AI til (OpenAI gpt-image-1)
 

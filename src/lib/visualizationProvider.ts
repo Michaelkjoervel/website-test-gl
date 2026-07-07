@@ -319,7 +319,20 @@ export const proxyProvider: VisualizationProvider = {
         body: JSON.stringify({
           prompt: input.prompt,
           roomPhoto: input.roomPhoto,
-          quality: input.quality ?? "medium",
+          quality: input.quality ?? "high",
+          // AI-lysdesigner: serveren lader en vision-model se rummet og
+          // skrive den optimale prompt (som ChatGPT gør internt).
+          autoPrompt: true,
+          // Produktreferencer: uploadede produktbilleder (dataURLs) sendes
+          // med, så det GENKENDELIGE armatur rendres. Eksterne URL'er kan
+          // ikke sendes (CORS) og springes over.
+          fixtureImages: [
+            ...new Set(
+              input.fixtures
+                .map((f) => f.fixture.productImage || "")
+                .filter((u) => u.startsWith("data:image/")),
+            ),
+          ].slice(0, 3),
           floorPlan: input.floorPlan,
           placementMode: input.placementMode,
           placements: input.placements,
@@ -346,14 +359,15 @@ export const proxyProvider: VisualizationProvider = {
       }
       throw new Error(msg);
     }
-    const data = (await res.json()) as { imageData?: string; image?: string };
+    const data = (await res.json()) as { imageData?: string; image?: string; prompt?: string };
     const raw = data.imageData ?? data.image;
     if (!raw) throw new Error("Live-AI returnerede intet billede.");
-    // Komprimér til et gemme-venligt format, og AI-mærk billedet (kundevendte
-    // AI-billeder skal kunne kendes som AI-genererede).
-    const compact = await downscaleImage(raw, 1600, 0.85, "image/jpeg").catch(() => raw);
+    // Komprimér skånsomt (2048 px, høj JPEG-kvalitet) og AI-mærk billedet
+    // (kundevendte AI-billeder skal kunne kendes som AI-genererede).
+    const compact = await downscaleImage(raw, 2048, 0.9, "image/jpeg").catch(() => raw);
     const imageData = await stampBadge(compact, "AI-visualisering").catch(() => compact);
-    return { imageData, provider: this.id, prompt: input.prompt };
+    // Gem den prompt serveren FAKTISK brugte (AI-lysdesignerens version).
+    return { imageData, provider: this.id, prompt: data.prompt ?? input.prompt };
   },
 };
 
