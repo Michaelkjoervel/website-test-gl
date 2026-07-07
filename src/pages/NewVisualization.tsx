@@ -487,7 +487,7 @@ export function NewVisualization() {
             {error && <ErrorBox msg={error} />}
 
             <button className="btn-primary w-full py-3 disabled:opacity-50" onClick={generate} disabled={generating}>
-              {generating ? "Genererer… (tager typisk 10–40 sekunder)" : viz.renders.length ? "Generér igen" : "Generér visualisering"}
+              {generating ? "Genererer… (høj kvalitet tager typisk 1–2 minutter)" : viz.renders.length ? "Generér igen" : "Generér visualisering"}
             </button>
             {generating && (
               <div className="flex items-center gap-3 rounded-xl bg-surface-soft border border-surface-line px-4 py-3">

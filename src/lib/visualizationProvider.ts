@@ -100,6 +100,7 @@ export function buildVisualizationPrompt(input: VizRenderInput): string {
   return [
     `Photorealistic architectural lighting visualization for a ${input.roomType.toLowerCase()}.`,
     `IMPORTANT: Keep the room EXACTLY as in the provided photo — same walls, furniture, layout, camera angle and perspective. Do NOT redesign the space. Only add/replace the ceiling and wall luminaires and render their realistic light effect.`,
+    `REMOVE all existing luminaires AND every trace of their light (glow, hotspots, ceiling halos, reflections) before adding the new ones. New luminaires must sit perfectly straight, aligned with the ceiling's lines and evenly spaced.`,
     ``,
     `Luminaires to install:`,
     ...fixtureLines,

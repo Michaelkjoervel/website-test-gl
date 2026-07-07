@@ -14,6 +14,7 @@
 
 const OPENAI_EDITS_URL = "https://api.openai.com/v1/images/edits";
 const OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions";
+const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
 
 /**
  * Verificér brugerens Supabase-login, FØR OpenAI kaldes (så kun green light-
@@ -221,11 +222,89 @@ export async function craftPrompt({ brief, roomPhoto, fixtureImages = [], apiKey
   }
 }
 
+// ---------------------------------------------------------------------------
+// ChatGPT-pipelinen: Responses API + image_generation-værktøjet
+// ---------------------------------------------------------------------------
+// Det ER den vej, ChatGPT selv bruger: ræsonnementsmodellen (RENDER_MODEL,
+// default gpt-5) SER rumbilledet + produktreferencer i sin kontekst og styrer
+// selv billedgenereringen. Scenen GEN-RENDERES sammenhængende — gammelt lysskær
+// forsvinder, og ny belysning integreres korrekt — i modsætning til
+// /images/edits med høj input-troskab, som bevarer kildens pixels så hårdt, at
+// den hverken fjerner gammelt lys eller kan sætte armaturer pænt ind.
+// Fejler denne vej (fx modeladgang), falder vi tilbage til edits-pipelinen.
+// Env: RENDER_MODEL (default gpt-5), IMAGE_FIDELITY=high (mere pixeltro, men
+// gen-belyser dårligere), RENDER_PIPELINE=edits (tving gammel pipeline).
+
+function buildRenderInstruction(brief, hasRefs) {
+  return [
+    "You are producing a photorealistic lighting-upgrade visualization for a sales meeting, based on the attached photo of the customer's actual room.",
+    "",
+    "Non-negotiable requirements:",
+    "1. REMOVE every existing luminaire AND every trace of its light: glow, bright spots, ceiling halos, reflections. The old lighting must be completely gone.",
+    "2. Install the new luminaires described in the brief. They must sit PERFECTLY straight, aligned with the ceiling's lines/grid and evenly spaced — crooked or floating fixtures are unacceptable.",
+    "3. Relight the ENTIRE scene coherently from the new luminaires only: realistic light pools, soft shadows, correct colour temperature, believable falloff on walls and floor.",
+    "4. Keep the room true to the photo: same architecture, walls, furniture, materials, camera angle and perspective. Do not redesign anything.",
+    hasRefs
+      ? "5. The additional attached image(s) show the EXACT products to install — replicate their shape, finish and proportions faithfully."
+      : "",
+    "",
+    "Brief from the sales tool:",
+    String(brief).slice(0, 8000),
+    "",
+    "Generate the final image now.",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+async function runResponsesPipeline({ brief, roomPhoto, refUrls, size, quality, apiKey }) {
+  const model = process.env.RENDER_MODEL || "gpt-5";
+  const fidelity = (process.env.IMAGE_FIDELITY || "").trim();
+  const tool = {
+    type: "image_generation",
+    size,
+    quality,
+    output_format: "png",
+    ...(fidelity ? { input_fidelity: fidelity } : {}),
+  };
+  const body = {
+    model,
+    reasoning: { effort: "low" },
+    input: [
+      {
+        role: "user",
+        content: [
+          { type: "input_image", image_url: roomPhoto },
+          ...refUrls.map((u) => ({ type: "input_image", image_url: u })),
+          { type: "input_text", text: buildRenderInstruction(brief, refUrls.length > 0) },
+        ],
+      },
+    ],
+    tools: [tool],
+    tool_choice: { type: "image_generation" },
+  };
+  try {
+    const res = await fetch(OPENAI_RESPONSES_URL, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    const out = Array.isArray(json?.output) ? json.output : [];
+    const call = [...out].reverse().find((o) => o?.type === "image_generation_call" && o?.result);
+    if (!call) return null;
+    return { b64: call.result, revised: call.revised_prompt || null };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Kør én visualisering. Ren funktion: ingen req/res.
- * fixtureImages: op til 3 produktbilleder (dataURLs) der sendes med som
- * reference, så det GENKENDELIGE armatur rendres. autoPrompt (default true):
- * lad AI-lysdesigneren skrive prompten ud fra billedet.
+ * Primær vej: Responses API (ChatGPT-pipelinen). Fallback: lysdesigner-prompt
+ * + /images/edits. fixtureImages: op til 3 produktbilleder (dataURLs) som
+ * visuelle referencer. autoPrompt (default true) gælder fallback-vejen.
  * @returns {{ status: number, payload: object }}
  */
 export async function runVisualize({ prompt, roomPhoto, quality, apiKey, fixtureImages, autoPrompt }) {
@@ -265,14 +344,27 @@ export async function runVisualize({ prompt, roomPhoto, quality, apiKey, fixture
     }
   }
 
-  // AI-lysdesigner-trin (fallback: den medsendte brief).
+  const size = pickSize(imageSize(img.buffer, img.mime));
+  const q = ["low", "medium", "high"].includes(quality) ? quality : "high";
+
+  // --- Primær vej: ChatGPT-pipelinen (Responses + image_generation) --------
+  if (process.env.RENDER_PIPELINE !== "edits") {
+    const r = await runResponsesPipeline({ brief: prompt, roomPhoto, refUrls, size, quality: q, apiKey });
+    if (r) {
+      return {
+        status: 200,
+        payload: { imageData: `data:image/png;base64,${r.b64}`, prompt: r.revised || String(prompt), pipeline: "responses" },
+      };
+    }
+  }
+
+  // --- Fallback: lysdesigner-prompt + /images/edits -------------------------
   let finalPrompt = String(prompt);
   if (autoPrompt !== false) {
     const crafted = await craftPrompt({ brief: prompt, roomPhoto, fixtureImages: refUrls, apiKey });
     if (crafted) finalPrompt = crafted;
   }
 
-  const size = pickSize(imageSize(img.buffer, img.mime));
   const ext = img.mime.includes("png") ? "png" : "jpg";
 
   const form = new FormData();
@@ -328,7 +420,7 @@ export async function runVisualize({ prompt, roomPhoto, quality, apiKey, fixture
   if (!b64) return { status: 502, payload: { error: "OpenAI returnerede intet billede." } };
 
   // prompt returneres, så klienten kan gemme den FAKTISK brugte instruks.
-  return { status: 200, payload: { imageData: `data:image/png;base64,${b64}`, prompt: finalPrompt } };
+  return { status: 200, payload: { imageData: `data:image/png;base64,${b64}`, prompt: finalPrompt, pipeline: "edits" } };
 }
 
 /**

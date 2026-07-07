@@ -186,14 +186,20 @@ skiftes uden at røre UI'et:
 | **Live AI (proxy)** | POST'er rumbillede + prompt til en server-funktion, der redigerer fotoet med et rigtigt billed-API og bevarer rummet. Aktiveres ved at indsætte proxy-URL'en i appen (eller via `VITE_VISUALIZATION_ENDPOINT`). |
 
 `buildVisualizationPrompt()` samler en struktureret **brief** (armaturer, antal,
-scenarie, placering). Før genereringen lader serveren en **AI-lysdesigner**
-(vision-model, default `gpt-5-mini`, override med `PROMPT_MODEL`-env) SE selve
-rumbilledet og skrive den optimale redigerings-prompt ud fra briefen – præcis
-som ChatGPT gør internt. Fejler trinnet, bruges briefen direkte (genereringen
-blokeres aldrig). Uploadede **produktbilleder** sendes desuden med som visuelle
-referencer (op til 3), så det genkendelige armatur rendres. Standardkvaliteten
-er **høj** (kundemøde-niveau); rumfotos sendes i op til 2000 px, og resultatet
-gemmes i op til 2048 px.
+scenarie, placering). Serverens primære motor er **ChatGPT-pipelinen**:
+Responses API, hvor ræsonnementsmodellen (`RENDER_MODEL`-env, default `gpt-5`)
+SER rumbilledet + produktreferencer og selv styrer `image_generation`-værktøjet.
+Scenen **gen-renderes sammenhængende** – gamle armaturer OG deres lysskær
+fjernes, og den nye belysning integreres korrekt – hvilket `/images/edits` med
+høj input-troskab ikke kan (den bevarer kildens pixels og maler kun lokalt).
+Fejler primærvejen, falder serveren automatisk tilbage til edits-pipelinen med
+AI-lysdesigner-prompt (`PROMPT_MODEL`, default `gpt-5-mini`);
+`RENDER_PIPELINE=edits` kan tvinge den gamle vej, og `IMAGE_FIDELITY=high` gør
+primærvejen mere pixeltro (på bekostning af gen-belysningen). Uploadede
+**produktbilleder** sendes med som visuelle referencer (op til 3), så det
+genkendelige armatur rendres. Standardkvaliteten er **høj** (kundemøde-niveau);
+rumfotos sendes i op til 2000 px, resultatet gemmes i op til 2048 px, og en
+generering tager typisk 1–2 minutter.
 
 ### Slå ægte fotorealistisk AI til (OpenAI gpt-image-1)
 
