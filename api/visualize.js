@@ -23,7 +23,7 @@
 import { runVisualize, checkKey, authorize, rateLimit, corsOrigin } from "./_core.mjs";
 
 export const config = {
-  maxDuration: 60, // gpt-image-1-redigeringer tager typisk 10-40 s
+  maxDuration: 300, // gpt-5 + image_generation i høj kvalitet kan tage 1-2 min
 };
 
 function setCors(req, res) {
