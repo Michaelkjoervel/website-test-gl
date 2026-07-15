@@ -183,15 +183,18 @@ export function calculateEnergyComparison(
     burnHours: input.replacement.burnHours,
   });
 
+  // Tåler både 0.7 og 70 som konfigurationsværdi (normaliseres til andel).
+  const normPct = (v: number) => (v > 1 ? v / 100 : v);
+
   // Styring: besparelse i % af det nye anlægs basisforbrug.
-  const controlSavingsPct = input.withControl ? cfg.control : 0;
+  const controlSavingsPct = input.withControl ? normPct(cfg.control) : 0;
   const controlSavedKwh = newBaseAnnualKwh * controlSavingsPct;
   const newAnnualKwhAfterControl = newBaseAnnualKwh - controlSavedKwh;
 
   // Dagslysstyring: besparelse i % af det RESTERENDE forbrug efter styring
   // (jf. green lights beregningsmetode) – vises separat.
   const daylightSavingsPct = input.withDaylightControl
-    ? cfg.daylightControl
+    ? normPct(cfg.daylightControl)
     : 0;
   const daylightSavedKwh = newAnnualKwhAfterControl * daylightSavingsPct;
 

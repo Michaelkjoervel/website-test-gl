@@ -780,7 +780,10 @@ export function NewEstimate() {
                     }
                     onChange={(e) =>
                       setEnergy({
-                        overrideCurrentCount: Number(e.target.value) || 0,
+                        overrideCurrentCount:
+                          e.target.value === ""
+                            ? undefined
+                            : Math.max(0, Number(e.target.value)),
                       })
                     }
                   />
@@ -845,19 +848,25 @@ export function NewEstimate() {
                     }
                     onChange={(e) =>
                       setEnergy({
-                        overrideNewCount: Number(e.target.value) || 0,
+                        overrideNewCount:
+                          e.target.value === ""
+                            ? undefined
+                            : Math.max(0, Number(e.target.value)),
                       })
                     }
                   />
                 </Field>
                 <Field
                   label="Watt pr. nyt armatur"
-                  tooltip="Effektforbrug pr. nyt LED-armatur. Forudfyldt fra det valgte armatur."
+                  tooltip="Effektforbrug pr. nyt LED-armatur. Forudfyldt fra det valgte armatur – ryd feltet for at vende tilbage til den automatiske værdi."
                   hint={
-                    variantWatt !== undefined &&
                     energyExtra.newWattOverride === undefined
-                      ? `Forudfyldt fra valgt armatur (${variantWatt} W).`
-                      : undefined
+                      ? variantWatt !== undefined
+                        ? `Automatisk fra valgt armatur: ${variantWatt} W.`
+                        : undefined
+                      : variantWatt !== undefined
+                      ? `Rettet manuelt – valgt armatur er ${variantWatt} W (ryd feltet for automatisk).`
+                      : "Rettet manuelt."
                   }
                 >
                   <input
@@ -867,7 +876,10 @@ export function NewEstimate() {
                     value={newWatt}
                     onChange={(e) =>
                       setEnergy({
-                        newWattOverride: Number(e.target.value) || 0,
+                        newWattOverride:
+                          e.target.value === ""
+                            ? undefined
+                            : Math.max(0, Number(e.target.value)),
                       })
                     }
                   />
