@@ -12,7 +12,7 @@
 // Alle beregninger her er bevidst rene funktioner – ingen side-effekter.
 // =============================================================================
 
-import { pricingConfig, resolveProduct } from "./pricingConfig";
+import { pricingConfig, resolveProduct, resolveUnitPrice } from "./pricingConfig";
 import type {
   EnergyCalculation,
   EnergyComparisonInput,
@@ -68,12 +68,35 @@ export function calculatePricing(input: TechnicalInput): PricingResult {
   const luxFactor = lookupFactor(cfg.luxFactor, luxNum, "factor");
   const areaMult = cfg.areaFactor[input.areaType] ?? 1;
 
-  // Materiale: valgt produktpris (fallback: basispris) + kelvin-tillæg.
+  // Materiale: variantpris ud fra produkt + styringssystem + kelvin.
   // Lux-faktoren er bevidst tæt på 1 – lux påvirker primært energien.
   const product = resolveProduct(input.areaType, input.luminaireProductId);
-  const unitPrice = product?.pricePerUnit ?? cfg.luminaireBaseCost;
-  const luminaireUnitCost = unitPrice + kelvinSurcharge;
-  const materialCost = luminaireUnitCost * count * luxFactor;
+  const resolved = resolveUnitPrice(
+    product,
+    input.controlTypes ?? [],
+    input.kelvin,
+    input.luminaireVariant,
+  );
+
+  // Er Tunable White allerede i variantprisen, lægges kun et evt.
+  // gateway-tillæg oveni (forskellen mellem TW+Gateway og TW i config).
+  let effectiveKelvinSurcharge = kelvinSurcharge;
+  if (resolved.tunableWhitePriced) {
+    const tw = cfg.luminaireByKelvin["Tunable White"] ?? 0;
+    const twGw = cfg.luminaireByKelvin["Tunable White + Gateway"] ?? tw;
+    effectiveKelvinSurcharge =
+      kelvinKey === "Tunable White + Gateway" ? Math.max(0, twGw - tw) : 0;
+  }
+
+  const luminaireUnitCost = resolved.price + effectiveKelvinSurcharge;
+
+  // Tilbehør (fx wireophæng, påbygningsramme) – pris pr. armatur.
+  const accessoriesCost = (input.accessories ?? []).reduce((sum, name) => {
+    const acc = product?.accessories?.find((a) => a.name === name);
+    return sum + (acc ? acc.pricePerUnit * count : 0);
+  }, 0);
+
+  const materialCost = luminaireUnitCost * count * luxFactor + accessoriesCost;
 
   // Styring: systemet er inkluderet i armaturprisen (0 kr i config).
   // Kun tilvalg (sensor, dagslysstyring) lægger til her.

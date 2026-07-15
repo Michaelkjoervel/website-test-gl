@@ -16,10 +16,31 @@
 
 import type { AreaType, ControlType, KelvinValue } from "./types";
 
+// Pris pr. stk. pr. styringssystem, fx { "MasterConnect": 1000, "DALI-2": 700 }
+export type VariantPrices = Record<string, number>;
+
+export interface LuminaireVariant {
+  label: string; // fx "Standard", "165 mm", "High output · 12 m sensor"
+  prices: VariantPrices;
+  // Pris når Tunable White er valgt (inkluderer TW – kelvin-tillæg springes over)
+  pricesTunableWhite?: VariantPrices;
+}
+
+export interface LuminaireAccessory {
+  name: string; // fx "Wireophæng", "Påbygningsramme"
+  pricePerUnit: number; // DKK pr. armatur
+}
+
 export interface LuminaireProduct {
   id: string;
   name: string;
+  // Fallback-pris når ingen variant matcher det valgte styringssystem
   pricePerUnit: number; // DKK pr. stk.
+  // Varianter (størrelse/output) med priser pr. styringssystem.
+  // For downlights er driverprisen regnet ind i variantprisen.
+  variants?: LuminaireVariant[];
+  // Valgfrit tilbehør, der kan slås til (pris pr. armatur)
+  accessories?: LuminaireAccessory[];
 }
 
 export interface ControlOption {
@@ -102,15 +123,146 @@ export const pricingConfig: PricingConfig = {
 
   focusAreas: ["Kontor", "Industri"],
 
+  // PLACEHOLDER-priser (runde dummytal). De RIGTIGE variantpriser
+  // vedligeholdes i Supabase via Administration → Prisdata.
   luminaireProducts: {
     Kontor: [
-      { id: "vivid", name: "Vivid", pricePerUnit: 1500 },
-      { id: "rio2", name: "Rio 2", pricePerUnit: 1000 },
+      {
+        id: "rio-g6",
+        name: "Rio G6 (60×60, T-skinne)",
+        pricePerUnit: 900,
+        variants: [
+          {
+            label: "Standard",
+            prices: {
+              "Simpel on/off": 900,
+              "DALI-2": 1000,
+              MasterConnect: 1400,
+            },
+            pricesTunableWhite: { MasterConnect: 1700 },
+          },
+        ],
+      },
+      {
+        id: "rio2",
+        name: "Rio 2 (60×60)",
+        pricePerUnit: 600,
+        variants: [
+          {
+            label: "Standard",
+            prices: {
+              "Simpel on/off": 600,
+              "DALI-2": 700,
+              MasterConnect: 1000,
+            },
+            pricesTunableWhite: { MasterConnect: 1300 },
+          },
+        ],
+        accessories: [{ name: "Påbygningsramme", pricePerUnit: 200 }],
+      },
+      {
+        id: "vivid",
+        name: "Vivid (lineært)",
+        pricePerUnit: 900,
+        variants: [
+          {
+            label: "Standard",
+            prices: {
+              "Simpel on/off": 900,
+              "DALI-2": 1100,
+              MasterConnect: 1400,
+            },
+            pricesTunableWhite: { MasterConnect: 1700 },
+          },
+        ],
+        accessories: [{ name: "Wireophæng (2 stk.)", pricePerUnit: 150 }],
+      },
+      {
+        id: "moon2",
+        name: "Moon 2 (downlight ECO, inkl. driver)",
+        pricePerUnit: 500,
+        variants: [
+          {
+            label: "95 mm",
+            prices: {
+              "Simpel on/off": 400,
+              "DALI-2": 500,
+              MasterConnect: 600,
+            },
+          },
+          {
+            label: "165 mm",
+            prices: {
+              "Simpel on/off": 500,
+              "DALI-2": 600,
+              MasterConnect: 700,
+            },
+          },
+        ],
+      },
+      {
+        id: "ares",
+        name: "Ares (downlight, inkl. driver)",
+        pricePerUnit: 700,
+        variants: [
+          {
+            label: "Mini · 115 mm",
+            prices: {
+              "Simpel on/off": 600,
+              "DALI-2": 700,
+              MasterConnect: 800,
+            },
+          },
+          {
+            label: "Midi · 165 mm",
+            prices: {
+              "Simpel on/off": 700,
+              "DALI-2": 800,
+              MasterConnect: 900,
+            },
+          },
+        ],
+      },
     ],
     Industri: [
-      { id: "foxx", name: "Foxx", pricePerUnit: 1000 },
-      { id: "linda", name: "Linda", pricePerUnit: 1400 },
-      { id: "forte", name: "Forte", pricePerUnit: 1200 },
+      {
+        id: "forte",
+        name: "GL Forte (1595 mm)",
+        pricePerUnit: 1400,
+        variants: [
+          {
+            label: "60 W · sensor op til 6 m",
+            prices: { MasterConnect: 1400 },
+          },
+          {
+            label: "87 W High output · sensor op til 6 m",
+            prices: { MasterConnect: 1600 },
+          },
+          {
+            label: "60 W · sensor op til 12 m",
+            prices: { MasterConnect: 1700 },
+          },
+          {
+            label: "87 W High output · sensor op til 12 m",
+            prices: { MasterConnect: 1900 },
+          },
+        ],
+      },
+      {
+        id: "linda",
+        name: "Linda G2 (1480 mm)",
+        pricePerUnit: 2000,
+        variants: [
+          {
+            label: "128 W Ultra output · sensor op til 6 m",
+            prices: { MasterConnect: 2000 },
+          },
+          {
+            label: "128 W Ultra output · sensor op til 16 m",
+            prices: { MasterConnect: 2200 },
+          },
+        ],
+      },
     ],
   },
 
@@ -260,4 +412,67 @@ export function resolveProduct(
 ): LuminaireProduct | undefined {
   const products = productsForArea(area);
   return products.find((p) => p.id === productId) ?? products[0];
+}
+
+export interface ResolvedUnitPrice {
+  price: number;
+  variantLabel?: string;
+  // true når Tunable White allerede er inkluderet i variantprisen
+  tunableWhitePriced: boolean;
+}
+
+/**
+ * Find stykprisen for et produkt ud fra valgt variant, styringssystem og
+ * kelvin. Prislogik: variantens pris pr. styringssystem; ved Tunable White
+ * bruges variantens TW-pris hvis den findes. Fallback-rækkefølge når det
+ * valgte system ikke har en pris: intet system → "Simpel on/off", ellers
+ * MasterConnect, ellers første pris, ellers produktets fallback-pris.
+ */
+export function resolveUnitPrice(
+  product: LuminaireProduct | undefined,
+  controlTypes: string[],
+  kelvin: string | number,
+  variantLabel?: string,
+): ResolvedUnitPrice {
+  if (!product) {
+    return { price: pricingConfig.luminaireBaseCost, tunableWhitePriced: false };
+  }
+  const variants = product.variants ?? [];
+  const variant =
+    variants.find((v) => v.label === variantLabel) ?? variants[0];
+  if (!variant) {
+    return { price: product.pricePerUnit, tunableWhitePriced: false };
+  }
+
+  const isTW = String(kelvin).startsWith("Tunable White");
+  const system = controlTypes.find(
+    (c) => pricingConfig.controlSurcharge[c]?.exclusive,
+  );
+
+  const pick = (table?: VariantPrices): number | undefined => {
+    if (!table) return undefined;
+    if (system && table[system] !== undefined) return table[system];
+    if (!system && table["Simpel on/off"] !== undefined) {
+      return table["Simpel on/off"];
+    }
+    if (table["MasterConnect"] !== undefined) return table["MasterConnect"];
+    const values = Object.values(table);
+    return values.length > 0 ? values[0] : undefined;
+  };
+
+  if (isTW) {
+    const twPrice = pick(variant.pricesTunableWhite);
+    if (twPrice !== undefined) {
+      return { price: twPrice, variantLabel: variant.label, tunableWhitePriced: true };
+    }
+  }
+  const price = pick(variant.prices);
+  if (price !== undefined) {
+    return { price, variantLabel: variant.label, tunableWhitePriced: false };
+  }
+  return {
+    price: product.pricePerUnit,
+    variantLabel: variant.label,
+    tunableWhitePriced: false,
+  };
 }

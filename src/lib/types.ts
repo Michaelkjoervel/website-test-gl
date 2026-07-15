@@ -62,6 +62,10 @@ export interface TechnicalInput {
   luminaireCount: number;
   // Valgt armaturprodukt (id fra pricingConfig.luminaireProducts).
   luminaireProductId?: string;
+  // Valgt variant (label fra produktets variants), fx "165 mm".
+  luminaireVariant?: string;
+  // Tilvalgt tilbehør (navne fra produktets accessories).
+  accessories?: string[];
   // Flere styringsformer kan vælges; tom liste = ingen styring.
   controlTypes: ControlType[];
   luxLevel: LuxLevel;

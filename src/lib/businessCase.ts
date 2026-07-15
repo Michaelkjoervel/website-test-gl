@@ -288,7 +288,7 @@ export function buildDemoEstimate(): CustomerEstimate {
     areaType: "Industri",
     areaSqm: 4200,
     luminaireCount: 240,
-    luminaireProductId: "foxx",
+    luminaireProductId: "forte",
     controlTypes: ["MasterConnect"],
     luxLevel: 300,
     kelvin: 4000,

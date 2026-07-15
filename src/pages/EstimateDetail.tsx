@@ -144,10 +144,19 @@ export function EstimateDetail() {
               ["Antal armaturer", num.format(est.technical.luminaireCount)],
               [
                 "Armatur",
-                resolveProduct(
-                  est.technical.areaType,
-                  est.technical.luminaireProductId,
-                )?.name ?? "—",
+                [
+                  resolveProduct(
+                    est.technical.areaType,
+                    est.technical.luminaireProductId,
+                  )?.name ?? "—",
+                  est.technical.luminaireVariant,
+                ]
+                  .filter(Boolean)
+                  .join(" · "),
+              ],
+              [
+                "Tilbehør",
+                (est.technical.accessories ?? []).join(", ") || "—",
               ],
               ["Styring", controlLabel(est.technical)],
               [

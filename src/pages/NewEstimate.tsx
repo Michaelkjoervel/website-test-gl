@@ -18,7 +18,11 @@ import {
   formatPayback,
   type BusinessCaseResult,
 } from "../lib/businessCase";
-import { pricingConfig, productsForArea } from "../lib/pricingConfig";
+import {
+  pricingConfig,
+  productsForArea,
+  resolveUnitPrice,
+} from "../lib/pricingConfig";
 import type {
   AreaType,
   ControlType,
@@ -87,6 +91,9 @@ export function NewEstimate() {
     areaType: pricingConfig.defaults.areaType,
     luminaireCount: 0,
     luminaireProductId: productsForArea(pricingConfig.defaults.areaType)[0]?.id,
+    luminaireVariant:
+      productsForArea(pricingConfig.defaults.areaType)[0]?.variants?.[0]?.label,
+    accessories: [],
     controlTypes: pricingConfig.defaults.controlTypes,
     luxLevel: pricingConfig.defaults.luxLevel,
     kelvin: pricingConfig.defaults.kelvin,
@@ -113,15 +120,22 @@ export function NewEstimate() {
   };
 
   // Ved områdeskift: vælg områdets første produkt, hvis det nuværende
-  // produkt ikke findes i det nye område.
+  // produkt ikke findes i det nye område – og nulstil variant/tilbehør.
   const setArea = (area: AreaType) => {
     setTechnical((t) => {
       const products = productsForArea(area);
       const keep = products.some((p) => p.id === t.luminaireProductId);
+      const product = keep
+        ? products.find((p) => p.id === t.luminaireProductId)
+        : products[0];
       return {
         ...t,
         areaType: area,
-        luminaireProductId: keep ? t.luminaireProductId : products[0]?.id,
+        luminaireProductId: product?.id,
+        luminaireVariant: keep
+          ? t.luminaireVariant
+          : product?.variants?.[0]?.label,
+        accessories: keep ? t.accessories : [],
       };
     });
   };
@@ -386,29 +400,117 @@ export function NewEstimate() {
 
               <Field
                 label="Armatur"
-                tooltip="Vælg armaturprodukt for det valgte område. Prisen pr. stk. indgår i materialeprisen."
+                tooltip="Vælg armaturprodukt for det valgte område. Prisen pr. stk. afhænger af variant, styringssystem og kelvin."
               >
                 <div className="flex flex-wrap gap-2">
-                  {productsForArea(technical.areaType).map((p) => (
-                    <button
-                      type="button"
-                      key={p.id}
-                      onClick={() =>
-                        setTechnical({
-                          ...technical,
-                          luminaireProductId: p.id,
-                        })
-                      }
-                      className={`chip border ${
-                        technical.luminaireProductId === p.id
-                          ? "bg-brand-500 text-white border-brand-500"
-                          : "bg-white text-ink-soft border-surface-line hover:border-brand-300"
-                      }`}
-                    >
-                      {p.name} · {dkkInt(p.pricePerUnit)}
-                    </button>
-                  ))}
+                  {productsForArea(technical.areaType).map((p) => {
+                    const active = technical.luminaireProductId === p.id;
+                    const shown = resolveUnitPrice(
+                      p,
+                      technical.controlTypes ?? [],
+                      technical.kelvin,
+                      active ? technical.luminaireVariant : undefined,
+                    );
+                    return (
+                      <button
+                        type="button"
+                        key={p.id}
+                        onClick={() =>
+                          setTechnical({
+                            ...technical,
+                            luminaireProductId: p.id,
+                            luminaireVariant: p.variants?.[0]?.label,
+                            accessories: [],
+                          })
+                        }
+                        className={`chip border ${
+                          active
+                            ? "bg-brand-500 text-white border-brand-500"
+                            : "bg-white text-ink-soft border-surface-line hover:border-brand-300"
+                        }`}
+                      >
+                        {p.name} · {dkkInt(shown.price)}
+                      </button>
+                    );
+                  })}
                 </div>
+                {(() => {
+                  const product = productsForArea(technical.areaType).find(
+                    (p) => p.id === technical.luminaireProductId,
+                  );
+                  if (!product) return null;
+                  const variants = product.variants ?? [];
+                  const accessories = product.accessories ?? [];
+                  if (variants.length <= 1 && accessories.length === 0) {
+                    return null;
+                  }
+                  return (
+                    <div className="mt-3 space-y-3">
+                      {variants.length > 1 && (
+                        <div>
+                          <span className="label">Variant</span>
+                          <select
+                            className="select mt-1"
+                            value={
+                              technical.luminaireVariant ?? variants[0].label
+                            }
+                            onChange={(e) =>
+                              setTechnical({
+                                ...technical,
+                                luminaireVariant: e.target.value,
+                              })
+                            }
+                          >
+                            {variants.map((v) => (
+                              <option key={v.label} value={v.label}>
+                                {v.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                      {accessories.length > 0 && (
+                        <div>
+                          <span className="label">Tilbehør (pr. armatur)</span>
+                          <div className="flex flex-wrap gap-2 mt-1">
+                            {accessories.map((a) => {
+                              const on = (technical.accessories ?? []).includes(
+                                a.name,
+                              );
+                              return (
+                                <button
+                                  type="button"
+                                  key={a.name}
+                                  onClick={() =>
+                                    setTechnical({
+                                      ...technical,
+                                      accessories: on
+                                        ? (technical.accessories ?? []).filter(
+                                            (x) => x !== a.name,
+                                          )
+                                        : [
+                                            ...(technical.accessories ?? []),
+                                            a.name,
+                                          ],
+                                    })
+                                  }
+                                  className={`chip border ${
+                                    on
+                                      ? "bg-brand-500 text-white border-brand-500"
+                                      : "bg-white text-ink-soft border-surface-line hover:border-brand-300"
+                                  }`}
+                                >
+                                  {on ? "✓ " : "+ "}
+                                  {a.name} · {dkkInt(a.pricePerUnit)}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </Field>
 
               <div className="md:col-span-2">
