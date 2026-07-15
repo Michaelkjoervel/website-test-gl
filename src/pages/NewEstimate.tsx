@@ -50,8 +50,13 @@ const CONTROL_SYSTEMS: ControlType[] = [
   "Andet",
 ];
 
-// Tilvalg – kan kombineres og koster ekstra pr. armatur
-const CONTROL_ADDONS: ControlType[] = ["Bevægelsessensor", "Dagslysstyring"];
+// Tilvalg (kan kombineres, koster ekstra) udledes af config ved render,
+// så prissatte tilvalg kan tilføjes senere via Prisdata uden kodeændringer.
+function controlAddons(): ControlType[] {
+  return Object.keys(pricingConfig.controlSurcharge).filter(
+    (key) => !pricingConfig.controlSurcharge[key].exclusive,
+  ) as ControlType[];
+}
 
 const KELVINS: KelvinValue[] = [
   3000,
@@ -1144,7 +1149,8 @@ function ControlSelector({
           </div>
         </div>
 
-        {/* Tilvalg */}
+        {/* Tilvalg – vises kun hvis der findes prissatte tilvalg i config */}
+        {controlAddons().length > 0 && (
         <div>
           <div className="flex items-center gap-2 mb-2.5">
             <span className="text-xs font-semibold text-ink-soft uppercase tracking-wider">
@@ -1155,7 +1161,7 @@ function ControlSelector({
             </span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {CONTROL_ADDONS.map((c) => {
+            {controlAddons().map((c) => {
               const isSelected = selected.includes(c);
               const price =
                 pricingConfig.controlSurcharge[c]?.perLuminaire ?? 0;
@@ -1201,11 +1207,15 @@ function ControlSelector({
               );
             })}
           </div>
-          <p className="text-[11px] text-ink-mute mt-2.5">
-            Gateway vælges under Kelvin (Tunable White + Gateway) og fordyrer
-            ligeledes løsningen.
-          </p>
         </div>
+        )}
+        <p className="text-[11px] text-ink-mute">
+          Styringssystemet er inkluderet i armaturets listepris. Gateway
+          tilvælges under Kelvin (Tunable White + Gateway) og koster{" "}
+          {dkkInt(pricingConfig.tunableWhiteGateway.pricePerGateway)} pr.
+          påbegyndt {pricingConfig.tunableWhiteGateway.luminairesPerGateway}{" "}
+          armaturer.
+        </p>
       </div>
     </div>
   );

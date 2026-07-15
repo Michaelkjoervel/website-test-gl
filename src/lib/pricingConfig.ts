@@ -76,10 +76,16 @@ export interface PricingConfig {
   // Lux-faktor – bevidst tæt på 1: lux flytter mest på energiforbruget,
   // kun minimalt på prisen.
   luxFactor: { lux: number; factor: number }[];
-  // Styringsformer. Selve styringssystemet er INKLUDERET i armaturprisen
-  // (0 kr). Det er tilvalgene – sensor og dagslysstyring – samt gateway
-  // (via Tunable White + Gateway), der fordyrer løsningen.
+  // Styringsformer. Variantens listepris er SLUTPRISEN – styring/sensor er
+  // allerede inde i prisen, så alle systemer står til 0 kr. Strukturen
+  // beholdes, så prissatte tilvalg kan tilføjes senere via Prisdata.
   controlSurcharge: Record<string, ControlOption>;
+  // Gateway-tillæg ved "Tunable White + Gateway": pris pr. gateway, hvor
+  // én gateway dækker op til luminairesPerGateway armaturer.
+  tunableWhiteGateway: {
+    pricePerGateway: number;
+    luminairesPerGateway: number;
+  };
   // Margin / budgetinterval – ±%
   budgetRangePct: number;
   // Energibesparelse ved tilvalg af styring (før/efter-beregner)
@@ -271,12 +277,14 @@ export const pricingConfig: PricingConfig = {
 
   // Kelvin gør ikke det store ved prisen – gateway-varianten af Tunable
   // White er den mærkbare undtagelse.
+  // Kelvin-tillæg er 0 – Tunable White har sin egen variantpris, og
+  // gateway håndteres via tunableWhiteGateway nedenfor.
   luminaireByKelvin: {
     "3000": 0,
     "4000": 0,
     "5000": 0,
-    "Tunable White": 250,
-    "Tunable White + Gateway": 700,
+    "Tunable White": 0,
+    "Tunable White + Gateway": 0,
   },
 
   luminaireDefaultWatt: 35,
@@ -306,16 +314,15 @@ export const pricingConfig: PricingConfig = {
   },
 
   // Lux flytter mest på energien – kun minimalt på prisen.
+  // Listeprisen er slutprisen – lux påvirker kun energiberegningen.
   luxFactor: [
-    { lux: 150, factor: 0.99 },
-    { lux: 200, factor: 0.995 },
+    { lux: 150, factor: 1.0 },
+    { lux: 200, factor: 1.0 },
     { lux: 300, factor: 1.0 },
-    { lux: 500, factor: 1.01 },
-    { lux: 750, factor: 1.02 },
+    { lux: 500, factor: 1.0 },
+    { lux: 750, factor: 1.0 },
   ],
 
-  // Styringssystemet er inkluderet i armaturprisen (0 kr). Kun tilvalg
-  // koster ekstra: sensor og dagslysstyring (pr. armatur, placeholder).
   controlSurcharge: {
     "Simpel on/off": { perLuminaire: 0, fixed: 0, exclusive: true },
     "Trådløs styring": { perLuminaire: 0, fixed: 0, exclusive: true },
@@ -326,8 +333,12 @@ export const pricingConfig: PricingConfig = {
     MasterConnect: { perLuminaire: 0, fixed: 0, exclusive: true },
     SmartScan: { perLuminaire: 0, fixed: 0, exclusive: true },
     Andet: { perLuminaire: 0, fixed: 0, exclusive: true },
-    Bevægelsessensor: { perLuminaire: 220, fixed: 0, exclusive: false },
-    Dagslysstyring: { perLuminaire: 180, fixed: 0, exclusive: false },
+  },
+
+  // PLACEHOLDER – det rigtige gateway-tillæg vedligeholdes i Prisdata.
+  tunableWhiteGateway: {
+    pricePerGateway: 2500,
+    luminairesPerGateway: 50,
   },
 
   budgetRangePct: 12,

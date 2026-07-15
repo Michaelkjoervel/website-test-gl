@@ -68,8 +68,9 @@ export function calculatePricing(input: TechnicalInput): PricingResult {
   const luxFactor = lookupFactor(cfg.luxFactor, luxNum, "factor");
   const areaMult = cfg.areaFactor[input.areaType] ?? 1;
 
-  // Materiale: variantpris ud fra produkt + styringssystem + kelvin.
-  // Lux-faktoren er bevidst tæt på 1 – lux påvirker primært energien.
+  // Materiale: variantens LISTEPRIS er slutprisen pr. armatur – styring,
+  // sensor og evt. Tunable White er allerede inde i prisen. Kelvin-tillæg
+  // og lux-faktor står til 0/1 i config, men mekanismen bevares.
   const product = resolveProduct(input.areaType, input.luminaireProductId);
   const resolved = resolveUnitPrice(
     product,
@@ -78,17 +79,8 @@ export function calculatePricing(input: TechnicalInput): PricingResult {
     input.luminaireVariant,
   );
 
-  // Er Tunable White allerede i variantprisen, lægges kun et evt.
-  // gateway-tillæg oveni (forskellen mellem TW+Gateway og TW i config).
-  let effectiveKelvinSurcharge = kelvinSurcharge;
-  if (resolved.tunableWhitePriced) {
-    const tw = cfg.luminaireByKelvin["Tunable White"] ?? 0;
-    const twGw = cfg.luminaireByKelvin["Tunable White + Gateway"] ?? tw;
-    effectiveKelvinSurcharge =
-      kelvinKey === "Tunable White + Gateway" ? Math.max(0, twGw - tw) : 0;
-  }
-
-  const luminaireUnitCost = resolved.price + effectiveKelvinSurcharge;
+  const luminaireUnitCost =
+    resolved.price + (resolved.tunableWhitePriced ? 0 : kelvinSurcharge);
 
   // Tilbehør (fx wireophæng, påbygningsramme) – pris pr. armatur.
   const accessoriesCost = (input.accessories ?? []).reduce((sum, name) => {
@@ -98,13 +90,22 @@ export function calculatePricing(input: TechnicalInput): PricingResult {
 
   const materialCost = luminaireUnitCost * count * luxFactor + accessoriesCost;
 
-  // Styring: systemet er inkluderet i armaturprisen (0 kr i config).
-  // Kun tilvalg (sensor, dagslysstyring) lægger til her.
-  const controlCost = (input.controlTypes ?? []).reduce((sum, key) => {
+  // Styring: systemet er inkluderet i listeprisen (0 kr i config).
+  // Strukturen bevares, så prissatte tilvalg kan tilføjes via Prisdata.
+  let controlCost = (input.controlTypes ?? []).reduce((sum, key) => {
     const ctrl = cfg.controlSurcharge[key];
     if (!ctrl) return sum;
     return sum + ctrl.perLuminaire * count + ctrl.fixed;
   }, 0);
+
+  // Gateway ved Tunable White + Gateway: én gateway pr. påbegyndt
+  // luminairesPerGateway armaturer.
+  if (kelvinKey === "Tunable White + Gateway" && count > 0) {
+    const gw = cfg.tunableWhiteGateway;
+    controlCost +=
+      Math.ceil(count / Math.max(1, gw.luminairesPerGateway)) *
+      gw.pricePerGateway;
+  }
 
   // Installation – pr. armatur * områdefaktor
   const installationCost = cfg.installationPerLuminaire * count * areaMult;
