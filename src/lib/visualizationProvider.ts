@@ -74,7 +74,7 @@ const SCENARIO_EN: Record<LightingScenario, string> = {
 };
 
 const PLACEMENT_EN: Record<PlacementMode, string> = {
-  ai: "Position the luminaires in a realistic, professional layout appropriate for this room type.",
+  ai: "ONE-TO-ONE REPLACEMENT (default): put a new luminaire at the position of EACH existing luminaire visible in the photo — the count and positions visible in the photo take precedence over the nominal quantities listed above. Only if no existing luminaires are visible, place the listed quantities in a realistic, professional layout for this room type.",
   manual:
     "Place the luminaires exactly at the marked positions provided (normalized x/y coordinates).",
   floorplan:

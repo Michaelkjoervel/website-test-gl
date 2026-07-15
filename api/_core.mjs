@@ -241,7 +241,7 @@ function buildRenderInstruction(brief, hasRefs) {
     "",
     "Non-negotiable requirements:",
     "1. REMOVE every existing luminaire AND every trace of its light: glow, bright spots, ceiling halos, reflections. The old lighting must be completely gone.",
-    "2. Install the new luminaires described in the brief. They must sit PERFECTLY straight, aligned with the ceiling's lines/grid and evenly spaced — crooked or floating fixtures are unacceptable.",
+    "2. DEFAULT STRATEGY IS ONE-TO-ONE REPLACEMENT: put a new luminaire at the position of EACH existing luminaire visible in the photo — the count and positions visible in the photo take precedence, unless the brief explicitly specifies exact positions (floor plan or marked points). New luminaires must sit PERFECTLY straight, aligned with the ceiling's lines/grid and evenly spaced — crooked or floating fixtures are unacceptable.",
     "3. Relight the ENTIRE scene coherently from the new luminaires only: realistic light pools, soft shadows, correct colour temperature, believable falloff on walls and floor.",
     "4. Keep the room true to the photo: same architecture, walls, furniture, materials, camera angle and perspective. Do not redesign anything.",
     hasRefs

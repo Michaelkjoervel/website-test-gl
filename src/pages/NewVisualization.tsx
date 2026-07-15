@@ -371,7 +371,7 @@ export function NewVisualization() {
         {/* --- Trin 4: Placering --- */}
         {step === 4 && (
           <div className="space-y-4">
-            <StepHead title="Placering" desc="AI foreslår placeringen automatisk. Har du en plantegning, styrer den. Eller markér selv, hvor armaturerne skal sidde." />
+            <StepHead title="Placering" desc="Standard: 1:1-udskiftning — AI sætter et nyt armatur på hver eksisterende plads i billedet. Har du en plantegning, styrer den. Eller markér selv punkter." />
             <PlacementModePicker
               mode={viz.placementMode}
               hasFloorPlan={!!viz.floorPlan}
@@ -401,7 +401,7 @@ export function NewVisualization() {
               <div className="relative">
                 <img src={viz.roomPhoto} alt="Rum" className="rounded-2xl border border-surface-line w-full" />
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="chip bg-white/85 text-ink-soft">AI foreslår placeringen automatisk</span>
+                  <span className="chip bg-white/85 text-ink-soft">AI udskifter de eksisterende armaturer 1:1</span>
                 </div>
               </div>
             )}
@@ -606,7 +606,7 @@ function PlacementModePicker({
   onMode: (m: PlacementMode) => void;
 }) {
   const opts: { id: PlacementMode; label: string; desc: string; disabled?: boolean }[] = [
-    { id: "ai", label: "AI foreslår", desc: "Automatisk, professionelt layout" },
+    { id: "ai", label: "1:1-udskiftning (standard)", desc: "Nyt armatur på hver eksisterende plads i billedet" },
     { id: "manual", label: "Markér selv", desc: "Klik hvor armaturerne skal sidde" },
     { id: "floorplan", label: "Fra plantegning", desc: hasFloorPlan ? "Følger din uploadede plantegning" : "Upload en plantegning i trin Rum", disabled: !hasFloorPlan },
   ];
