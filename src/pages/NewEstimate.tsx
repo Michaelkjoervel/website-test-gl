@@ -217,7 +217,9 @@ export function NewEstimate() {
     () =>
       computeBusinessCase(
         buildLiveBusinessCaseInput({
-          investment: pricing.totalCost,
+          // Montering indgår ikke i tilbagebetalingstiden (jf. green lights
+          // beregningsmetode) – kun armaturer og styringstilvalg.
+          investment: pricing.materialCost + pricing.controlCost,
           comparison: energyComparison,
           luminaireCount: technical.luminaireCount,
           electricityPrice: technical.electricityPrice,
@@ -1395,9 +1397,9 @@ function BusinessCasePanel({
             />
           </div>
           <div className="text-[11px] text-ink-mute mt-2">
-            Beregnet ud fra det aktuelle prisoverslag (
-            {dkkInt(bc.investment)}) og en el-prisstigning på{" "}
-            {bc.escalationPct.toLocaleString("da-DK")}% pr. år.{" "}
+            Beregnet ud fra investeringen i armaturer og styringstilvalg (
+            {dkkInt(bc.investment)}, ekskl. montering) og en el-prisstigning
+            på {bc.escalationPct.toLocaleString("da-DK")}% pr. år.{" "}
             {compact
               ? "Den fulde kundevendte præsentation åbnes fra estimatet med knappen “Forretningscase”."
               : "Gem estimatet for at åbne den fulde kundevendte præsentation."}

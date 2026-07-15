@@ -111,7 +111,13 @@ export function buildLiveBusinessCaseInput(parts: {
 export function buildBusinessCaseInput(
   est: CustomerEstimate,
 ): BusinessCaseInput {
-  const investment = est.actual?.actualTotal ?? est.pricing.totalCost;
+  // Montering indgår ikke i tilbagebetalingstiden (jf. green lights
+  // beregningsmetode): investeringen er armaturer + styringstilvalg.
+  // Er der registreret et faktisk resultat med materialepris, bruges den.
+  const investment =
+    est.actual?.actualMaterial != null
+      ? est.actual.actualMaterial + (est.actual.actualControl ?? 0)
+      : est.pricing.materialCost + est.pricing.controlCost;
 
   if (est.energyComparison) {
     return buildLiveBusinessCaseInput({
