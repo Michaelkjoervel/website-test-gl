@@ -923,10 +923,14 @@ export function NewEstimate() {
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <SmallStat
-                label="Pris pr. armatur"
-                value={dkkInt(pricing.pricePerLuminaire)}
+                label="Armaturpris pr. stk."
+                value={dkkInt(pricing.materialPerLuminaire)}
+              />
+              <SmallStat
+                label="Installation pr. armatur"
+                value={dkkInt(pricing.installationPerLuminaire)}
               />
               <SmallStat
                 label="Årligt forbrug"
@@ -1027,7 +1031,22 @@ export function NewEstimate() {
                 {dkkInt(pricing.budgetRange.high)}
               </div>
 
-              <div className="mt-5 space-y-2">
+              {/* Opdeling så armaturprisen ikke blandes med installation */}
+              <div className="mt-4 pt-4 border-t border-surface-line space-y-2">
+                <Row label="Materiale" value={dkkInt(pricing.materialCost)} />
+                <Row
+                  label="Installation"
+                  value={dkkInt(pricing.installationCost)}
+                />
+                {pricing.controlCost > 0 && (
+                  <Row
+                    label="Styringstilvalg"
+                    value={dkkInt(pricing.controlCost)}
+                  />
+                )}
+              </div>
+
+              <div className="mt-4 pt-4 border-t border-surface-line space-y-2">
                 <Row
                   label="Antal armaturer"
                   value={num.format(technical.luminaireCount)}
@@ -1040,8 +1059,12 @@ export function NewEstimate() {
                   )}`}
                 />
                 <Row
-                  label="Pris pr. armatur"
-                  value={dkkInt(pricing.pricePerLuminaire)}
+                  label="Armaturpris pr. stk."
+                  value={dkkInt(pricing.materialPerLuminaire)}
+                />
+                <Row
+                  label="Installation pr. armatur"
+                  value={dkkInt(pricing.installationPerLuminaire)}
                 />
                 <Row
                   label="Årligt forbrug"

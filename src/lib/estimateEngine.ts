@@ -116,6 +116,8 @@ export function calculatePricing(input: TechnicalInput): PricingResult {
   const pct = cfg.budgetRangePct / 100;
   return {
     materialCost: round(materialCost),
+    materialPerLuminaire: count > 0 ? round(materialCost / count) : 0,
+    installationPerLuminaire: count > 0 ? round(installationCost / count) : 0,
     installationCost: round(installationCost),
     controlCost: round(controlCost),
     totalCost: round(totalCost),

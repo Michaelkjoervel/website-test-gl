@@ -206,7 +206,17 @@ export function generateEstimatePdf(est: CustomerEstimate): jsPDF {
     y + 80,
   );
   doc.text(
-    `Pris pr. armatur: ${dkkInt(est.pricing.pricePerLuminaire)}`,
+    `Armaturpris pr. stk.: ${dkkInt(
+      est.pricing.materialPerLuminaire ??
+        (est.technical.luminaireCount > 0
+          ? est.pricing.materialCost / est.technical.luminaireCount
+          : 0),
+    )} · Installation pr. armatur: ${dkkInt(
+      est.pricing.installationPerLuminaire ??
+        (est.technical.luminaireCount > 0
+          ? est.pricing.installationCost / est.technical.luminaireCount
+          : 0),
+    )}`,
     margin + 16,
     y + 96,
   );

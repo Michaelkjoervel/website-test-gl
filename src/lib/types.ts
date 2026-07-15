@@ -78,6 +78,10 @@ export interface TechnicalInput {
 
 export interface PricingResult {
   materialCost: number;
+  // Armaturpris pr. stk. (materiale inkl. tilbehør) – uden installation
+  materialPerLuminaire: number;
+  // Installationsomkostning pr. armatur
+  installationPerLuminaire: number;
   installationCost: number;
   controlCost: number;
   totalCost: number;

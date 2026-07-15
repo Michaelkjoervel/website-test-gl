@@ -122,8 +122,13 @@ export function EstimateDetail() {
           />
           <Big label="Interval" value={`${dkkInt(est.pricing.budgetRange.low)}–${dkkInt(est.pricing.budgetRange.high)}`} />
           <Big
-            label="Pr. armatur"
-            value={dkkInt(est.pricing.pricePerLuminaire)}
+            label="Armaturpris pr. stk."
+            value={dkkInt(
+              est.pricing.materialPerLuminaire ??
+                (est.technical.luminaireCount > 0
+                  ? est.pricing.materialCost / est.technical.luminaireCount
+                  : 0),
+            )}
           />
           <Big
             label="Årlig el-omkostning"
