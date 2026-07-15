@@ -42,7 +42,7 @@ function Login() {
           <div className="w-10 h-10 rounded-xl bg-brand-500 flex items-center justify-center text-white font-bold shadow-glow">gl</div>
           <div>
             <div className="font-bold text-ink leading-tight">green light</div>
-            <div className="text-[11px] text-ink-mute">Log ind for at bruge visualiseringen</div>
+            <div className="text-[11px] text-ink-mute">Internt værktøj – log ind for at fortsætte</div>
           </div>
         </div>
 

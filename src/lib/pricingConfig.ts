@@ -216,6 +216,39 @@ export const pricingConfig: PricingConfig = {
   },
 };
 
+// -----------------------------------------------------------------------------
+// Fortroligt prisgrundlag (cloud)
+// -----------------------------------------------------------------------------
+// Værdierne ovenfor er ufarlige PLACEHOLDERS og må gerne ligge i koden.
+// Green lights RIGTIGE priser gemmes i Supabase (tabellen estimator_pricing,
+// kun læselig for loggede-ind brugere) og lægges ind over placeholder-værdierne
+// efter login via applyPricingConfig(). De rigtige priser ender dermed hverken
+// i repoet eller i den offentlige JS-bundle.
+
+export type PricingSource = "placeholder" | "cloud";
+
+let pricingSource: PricingSource = "placeholder";
+
+export function getPricingSource(): PricingSource {
+  return pricingSource;
+}
+
+/**
+ * Læg en (evt. delvis) konfiguration ind over placeholder-værdierne.
+ * Ukendte nøgler ignoreres; manglende nøgler beholder placeholder-værdien,
+ * så en ældre gemt konfiguration ikke kan vælte appen.
+ */
+export function applyPricingConfig(partial: Partial<PricingConfig>): void {
+  const keys = Object.keys(pricingConfig) as (keyof PricingConfig)[];
+  for (const key of keys) {
+    const value = partial[key];
+    if (value !== undefined && value !== null) {
+      (pricingConfig as unknown as Record<string, unknown>)[key] = value;
+    }
+  }
+  pricingSource = "cloud";
+}
+
 // Hjælpere til produktopslag – bruges af beregningsmotor og UI.
 export function productsForArea(area: AreaType): LuminaireProduct[] {
   return pricingConfig.luminaireProducts[area] ?? [];

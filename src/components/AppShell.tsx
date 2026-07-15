@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "./AuthProvider";
+import { usePricing } from "./PricingProvider";
 
 type NavItem = { to: string; label: string; icon: () => JSX.Element };
 
@@ -20,6 +21,10 @@ const navSections: { heading?: string; items: NavItem[] }[] = [
       { to: "/ny-visualisering", label: "Ny visualisering", icon: SparkIcon },
       { to: "/visualiseringer", label: "Visualiseringer", icon: GalleryIcon },
     ],
+  },
+  {
+    heading: "Administration",
+    items: [{ to: "/prisdata", label: "Prisdata", icon: TagIcon }],
   },
 ];
 
@@ -83,6 +88,7 @@ export function AppShell() {
   const loc = useLocation();
   const pageTitle = resolveTitle(loc.pathname);
   const { session, user, signOut } = useAuth();
+  const { source } = usePricing();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   // Luk mobilmenuen ved rutenavigation (også via browserens tilbage-knap).
@@ -113,7 +119,14 @@ export function AppShell() {
           <div className="text-[11px] uppercase tracking-wider text-ink-mute mb-1">
             Version
           </div>
-          <div className="text-xs text-ink-soft">v0.1 · placeholder-data</div>
+          <div className="text-xs text-ink-soft">
+            v0.1 ·{" "}
+            {source === "cloud" ? (
+              <span className="text-brand-700 font-medium">cloud-priser</span>
+            ) : (
+              "placeholder-priser"
+            )}
+          </div>
         </div>
       </aside>
 
@@ -269,6 +282,21 @@ function GalleryIcon() {
       <rect x="3" y="4" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="1.6" />
       <path d="M3 14l4-4 4 4 3-3 4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
       <circle cx="9" cy="9" r="1.2" fill="currentColor" />
+    </svg>
+  );
+}
+
+function TagIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+      <path
+        d="M20 12l-8 8-9-9V4h7l10 8z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="7.5" cy="7.5" r="1.3" fill="currentColor" />
     </svg>
   );
 }

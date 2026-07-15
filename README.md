@@ -358,7 +358,17 @@ Det eneste, der SKAL sættes i et dashboard, er proxyens server-miljø i Vercel
 
 ## Hvor beregningsdata kan ændres
 
-Alle satser ligger samlet i [`src/lib/pricingConfig.ts`](src/lib/pricingConfig.ts).
+> **Fortrolige priser:** Værdierne i `pricingConfig.ts` er ufarlige
+> placeholders. Green lights **rigtige** priser vedligeholdes på siden
+> **Administration → Prisdata** i appen og gemmes i Supabase-tabellen
+> `estimator_pricing` (kør `supabase/schema.sql` én gang). Kun loggede-ind
+> brugere kan læse dem (Row Level Security), og de indgår hverken i repoet
+> eller i den offentlige JS-bundle. Hele appen kræver login, når Supabase
+> er konfigureret. Uden login/Supabase falder appen tilbage til
+> placeholder-priserne, og sidebaren viser hvilken kilde der er aktiv.
+
+Alle satser (og deres struktur) ligger samlet i
+[`src/lib/pricingConfig.ts`](src/lib/pricingConfig.ts).
 
 ```ts
 // fokusområder i v1 (flere aktiveres ved at udvide listen)

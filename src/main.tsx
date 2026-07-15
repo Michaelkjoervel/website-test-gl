@@ -13,31 +13,40 @@ import { Univers } from "./pages/Univers";
 import { NewVisualization } from "./pages/NewVisualization";
 import { Visualizations } from "./pages/Visualizations";
 import { VisualizationDetail } from "./pages/VisualizationDetail";
+import { PricingAdmin } from "./pages/PricingAdmin";
 import { AuthProvider } from "./components/AuthProvider";
 import { RequireAuth } from "./components/RequireAuth";
+import { PricingProvider } from "./components/PricingProvider";
 
+// Hele appen er lukket: alt kræver login (når Supabase er konfigureret),
+// og det fortrolige prisgrundlag hentes først EFTER login via
+// PricingProvider. Uden login vises kun login-skærmen.
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <AuthProvider>
-      <HashRouter>
-        <Routes>
-          {/* Fuldskærms kundevendt præsentation – uden for app-skallen (offentlig) */}
-          <Route path="/forretningscase/:id" element={<BusinessCase />} />
-          <Route element={<AppShell />}>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/nyt-estimat" element={<NewEstimate />} />
-            <Route path="/estimat/:id" element={<EstimateDetail />} />
-            <Route path="/historik" element={<History />} />
-            <Route path="/import" element={<ImportPage />} />
-            {/* Visualiseringsunivers – kræver login når det er slået til */}
-            <Route path="/univers" element={<RequireAuth><Univers /></RequireAuth>} />
-            <Route path="/ny-visualisering" element={<RequireAuth><NewVisualization /></RequireAuth>} />
-            <Route path="/visualiseringer" element={<RequireAuth><Visualizations /></RequireAuth>} />
-            <Route path="/visualisering/:id" element={<RequireAuth><VisualizationDetail /></RequireAuth>} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Route>
-        </Routes>
-      </HashRouter>
+      <RequireAuth>
+        <PricingProvider>
+          <HashRouter>
+            <Routes>
+              {/* Fuldskærms kundevendt præsentation – uden for app-skallen */}
+              <Route path="/forretningscase/:id" element={<BusinessCase />} />
+              <Route element={<AppShell />}>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/nyt-estimat" element={<NewEstimate />} />
+                <Route path="/estimat/:id" element={<EstimateDetail />} />
+                <Route path="/historik" element={<History />} />
+                <Route path="/import" element={<ImportPage />} />
+                <Route path="/prisdata" element={<PricingAdmin />} />
+                <Route path="/univers" element={<Univers />} />
+                <Route path="/ny-visualisering" element={<NewVisualization />} />
+                <Route path="/visualiseringer" element={<Visualizations />} />
+                <Route path="/visualisering/:id" element={<VisualizationDetail />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Route>
+            </Routes>
+          </HashRouter>
+        </PricingProvider>
+      </RequireAuth>
     </AuthProvider>
   </React.StrictMode>,
 );
