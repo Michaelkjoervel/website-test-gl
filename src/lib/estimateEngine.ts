@@ -183,14 +183,20 @@ export function calculateEnergyComparison(
     burnHours: input.replacement.burnHours,
   });
 
-  // Styringsbesparelse: styring 50% + evt. dagslysstyring yderligere 20%.
-  const controlSavingsPct = Math.min(
-    1,
-    (input.withControl ? cfg.control : 0) +
-      (input.withDaylightControl ? cfg.daylightControl : 0),
-  );
+  // Styring: besparelse i % af det nye anlægs basisforbrug.
+  const controlSavingsPct = input.withControl ? cfg.control : 0;
+  const controlSavedKwh = newBaseAnnualKwh * controlSavingsPct;
+  const newAnnualKwhAfterControl = newBaseAnnualKwh - controlSavedKwh;
 
-  const newAnnualKwh = newBaseAnnualKwh * (1 - controlSavingsPct);
+  // Dagslysstyring: besparelse i % af det RESTERENDE forbrug efter styring
+  // (jf. green lights beregningsmetode) – vises separat.
+  const daylightSavingsPct = input.withDaylightControl
+    ? cfg.daylightControl
+    : 0;
+  const daylightSavedKwh = newAnnualKwhAfterControl * daylightSavingsPct;
+
+  // Endeligt forventet forbrug inkl. valgte tilvalg.
+  const newAnnualKwh = newAnnualKwhAfterControl - daylightSavedKwh;
 
   const savedKwh = currentAnnualKwh - newAnnualKwh;
   const savedPct = currentAnnualKwh > 0 ? savedKwh / currentAnnualKwh : 0;
@@ -202,12 +208,37 @@ export function calculateEnergyComparison(
     currentAnnualKwh: round(currentAnnualKwh),
     newBaseAnnualKwh: round(newBaseAnnualKwh),
     controlSavingsPct,
+    controlSavedKwh: round(controlSavedKwh),
+    newAnnualKwhAfterControl: round(newAnnualKwhAfterControl),
+    daylightSavingsPct,
+    daylightSavedKwh: round(daylightSavedKwh),
     newAnnualKwh: round(newAnnualKwh),
     savedKwh: round(savedKwh),
     savedPct,
     currentAnnualCost: round(currentAnnualCost),
     newAnnualCost: round(newAnnualCost),
     savedAnnualCost: round(savedKwh * electricityPrice),
+  };
+}
+
+/**
+ * Afled "Energi"-nøgletallene (effekt, forbrug, omkostning) fra
+ * før/efter-sammenligningen, så alle viste energital bygger på samme
+ * grundlag: det nye anlægs antal × faktiske watt, med styringsbesparelse.
+ */
+export function deriveEnergyFromComparison(
+  input: EnergyComparisonInput,
+  result: EnergyComparisonResult,
+): EnergyCalculation {
+  const replacementCount = input.oneToOne
+    ? input.current.luminaireCount
+    : input.replacement.luminaireCount;
+  return {
+    totalWatts: round(replacementCount * input.replacement.wattPerLuminaire),
+    annualKwh: result.newAnnualKwh,
+    annualEnergyCost: result.newAnnualCost,
+    referenceAnnualKwh: result.currentAnnualKwh,
+    estimatedAnnualSavings: result.savedAnnualCost,
   };
 }
 

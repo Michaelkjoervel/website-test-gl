@@ -24,6 +24,8 @@ export interface LuminaireVariant {
   prices: VariantPrices;
   // Pris når Tunable White er valgt (inkluderer TW – kelvin-tillæg springes over)
   pricesTunableWhite?: VariantPrices;
+  // Nominel effekt pr. armatur (W) – bruges i energiberegningen
+  watt?: number;
 }
 
 export interface LuminaireAccessory {
@@ -88,10 +90,13 @@ export interface PricingConfig {
   };
   // Margin / budgetinterval – ±%
   budgetRangePct: number;
-  // Energibesparelse ved tilvalg af styring (før/efter-beregner)
+  // Energibesparelse ved tilvalg af styring (før/efter-beregner).
+  // control: andel af det nye anlægs basisforbrug, der spares ved styring.
+  // daylightControl: andel af det RESTERENDE forbrug (efter styring), der
+  // spares ved dagslysstyring – vises separat, jf. green lights metode.
   energySavings: {
-    control: number; // andel sparet ved styring (0..1)
-    daylightControl: number; // yderligere andel ved dagslysstyring (0..1)
+    control: number; // 0..1
+    daylightControl: number; // 0..1 af resterende
   };
   // Standardværdier til energi-sammenligningen
   energyDefaults: {
@@ -140,6 +145,7 @@ export const pricingConfig: PricingConfig = {
         variants: [
           {
             label: "Standard",
+            watt: 42,
             prices: {
               "Simpel on/off": 900,
               "DALI-2": 1000,
@@ -156,6 +162,7 @@ export const pricingConfig: PricingConfig = {
         variants: [
           {
             label: "Standard",
+            watt: 39,
             prices: {
               "Simpel on/off": 600,
               "DALI-2": 700,
@@ -173,6 +180,7 @@ export const pricingConfig: PricingConfig = {
         variants: [
           {
             label: "Standard",
+            watt: 38,
             prices: {
               "Simpel on/off": 900,
               "DALI-2": 1100,
@@ -190,6 +198,7 @@ export const pricingConfig: PricingConfig = {
         variants: [
           {
             label: "95 mm",
+            watt: 9,
             prices: {
               "Simpel on/off": 400,
               "DALI-2": 500,
@@ -198,6 +207,7 @@ export const pricingConfig: PricingConfig = {
           },
           {
             label: "165 mm",
+            watt: 18,
             prices: {
               "Simpel on/off": 500,
               "DALI-2": 600,
@@ -213,6 +223,7 @@ export const pricingConfig: PricingConfig = {
         variants: [
           {
             label: "Mini · 115 mm",
+            watt: 9,
             prices: {
               "Simpel on/off": 600,
               "DALI-2": 700,
@@ -221,6 +232,7 @@ export const pricingConfig: PricingConfig = {
           },
           {
             label: "Midi · 165 mm",
+            watt: 14,
             prices: {
               "Simpel on/off": 700,
               "DALI-2": 800,
@@ -238,18 +250,22 @@ export const pricingConfig: PricingConfig = {
         variants: [
           {
             label: "60 W · sensor op til 6 m",
+            watt: 60,
             prices: { MasterConnect: 1400 },
           },
           {
             label: "87 W High output · sensor op til 6 m",
+            watt: 87,
             prices: { MasterConnect: 1600 },
           },
           {
             label: "60 W · sensor op til 12 m",
+            watt: 60,
             prices: { MasterConnect: 1700 },
           },
           {
             label: "87 W High output · sensor op til 12 m",
+            watt: 87,
             prices: { MasterConnect: 1900 },
           },
         ],
@@ -261,10 +277,12 @@ export const pricingConfig: PricingConfig = {
         variants: [
           {
             label: "128 W Ultra output · sensor op til 6 m",
+            watt: 128,
             prices: { MasterConnect: 2000 },
           },
           {
             label: "128 W Ultra output · sensor op til 16 m",
+            watt: 128,
             prices: { MasterConnect: 2200 },
           },
         ],
@@ -344,8 +362,8 @@ export const pricingConfig: PricingConfig = {
   budgetRangePct: 12,
 
   energySavings: {
-    control: 0.5, // styring: 50%
-    daylightControl: 0.2, // dagslysstyring: yderligere 20%
+    control: 0.7, // styring: 70% af basisforbruget (jf. beregningsark)
+    daylightControl: 0.4, // dagslys: 40% af det resterende forbrug
   },
 
   energyDefaults: {
@@ -423,6 +441,17 @@ export function resolveProduct(
 ): LuminaireProduct | undefined {
   const products = productsForArea(area);
   return products.find((p) => p.id === productId) ?? products[0];
+}
+
+/** Nominel watt for valgt produkt/variant – undefined hvis ukendt. */
+export function resolveVariantWatt(
+  product: LuminaireProduct | undefined,
+  variantLabel?: string,
+): number | undefined {
+  if (!product) return undefined;
+  const variants = product.variants ?? [];
+  const variant = variants.find((v) => v.label === variantLabel) ?? variants[0];
+  return variant?.watt;
 }
 
 export interface ResolvedUnitPrice {

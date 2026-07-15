@@ -12,7 +12,7 @@
 
 import {
   calculateConfidence,
-  calculateEnergy,
+  deriveEnergyFromComparison,
   calculateEnergyComparison,
   calculatePricing,
 } from "./estimateEngine";
@@ -299,10 +299,9 @@ export function buildDemoEstimate(): CustomerEstimate {
   };
 
   const pricing = calculatePricing(technical);
-  const energy = calculateEnergy(technical);
   const energyComparisonInput = {
-    current: { luminaireCount: 240, wattPerLuminaire: 58, burnHours: 4000 },
-    replacement: { luminaireCount: 240, wattPerLuminaire: 35, burnHours: 4000 },
+    current: { luminaireCount: 240, wattPerLuminaire: 145, burnHours: 4000 },
+    replacement: { luminaireCount: 240, wattPerLuminaire: 60, burnHours: 4000 },
     oneToOne: true,
     withControl: true,
     withDaylightControl: false,
@@ -310,6 +309,11 @@ export function buildDemoEstimate(): CustomerEstimate {
   const energyComparison = calculateEnergyComparison(
     energyComparisonInput,
     technical.electricityPrice,
+  );
+  // Energital afledes af samme sammenligning som resten af appen.
+  const energy = deriveEnergyFromComparison(
+    energyComparisonInput,
+    energyComparison,
   );
   const confidence = calculateConfidence(
     technical,

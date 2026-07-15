@@ -199,7 +199,7 @@ export function EstimateDetail() {
 
       <section className="card p-6">
         <h3 className="text-sm font-semibold text-ink-soft uppercase tracking-wider mb-4">
-          Energi
+          Energi · nyt anlæg
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Big
@@ -207,7 +207,7 @@ export function EstimateDetail() {
             value={`${num.format(est.energy.totalWatts)} W`}
           />
           <Big
-            label="Årligt forbrug"
+            label="Årligt forbrug (inkl. styring)"
             value={`${num.format(est.energy.annualKwh)} kWh`}
           />
           <Big
@@ -295,6 +295,19 @@ export function EstimateDetail() {
                     "Styringsbesparelse",
                     pct(est.energyComparison.controlSavingsPct, 0),
                   ],
+                  ...(est.energyComparison.daylightSavedKwh
+                    ? ([
+                        [
+                          "Anslået dagslysbesparelse",
+                          `${num.format(
+                            est.energyComparison.daylightSavedKwh,
+                          )} kWh/år (${pct(
+                            est.energyComparison.daylightSavingsPct ?? 0,
+                            0,
+                          )} af resten)`,
+                        ],
+                      ] as [string, string][])
+                    : []),
                 ]}
               />
             </div>

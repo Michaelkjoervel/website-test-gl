@@ -117,8 +117,16 @@ export interface EnergyComparisonInput {
 export interface EnergyComparisonResult {
   currentAnnualKwh: number;
   newBaseAnnualKwh: number; // nye armaturer uden styring
-  controlSavingsPct: number; // samlet besparelse fra styring (0..1)
-  newAnnualKwh: number; // efter styringsbesparelse
+  // Styring: besparelse i % af det nye anlægs basisforbrug
+  controlSavingsPct: number; // 0..1
+  controlSavedKwh: number;
+  newAnnualKwhAfterControl: number; // basis − styringsbesparelse
+  // Dagslysstyring: besparelse i % af det RESTERENDE forbrug efter styring.
+  // Vises separat (jf. green lights beregningsmetode).
+  daylightSavingsPct: number; // 0..1 (0 hvis fravalgt)
+  daylightSavedKwh: number;
+  // Endelige tal (inkl. dagslys hvis valgt) – bruges i totaler/forretningscase
+  newAnnualKwh: number;
   savedKwh: number;
   savedPct: number;
   currentAnnualCost: number;

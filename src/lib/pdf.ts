@@ -279,9 +279,15 @@ export function generateEstimatePdf(est: CustomerEstimate): jsPDF {
     startY: y + 4,
     head: [["Energiparameter", "Værdi"]],
     body: [
-      ["Samlet effekt", `${num.format(est.energy.totalWatts)} W`],
-      ["Årligt forbrug", `${num.format(est.energy.annualKwh)} kWh`],
-      ["Årlig energiomkostning", dkkInt(est.energy.annualEnergyCost)],
+      ["Samlet effekt (nyt anlæg)", `${num.format(est.energy.totalWatts)} W`],
+      [
+        "Årligt forbrug (nyt anlæg, inkl. styring)",
+        `${num.format(est.energy.annualKwh)} kWh`,
+      ],
+      [
+        "Årlig energiomkostning (nyt anlæg)",
+        dkkInt(est.energy.annualEnergyCost),
+      ],
       ...(est.energy.estimatedAnnualSavings
         ? [
             [
@@ -332,10 +338,33 @@ export function generateEstimatePdf(est: CustomerEstimate): jsPDF {
       head: [["Energibesparelse", "Værdi"]],
       body: [
         ["Nuværende forbrug", `${num.format(ec.currentAnnualKwh)} kWh/år`],
-        ["Forbrug ny løsning", `${num.format(ec.newAnnualKwh)} kWh/år`],
+        [
+          "Nyt anlæg uden styring",
+          `${num.format(ec.newBaseAnnualKwh)} kWh/år`,
+        ],
         ...(ec.controlSavingsPct > 0
-          ? [["Heraf styringsbesparelse", pct(ec.controlSavingsPct, 0)]]
+          ? [
+              [
+                `Besparelse ved styring (${pct(ec.controlSavingsPct, 0)})`,
+                `−${num.format(
+                  ec.controlSavedKwh ??
+                    ec.newBaseAnnualKwh - ec.newAnnualKwh,
+                )} kWh/år`,
+              ],
+            ]
           : []),
+        ...(ec.daylightSavedKwh && ec.daylightSavedKwh > 0
+          ? [
+              [
+                `Anslået dagslysbesparelse (${pct(
+                  ec.daylightSavingsPct ?? 0,
+                  0,
+                )} af resten)`,
+                `−${num.format(ec.daylightSavedKwh)} kWh/år`,
+              ],
+            ]
+          : []),
+        ["Forbrug ny løsning", `${num.format(ec.newAnnualKwh)} kWh/år`],
         ["Sparet pr. år", `${num.format(ec.savedKwh)} kWh (${pct(ec.savedPct, 0)})`],
         ["Sparet i kr. pr. år", dkkInt(ec.savedAnnualCost)],
       ],

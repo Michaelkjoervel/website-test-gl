@@ -6,10 +6,10 @@ import { ConfidenceMeter } from "../components/Confidence";
 import { storage, newId } from "../lib/storage";
 import {
   calculateConfidence,
-  calculateEnergy,
   calculateEnergyComparison,
   calculatePricing,
   controlLabel,
+  deriveEnergyFromComparison,
 } from "../lib/estimateEngine";
 import { suggestAdjustment } from "../lib/learningModel";
 import {
@@ -21,7 +21,9 @@ import {
 import {
   pricingConfig,
   productsForArea,
+  resolveProduct,
   resolveUnitPrice,
+  resolveVariantWatt,
 } from "../lib/pricingConfig";
 import type {
   AreaType,
@@ -147,12 +149,14 @@ export function NewEstimate() {
 
   const [customLux, setCustomLux] = useState(false);
 
-  // Energi-trinnet genbruger antal armaturer, brændetimer og elpris fra
-  // Teknisk. Her gemmes kun de felter, der er specifikke for energi-
-  // sammenligningen: watt pr. armatur (gammelt/nyt), 1:1-valg og styring.
+  // Energi-trinnet genbruger brændetimer og elpris fra Teknisk. Antal
+  // armaturer forudfyldes fra Teknisk, men det NUVÆRENDE anlæg kan afvige
+  // (fx 47 gamle armaturer erstattet af 41 nye) – derfor kan det rettes.
+  // Nyt anlægs watt forudfyldes fra den valgte armaturvariant.
   const [energyExtra, setEnergyExtra] = useState({
     currentWattPerLuminaire: pricingConfig.energyDefaults.currentWattPerLuminaire,
-    newWattPerLuminaire: pricingConfig.energyDefaults.newWattPerLuminaire,
+    overrideCurrentCount: undefined as number | undefined,
+    newWattOverride: undefined as number | undefined,
     oneToOne: true,
     overrideNewCount: undefined as number | undefined,
     withControl: true,
@@ -160,13 +164,24 @@ export function NewEstimate() {
   });
 
   const pricing = useMemo(() => calculatePricing(technical), [technical]);
-  const energy = useMemo(() => calculateEnergy(technical), [technical]);
+
+  // Nyt anlægs watt: brugerens indtastning > variantens nominelle watt >
+  // config-standard. Følger automatisk produkt-/variantvalget.
+  const variantWatt = resolveVariantWatt(
+    resolveProduct(technical.areaType, technical.luminaireProductId),
+    technical.luminaireVariant,
+  );
+  const newWatt =
+    energyExtra.newWattOverride ??
+    variantWatt ??
+    pricingConfig.energyDefaults.newWattPerLuminaire;
 
   // Saml det fulde sammenlignings-input ud fra Teknisk + energi-specifikke felter.
   const energyInput: EnergyComparisonInput = useMemo(
     () => ({
       current: {
-        luminaireCount: technical.luminaireCount,
+        luminaireCount:
+          energyExtra.overrideCurrentCount ?? technical.luminaireCount,
         wattPerLuminaire: energyExtra.currentWattPerLuminaire,
         burnHours: technical.annualBurnHours,
       },
@@ -174,19 +189,26 @@ export function NewEstimate() {
         luminaireCount: energyExtra.oneToOne
           ? technical.luminaireCount
           : energyExtra.overrideNewCount ?? technical.luminaireCount,
-        wattPerLuminaire: energyExtra.newWattPerLuminaire,
+        wattPerLuminaire: newWatt,
         burnHours: technical.annualBurnHours,
       },
-      oneToOne: energyExtra.oneToOne,
+      // 1:1 refererer til det NYE antal fra Teknisk – ikke det nuværende.
+      oneToOne: false,
       withControl: energyExtra.withControl,
       withDaylightControl: energyExtra.withDaylightControl,
     }),
-    [technical.luminaireCount, technical.annualBurnHours, energyExtra],
+    [technical.luminaireCount, technical.annualBurnHours, energyExtra, newWatt],
   );
 
   const energyComparison = useMemo(
     () => calculateEnergyComparison(energyInput, technical.electricityPrice),
     [energyInput, technical.electricityPrice],
+  );
+
+  // Alle viste energital afledes af samme sammenligning (ét grundlag).
+  const energy = useMemo(
+    () => deriveEnergyFromComparison(energyInput, energyComparison),
+    [energyInput, energyComparison],
   );
 
   // Live forretningscase: investering = det aktuelle prisoverslag, besparelse
@@ -710,10 +732,10 @@ export function NewEstimate() {
             <div>
               <div className="kpi-label">Energibesparelse · overslag</div>
               <p className="text-sm text-ink-mute mt-1">
-                Sammenlign den nuværende belysning med en ny løsning (1:1
-                udskiftning som udgangspunkt). Antal armaturer, brændetimer og
-                elpris hentes automatisk fra det tekniske trin. Tilvalg af
-                styring lægger en anslået besparelse oveni.
+                Sammenlign den nuværende belysning med den nye løsning.
+                Brændetimer og elpris hentes fra det tekniske trin; det nye
+                anlægs watt forudfyldes fra det valgte armatur. Det nuværende
+                antal armaturer kan rettes, hvis det afviger fra det nye.
               </p>
             </div>
 
@@ -724,7 +746,7 @@ export function NewEstimate() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <Row
-                  label="Antal armaturer"
+                  label="Antal armaturer (nyt)"
                   value={num.format(technical.luminaireCount)}
                 />
                 <Row
@@ -745,8 +767,27 @@ export function NewEstimate() {
                   Nuværende anlæg
                 </div>
                 <Field
+                  label="Antal armaturer (nuværende)"
+                  hint="Forudfyldt fra teknisk – ret hvis det eksisterende antal er anderledes."
+                >
+                  <input
+                    type="number"
+                    min={0}
+                    className="input"
+                    value={
+                      energyExtra.overrideCurrentCount ??
+                      technical.luminaireCount
+                    }
+                    onChange={(e) =>
+                      setEnergy({
+                        overrideCurrentCount: Number(e.target.value) || 0,
+                      })
+                    }
+                  />
+                </Field>
+                <Field
                   label="Watt pr. armatur (gns.)"
-                  tooltip="Gennemsnitligt effektforbrug pr. eksisterende armatur."
+                  tooltip="Gennemsnitligt effektforbrug pr. eksisterende armatur. Har anlægget flere typer, brug et vægtet gennemsnit."
                 >
                   <input
                     type="number"
@@ -761,7 +802,7 @@ export function NewEstimate() {
                   />
                 </Field>
                 <div className="text-[11px] text-ink-mute">
-                  {num.format(technical.luminaireCount)} armaturer ·{" "}
+                  {num.format(energyComparison.currentAnnualKwh)} kWh/år ·{" "}
                   {num.format(technical.annualBurnHours)} timer/år
                 </div>
               </div>
@@ -811,16 +852,22 @@ export function NewEstimate() {
                 </Field>
                 <Field
                   label="Watt pr. nyt armatur"
-                  tooltip="Effektforbrug pr. nyt LED-armatur."
+                  tooltip="Effektforbrug pr. nyt LED-armatur. Forudfyldt fra det valgte armatur."
+                  hint={
+                    variantWatt !== undefined &&
+                    energyExtra.newWattOverride === undefined
+                      ? `Forudfyldt fra valgt armatur (${variantWatt} W).`
+                      : undefined
+                  }
                 >
                   <input
                     type="number"
                     min={0}
                     className="input"
-                    value={energyExtra.newWattPerLuminaire}
+                    value={newWatt}
                     onChange={(e) =>
                       setEnergy({
-                        newWattPerLuminaire: Number(e.target.value) || 0,
+                        newWattOverride: Number(e.target.value) || 0,
                       })
                     }
                   />
@@ -831,7 +878,13 @@ export function NewEstimate() {
             {/* Styringsbesparelse */}
             <Field
               label="Tillæg af besparelse ved styring"
-              tooltip="Styring giver ca. 50% besparelse. Dagslysstyring giver yderligere ca. 20%."
+              tooltip={`Styring sparer ca. ${pct(
+                pricingConfig.energySavings.control,
+                0,
+              )} af det nye anlægs forbrug. Dagslysstyring sparer yderligere ca. ${pct(
+                pricingConfig.energySavings.daylightControl,
+                0,
+              )} af det resterende forbrug og vises separat.`}
             >
               <div className="flex flex-wrap gap-2">
                 <button
@@ -866,13 +919,14 @@ export function NewEstimate() {
                       : "bg-white text-ink-soft border-surface-line hover:border-brand-300"
                   }`}
                 >
-                  + Dagslysstyring −{pct(pricingConfig.energySavings.daylightControl, 0)}
+                  + Dagslys −{pct(pricingConfig.energySavings.daylightControl, 0)}{" "}
+                  af resten
                 </button>
               </div>
             </Field>
 
             {/* Live resultat */}
-            <div className="rounded-2xl bg-surface-soft border border-surface-line p-4">
+            <div className="rounded-2xl bg-surface-soft border border-surface-line p-4 space-y-3">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <SmallStat
                   label="Nuværende forbrug"
@@ -891,6 +945,14 @@ export function NewEstimate() {
                   value={pct(energyComparison.savedPct, 0)}
                 />
               </div>
+              {energyComparison.daylightSavedKwh > 0 && (
+                <div className="text-[11px] text-ink-mute">
+                  Heraf anslået dagslysbesparelse:{" "}
+                  {num.format(energyComparison.daylightSavedKwh)} kWh/år (
+                  {pct(energyComparison.daylightSavingsPct, 0)} af det
+                  resterende forbrug efter styring).
+                </div>
+              )}
             </div>
 
             {/* Live forretningscase */}
@@ -973,7 +1035,18 @@ export function NewEstimate() {
               {energyComparison.controlSavingsPct > 0 && (
                 <div className="text-[11px] text-ink-mute mt-2">
                   Inkl. styringsbesparelse på{" "}
-                  {pct(energyComparison.controlSavingsPct, 0)}.
+                  {pct(energyComparison.controlSavingsPct, 0)} af det nye
+                  anlægs forbrug
+                  {energyComparison.daylightSavedKwh > 0 && (
+                    <>
+                      {" "}
+                      samt anslået dagslysbesparelse på{" "}
+                      {num.format(energyComparison.daylightSavedKwh)} kWh/år (
+                      {pct(energyComparison.daylightSavingsPct, 0)} af det
+                      resterende)
+                    </>
+                  )}
+                  .
                 </div>
               )}
             </div>
