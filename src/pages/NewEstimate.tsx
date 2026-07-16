@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Stepper } from "../components/Stepper";
 import { Field } from "../components/Field";
@@ -80,26 +80,45 @@ const STEPS = [
 
 const LAST_STEP = STEPS.length;
 
-export function NewEstimate() {
-  const navigate = useNavigate();
-  const [step, setStep] = useState(1);
+// ---------------------------------------------------------------------------
+// Kladde: alle indtastninger auto-gemmes lokalt, så sælgeren kan forlade
+// siden (tjekke et dokument, skifte fane m.v.) og vende tilbage uden at
+// miste noget. Kladden ryddes, når estimatet gemmes eller nulstilles.
+// ---------------------------------------------------------------------------
+const DRAFT_KEY = "gl.estimator.draft.v1";
 
-  const [projectName, setProjectName] = useState("");
-  const [customerName, setCustomerName] = useState("");
+interface EnergyExtraState {
+  currentWattPerLuminaire: number;
+  overrideCurrentCount?: number;
+  newWattOverride?: number;
+  oneToOne: boolean;
+  overrideNewCount?: number;
+  withControl: boolean;
+  withDaylightControl: boolean;
+}
 
-  const [installer, setInstaller] = useState<InstallerInfo>({
-    companyName: "",
-    contactPerson: "",
-    email: "",
-    phone: "",
-  });
+interface WizardDraft {
+  step?: number;
+  projectName?: string;
+  customerName?: string;
+  installer?: InstallerInfo;
+  technical?: Partial<TechnicalInput>;
+  energyExtra?: Partial<EnergyExtraState>;
+  customLux?: boolean;
+  elprisText?: string;
+}
 
-  const [technical, setTechnical] = useState<TechnicalInput>({
+function defaultInstaller(): InstallerInfo {
+  return { companyName: "", contactPerson: "", email: "", phone: "" };
+}
+
+function defaultTechnical(): TechnicalInput {
+  const firstProduct = productsForArea(pricingConfig.defaults.areaType)[0];
+  return {
     areaType: pricingConfig.defaults.areaType,
     luminaireCount: 0,
-    luminaireProductId: productsForArea(pricingConfig.defaults.areaType)[0]?.id,
-    luminaireVariant:
-      productsForArea(pricingConfig.defaults.areaType)[0]?.variants?.[0]?.label,
+    luminaireProductId: firstProduct?.id,
+    luminaireVariant: firstProduct?.variants?.[0]?.label,
     accessories: [],
     controlTypes: pricingConfig.defaults.controlTypes,
     luxLevel: pricingConfig.defaults.luxLevel,
@@ -108,7 +127,79 @@ export function NewEstimate() {
     electricityPrice: 0,
     budgetWish: undefined,
     notes: "",
+  };
+}
+
+function defaultEnergyExtra(): EnergyExtraState {
+  return {
+    currentWattPerLuminaire:
+      pricingConfig.energyDefaults.currentWattPerLuminaire,
+    overrideCurrentCount: undefined,
+    newWattOverride: undefined,
+    oneToOne: true,
+    overrideNewCount: undefined,
+    withControl: true,
+    withDaylightControl: false,
+  };
+}
+
+function loadDraft(): WizardDraft | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as WizardDraft;
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+export function NewEstimate() {
+  const navigate = useNavigate();
+
+  // Gendan evt. kladde (én gang ved første render).
+  const [draft] = useState(loadDraft);
+
+  const [step, setStep] = useState(() => {
+    const s = draft?.step ?? 1;
+    return s >= 1 && s <= LAST_STEP ? s : 1;
   });
+
+  const [projectName, setProjectName] = useState(draft?.projectName ?? "");
+  const [customerName, setCustomerName] = useState(draft?.customerName ?? "");
+
+  const [installer, setInstaller] = useState<InstallerInfo>(() => ({
+    ...defaultInstaller(),
+    ...(draft?.installer ?? {}),
+  }));
+
+  const [technical, setTechnical] = useState<TechnicalInput>(() => ({
+    ...defaultTechnical(),
+    ...(draft?.technical ?? {}),
+  }));
+
+  // Elprisen holdes som rå tekst, så man kan skrive naturligt ("0,77")
+  // med både komma og punktum – tallet parses løbende til beregningen.
+  const [elprisText, setElprisText] = useState<string>(() => {
+    if (draft?.elprisText !== undefined) return draft.elprisText;
+    const p = draft?.technical?.electricityPrice;
+    return p ? String(p).replace(".", ",") : "";
+  });
+
+  const [draftRestored, setDraftRestored] = useState(
+    () =>
+      !!draft &&
+      Boolean(
+        draft.projectName ||
+          draft.customerName ||
+          (draft.technical?.luminaireCount ?? 0) > 0,
+      ),
+  );
+
+  const startForfra = () => {
+    localStorage.removeItem(DRAFT_KEY);
+    window.location.reload();
+  };
 
   // Skift styringsform til/fra. Systemer (exclusive) udelukker hinanden;
   // øvrige kan kombineres frit.
@@ -147,21 +238,44 @@ export function NewEstimate() {
     });
   };
 
-  const [customLux, setCustomLux] = useState(false);
+  const [customLux, setCustomLux] = useState(draft?.customLux ?? false);
 
   // Energi-trinnet genbruger brændetimer og elpris fra Teknisk. Antal
   // armaturer forudfyldes fra Teknisk, men det NUVÆRENDE anlæg kan afvige
   // (fx 47 gamle armaturer erstattet af 41 nye) – derfor kan det rettes.
   // Nyt anlægs watt forudfyldes fra den valgte armaturvariant.
-  const [energyExtra, setEnergyExtra] = useState({
-    currentWattPerLuminaire: pricingConfig.energyDefaults.currentWattPerLuminaire,
-    overrideCurrentCount: undefined as number | undefined,
-    newWattOverride: undefined as number | undefined,
-    oneToOne: true,
-    overrideNewCount: undefined as number | undefined,
-    withControl: true,
-    withDaylightControl: false,
-  });
+  const [energyExtra, setEnergyExtra] = useState<EnergyExtraState>(() => ({
+    ...defaultEnergyExtra(),
+    ...(draft?.energyExtra ?? {}),
+  }));
+
+  // Auto-gem kladden ved enhver ændring.
+  useEffect(() => {
+    try {
+      const wizardDraft: WizardDraft = {
+        step,
+        projectName,
+        customerName,
+        installer,
+        technical,
+        energyExtra,
+        customLux,
+        elprisText,
+      };
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(wizardDraft));
+    } catch {
+      // Fuldt storage må ikke vælte appen – kladden springes blot over.
+    }
+  }, [
+    step,
+    projectName,
+    customerName,
+    installer,
+    technical,
+    energyExtra,
+    customLux,
+    elprisText,
+  ]);
 
   const pricing = useMemo(() => calculatePricing(technical), [technical]);
 
@@ -283,12 +397,36 @@ export function NewEstimate() {
       learningNote: learning.message,
     };
     storage.saveEstimate(est);
+    // Estimatet er gemt – ryd kladden, så næste estimat starter tomt.
+    localStorage.removeItem(DRAFT_KEY);
     navigate(`/estimat/${id}`);
   };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
       <div>
+        {draftRestored && (
+          <div className="mb-4 flex items-center justify-between gap-3 rounded-xl bg-brand-50 border border-brand-100 px-4 py-2.5 text-sm text-brand-800">
+            <span>Din kladde er gendannet – fortsæt hvor du slap.</span>
+            <div className="flex items-center gap-3 shrink-0">
+              <button
+                type="button"
+                className="text-xs font-semibold hover:underline"
+                onClick={() => setDraftRestored(false)}
+              >
+                OK
+              </button>
+              <button
+                type="button"
+                className="text-xs font-semibold text-red-600 hover:underline"
+                onClick={startForfra}
+              >
+                Start forfra
+              </button>
+            </div>
+          </div>
+        )}
+
         <Stepper current={step} steps={STEPS} />
 
         {step === 1 && (
@@ -661,20 +799,27 @@ export function NewEstimate() {
 
               <Field
                 label="Elpris (kr/kWh)"
-                tooltip="Den forventede elpris kunden betaler."
+                tooltip="Den forventede elpris kunden betaler. Skriv med komma eller punktum, fx 0,77."
               >
                 <input
-                  type="number"
-                  step="0.01"
+                  type="text"
+                  inputMode="decimal"
                   className="input"
-                  placeholder="0,00"
-                  value={technical.electricityPrice || ""}
-                  onChange={(e) =>
+                  placeholder="fx 0,77"
+                  value={elprisText}
+                  onChange={(e) => {
+                    // Tillad kun tal og ét decimaltegn (komma eller punktum)
+                    const raw = e.target.value
+                      .replace(/[^0-9.,]/g, "")
+                      .replace(/([.,].*)[.,]/g, "$1");
+                    setElprisText(raw);
+                    const n = Number(raw.replace(",", "."));
                     setTechnical({
                       ...technical,
-                      electricityPrice: Number(e.target.value) || 0,
-                    })
-                  }
+                      electricityPrice:
+                        Number.isFinite(n) && n >= 0 ? n : 0,
+                    });
+                  }}
                 />
               </Field>
 
