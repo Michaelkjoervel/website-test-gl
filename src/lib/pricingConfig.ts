@@ -376,8 +376,8 @@ export const pricingConfig: PricingConfig = {
     electricityPriceEscalationPct: 3,
     // Konservativt 0 indtil green light har et reelt vedligeholdsgrundlag.
     annualMaintenanceSavingsPerLuminaire: 0,
-    // ~ dansk forbrugsdeklaration de senere år. Justeres her ét sted.
-    co2FactorKgPerKwh: 0.12,
+    // Dansk miljødeklaration (~2023). Justeres her ét sted.
+    co2FactorKgPerKwh: 0.133,
     equivalents: {
       treeKgPerYear: 21,
       carKgPerYear: 2000,
