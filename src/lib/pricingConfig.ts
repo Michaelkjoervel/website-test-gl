@@ -363,7 +363,7 @@ export const pricingConfig: PricingConfig = {
 
   energySavings: {
     control: 0.7, // styring: 70% af basisforbruget (jf. beregningsark)
-    daylightControl: 0.4, // dagslys: 40% af det resterende forbrug
+    daylightControl: 0.2, // dagslys: 20% af det resterende forbrug
   },
 
   energyDefaults: {

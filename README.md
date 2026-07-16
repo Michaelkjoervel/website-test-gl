@@ -14,7 +14,7 @@ hurtigt, professionelt **overslag** på en belysningsløsning ude hos kunden.
 - Opretter nye estimater via et **trinvist flow** (Projekt → Installatør → Energi → Teknisk → Resultat).
 - Beregner overslag på materiale, installation, styring, samlet pris, pris pr. armatur og budgetinterval.
 - Estimerer årligt energiforbrug og el-omkostning.
-- **Energibesparelse · før/efter**: sammenligner nuværende anlæg (antal armaturer, watt, brændetimer) med den nye løsning (antal og watt forudfyldes fra det valgte armatur; det nuværende antal kan afvige). Styring sparer en konfigurerbar andel af det nye anlægs forbrug (standard 70%), og dagslysstyring sparer yderligere en andel af det resterende forbrug (standard 40%) – vist separat, jf. green lights beregningsmetode. Resultatet vises i estimatet og i PDF'en.
+- **Energibesparelse · før/efter**: sammenligner nuværende anlæg (antal armaturer, watt, brændetimer) med den nye løsning (antal og watt forudfyldes fra det valgte armatur; det nuværende antal kan afvige). Styring sparer en konfigurerbar andel af det nye anlægs forbrug (standard 70%), og dagslysstyring sparer yderligere en andel af det resterende forbrug (standard 20%) – vist separat, jf. green lights beregningsmetode. Resultatet vises i estimatet og i PDF'en.
 - **Forretningscase (ROI & CO₂)**: tilbagebetalingstid, nettogevinst, afkast og CO₂-besparelse beregnes live i energitrinnet og på resultattrinnet. Hvert gemt estimat har desuden en fuldskærms, kundevendt præsentation på `/forretningscase/:id` (cash-flow-graf med break-even, før/efter-søjler, CO₂ omsat til træer/biler/flyrejser, følsomheds-slider for el-prisstigning). Prøv demoen på `/forretningscase/demo`. Antagelserne ligger i `pricingConfig.businessCase`, og beregningen i `src/lib/businessCase.ts`.
 - Viser et **sikkerhedsniveau** (Lav / Middel / Høj) baseret på hvor godt brugeren har udfyldt felterne.
 - Genererer en **professionel PDF** med green light branding, klar til at sende eller vise kunden.
@@ -408,7 +408,7 @@ luxFactor:        [{ lux: 300, factor: 1.0 }, …],
 wattLuxMultiplier:[{ lux: 300, multiplier: 1.0 }, …],
 
 // energibesparelse: styring i % af nyt forbrug; dagslys i % af resten
-energySavings: { control: 0.70, daylightControl: 0.40 },
+energySavings: { control: 0.70, daylightControl: 0.20 },
 
 // standard-watt i energi-sammenligningen
 energyDefaults: { currentWattPerLuminaire: 58, newWattPerLuminaire: 35 },
