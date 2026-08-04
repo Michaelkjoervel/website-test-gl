@@ -56,16 +56,28 @@ export interface InstallerInfo {
   phone: string;
 }
 
+// Én armaturlinje i projektet (produkt + variant + antal + tilbehør).
+// Et estimat kan bestå af flere linjer, fx 9 × Rio 2 og 13 × Moon 2.
+export interface LuminaireLine {
+  productId?: string;
+  variantLabel?: string;
+  count: number;
+  accessories?: string[];
+}
+
 export interface TechnicalInput {
   areaType: AreaType;
   areaSqm?: number;
+  // Samlet antal armaturer (summen af luminaireLines – holdes synkroniseret)
   luminaireCount: number;
-  // Valgt armaturprodukt (id fra pricingConfig.luminaireProducts).
+  // Armaturlinjerne i projektet. Tom/udeladt = brug legacy-felterne nedenfor.
+  luminaireLines?: LuminaireLine[];
+  // LEGACY (ét produkt pr. estimat) – bevaret så gamle estimater kan vises.
   luminaireProductId?: string;
-  // Valgt variant (label fra produktets variants), fx "165 mm".
   luminaireVariant?: string;
-  // Tilvalgt tilbehør (navne fra produktets accessories).
   accessories?: string[];
+  // Tilbudsrabat i procent (0-100) på armaturer + styringstilvalg.
+  discountPct?: number;
   // Flere styringsformer kan vælges; tom liste = ingen styring.
   controlTypes: ControlType[];
   luxLevel: LuxLevel;
@@ -83,6 +95,9 @@ export interface PricingResult {
   // Installationsomkostning pr. armatur
   installationPerLuminaire: number;
   installationCost: number;
+  // Tilbudsrabat: procent og beløb (af materiale + styringstilvalg)
+  discountPct: number;
+  discountAmount: number;
   controlCost: number;
   totalCost: number;
   pricePerLuminaire: number;

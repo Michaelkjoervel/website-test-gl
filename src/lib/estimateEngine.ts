@@ -12,9 +12,15 @@
 // Alle beregninger her er bevidst rene funktioner – ingen side-effekter.
 // =============================================================================
 
-import { pricingConfig, resolveProduct, resolveUnitPrice } from "./pricingConfig";
+import {
+  pricingConfig,
+  resolveProduct,
+  resolveUnitPrice,
+  resolveVariantWatt,
+} from "./pricingConfig";
 import type {
   EnergyCalculation,
+  LuminaireLine,
   EnergyComparisonInput,
   EnergyComparisonResult,
   EstimateConfidence,
@@ -58,9 +64,26 @@ function lookupFactor(
   return (closest[key] as number) ?? 1;
 }
 
+/**
+ * Armaturlinjerne i et estimat. Har estimatet ingen linjer (ældre data),
+ * bygges én linje ud fra legacy-felterne, så alt regnes ens.
+ */
+export function luminaireLinesOf(input: TechnicalInput): LuminaireLine[] {
+  if (input.luminaireLines && input.luminaireLines.length > 0) {
+    return input.luminaireLines;
+  }
+  return [
+    {
+      productId: input.luminaireProductId,
+      variantLabel: input.luminaireVariant,
+      count: Math.max(0, input.luminaireCount || 0),
+      accessories: input.accessories,
+    },
+  ];
+}
+
 export function calculatePricing(input: TechnicalInput): PricingResult {
   const cfg = pricingConfig;
-  const count = Math.max(0, input.luminaireCount || 0);
 
   const luxNum = typeof input.luxLevel === "number" ? input.luxLevel : 300;
   const kelvinKey = String(input.kelvin);
@@ -68,57 +91,68 @@ export function calculatePricing(input: TechnicalInput): PricingResult {
   const luxFactor = lookupFactor(cfg.luxFactor, luxNum, "factor");
   const areaMult = cfg.areaFactor[input.areaType] ?? 1;
 
-  // Materiale: variantens LISTEPRIS er slutprisen pr. armatur – styring,
-  // sensor og evt. Tunable White er allerede inde i prisen. Kelvin-tillæg
-  // og lux-faktor står til 0/1 i config, men mekanismen bevares.
-  const product = resolveProduct(input.areaType, input.luminaireProductId);
-  const resolved = resolveUnitPrice(
-    product,
-    input.controlTypes ?? [],
-    input.kelvin,
-    input.luminaireVariant,
-  );
+  // Materiale: summen over projektets armaturlinjer. Variantens LISTEPRIS
+  // er slutprisen pr. armatur – styring/sensor/TW er inde i prisen.
+  const lines = luminaireLinesOf(input);
+  const totalCount = lines.reduce((s, l) => s + Math.max(0, l.count || 0), 0);
 
-  const luminaireUnitCost =
-    resolved.price + (resolved.tunableWhitePriced ? 0 : kelvinSurcharge);
-
-  // Tilbehør (fx wireophæng, påbygningsramme) – pris pr. armatur.
-  const accessoriesCost = (input.accessories ?? []).reduce((sum, name) => {
-    const acc = product?.accessories?.find((a) => a.name === name);
-    return sum + (acc ? acc.pricePerUnit * count : 0);
-  }, 0);
-
-  const materialCost = luminaireUnitCost * count * luxFactor + accessoriesCost;
+  let materialCost = 0;
+  for (const line of lines) {
+    const lineCount = Math.max(0, line.count || 0);
+    if (lineCount === 0) continue;
+    const product = resolveProduct(input.areaType, line.productId);
+    const resolved = resolveUnitPrice(
+      product,
+      input.controlTypes ?? [],
+      input.kelvin,
+      line.variantLabel,
+    );
+    const unitCost =
+      resolved.price + (resolved.tunableWhitePriced ? 0 : kelvinSurcharge);
+    const accessoriesCost = (line.accessories ?? []).reduce((sum, name) => {
+      const acc = product?.accessories?.find((a) => a.name === name);
+      return sum + (acc ? acc.pricePerUnit * lineCount : 0);
+    }, 0);
+    materialCost += unitCost * lineCount * luxFactor + accessoriesCost;
+  }
 
   // Styring: systemet er inkluderet i listeprisen (0 kr i config).
   // Strukturen bevares, så prissatte tilvalg kan tilføjes via Prisdata.
   let controlCost = (input.controlTypes ?? []).reduce((sum, key) => {
     const ctrl = cfg.controlSurcharge[key];
     if (!ctrl) return sum;
-    return sum + ctrl.perLuminaire * count + ctrl.fixed;
+    return sum + ctrl.perLuminaire * totalCount + ctrl.fixed;
   }, 0);
 
   // Gateway ved Tunable White + Gateway: én gateway pr. påbegyndt
   // luminairesPerGateway armaturer.
-  if (kelvinKey === "Tunable White + Gateway" && count > 0) {
+  if (kelvinKey === "Tunable White + Gateway" && totalCount > 0) {
     const gw = cfg.tunableWhiteGateway;
     controlCost +=
-      Math.ceil(count / Math.max(1, gw.luminairesPerGateway)) *
+      Math.ceil(totalCount / Math.max(1, gw.luminairesPerGateway)) *
       gw.pricePerGateway;
   }
 
-  // Installation – pr. armatur * områdefaktor
-  const installationCost = cfg.installationPerLuminaire * count * areaMult;
+  // Tilbudsrabat: procent af materiale + styringstilvalg (ikke installation).
+  const discountPct = Math.min(100, Math.max(0, input.discountPct ?? 0));
+  const discountAmount = (materialCost + controlCost) * (discountPct / 100);
 
-  const totalCost = materialCost + controlCost + installationCost;
-  const pricePerLuminaire = count > 0 ? totalCost / count : 0;
+  // Installation – pr. armatur * områdefaktor
+  const installationCost = cfg.installationPerLuminaire * totalCount * areaMult;
+
+  const totalCost =
+    materialCost + controlCost - discountAmount + installationCost;
+  const pricePerLuminaire = totalCount > 0 ? totalCost / totalCount : 0;
 
   const pct = cfg.budgetRangePct / 100;
   return {
     materialCost: round(materialCost),
-    materialPerLuminaire: count > 0 ? round(materialCost / count) : 0,
-    installationPerLuminaire: count > 0 ? round(installationCost / count) : 0,
+    materialPerLuminaire: totalCount > 0 ? round(materialCost / totalCount) : 0,
+    installationPerLuminaire:
+      totalCount > 0 ? round(installationCost / totalCount) : 0,
     installationCost: round(installationCost),
+    discountPct,
+    discountAmount: round(discountAmount),
     controlCost: round(controlCost),
     totalCost: round(totalCost),
     pricePerLuminaire: round(pricePerLuminaire),
@@ -127,6 +161,51 @@ export function calculatePricing(input: TechnicalInput): PricingResult {
       high: round(totalCost * (1 + pct)),
     },
   };
+}
+
+/**
+ * Læsevenlige etiketter for armaturlinjerne, fx
+ * "9 × Rio 2 (60×60)" og "13 × Moon 2 · 165 mm (+ Wireophæng)".
+ */
+export function luminaireLinesLabels(input: TechnicalInput): string[] {
+  const lines = luminaireLinesOf(input);
+  const withCount = lines.filter((l) => (l.count || 0) > 0);
+  const shown = withCount.length > 0 ? withCount : lines.slice(0, 1);
+  return shown.map((line) => {
+    const product = resolveProduct(input.areaType, line.productId);
+    const name = product?.name ?? "Ukendt armatur";
+    const variant =
+      line.variantLabel && line.variantLabel !== "Standard"
+        ? ` · ${line.variantLabel}`
+        : "";
+    const acc =
+      line.accessories && line.accessories.length > 0
+        ? ` (+ ${line.accessories.join(", ")})`
+        : "";
+    return `${line.count || 0} × ${name}${variant}${acc}`;
+  });
+}
+
+/**
+ * Vægtet gennemsnitlig watt pr. armatur for det nye anlæg (på tværs af
+ * armaturlinjerne). Undefined hvis intet antal er angivet endnu.
+ */
+export function averageNewWatt(input: TechnicalInput): number | undefined {
+  const lines = luminaireLinesOf(input);
+  let watts = 0;
+  let count = 0;
+  for (const line of lines) {
+    const lineCount = Math.max(0, line.count || 0);
+    if (lineCount === 0) continue;
+    const product = resolveProduct(input.areaType, line.productId);
+    const w =
+      resolveVariantWatt(product, line.variantLabel) ??
+      pricingConfig.energyDefaults.newWattPerLuminaire;
+    watts += w * lineCount;
+    count += lineCount;
+  }
+  if (count === 0) return undefined;
+  return watts / count;
 }
 
 export function calculateEnergy(

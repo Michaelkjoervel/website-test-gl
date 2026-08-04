@@ -5,6 +5,7 @@ import { Field } from "../components/Field";
 import { ConfidenceMeter } from "../components/Confidence";
 import { storage, newId } from "../lib/storage";
 import {
+  averageNewWatt,
   calculateConfidence,
   calculateEnergyComparison,
   calculatePricing,
@@ -32,6 +33,7 @@ import type {
   EnergyComparisonInput,
   InstallerInfo,
   KelvinValue,
+  LuminaireLine,
   TechnicalInput,
 } from "../lib/types";
 import { dkkInt, num, pct } from "../lib/format";
@@ -106,26 +108,35 @@ interface WizardDraft {
   energyExtra?: Partial<EnergyExtraState>;
   customLux?: boolean;
   elprisText?: string;
+  discountText?: string;
 }
 
 function defaultInstaller(): InstallerInfo {
   return { companyName: "", contactPerson: "", email: "", phone: "" };
 }
 
+function defaultLine(areaType: AreaType): LuminaireLine {
+  const firstProduct = productsForArea(areaType)[0];
+  return {
+    productId: firstProduct?.id,
+    variantLabel: firstProduct?.variants?.[0]?.label,
+    count: 0,
+    accessories: [],
+  };
+}
+
 function defaultTechnical(): TechnicalInput {
-  const firstProduct = productsForArea(pricingConfig.defaults.areaType)[0];
   return {
     areaType: pricingConfig.defaults.areaType,
     luminaireCount: 0,
-    luminaireProductId: firstProduct?.id,
-    luminaireVariant: firstProduct?.variants?.[0]?.label,
-    accessories: [],
+    luminaireLines: [defaultLine(pricingConfig.defaults.areaType)],
     controlTypes: pricingConfig.defaults.controlTypes,
     luxLevel: pricingConfig.defaults.luxLevel,
     kelvin: pricingConfig.defaults.kelvin,
     annualBurnHours: 0,
     electricityPrice: 0,
     budgetWish: undefined,
+    discountPct: 0,
     notes: "",
   };
 }
@@ -173,10 +184,32 @@ export function NewEstimate() {
     ...(draft?.installer ?? {}),
   }));
 
-  const [technical, setTechnical] = useState<TechnicalInput>(() => ({
-    ...defaultTechnical(),
-    ...(draft?.technical ?? {}),
-  }));
+  const [technical, setTechnical] = useState<TechnicalInput>(() => {
+    const base = { ...defaultTechnical(), ...(draft?.technical ?? {}) };
+    // Migrér ældre kladder (ét produkt) til armaturlinjer.
+    if (!base.luminaireLines || base.luminaireLines.length === 0) {
+      base.luminaireLines = [
+        {
+          productId:
+            base.luminaireProductId ??
+            productsForArea(base.areaType)[0]?.id,
+          variantLabel: base.luminaireVariant,
+          count: base.luminaireCount || 0,
+          accessories: base.accessories ?? [],
+        },
+      ];
+    }
+    return base;
+  });
+
+  // Armaturlinjer: samlet antal holdes synkroniseret i luminaireCount.
+  const lines = technical.luminaireLines ?? [];
+  const setLines = (next: LuminaireLine[]) =>
+    setTechnical((t) => ({
+      ...t,
+      luminaireLines: next,
+      luminaireCount: next.reduce((s, l) => s + Math.max(0, l.count || 0), 0),
+    }));
 
   // Elprisen holdes som rå tekst, så man kan skrive naturligt ("0,77")
   // med både komma og punktum – tallet parses løbende til beregningen.
@@ -184,6 +217,13 @@ export function NewEstimate() {
     if (draft?.elprisText !== undefined) return draft.elprisText;
     const p = draft?.technical?.electricityPrice;
     return p ? String(p).replace(".", ",") : "";
+  });
+
+  // Tilbudsrabatten (procent) holdes ligeledes som rå tekst.
+  const [discountText, setDiscountText] = useState<string>(() => {
+    if (draft?.discountText !== undefined) return draft.discountText;
+    const d = draft?.technical?.discountPct;
+    return d ? String(d).replace(".", ",") : "";
   });
 
   const [draftRestored, setDraftRestored] = useState(
@@ -217,24 +257,23 @@ export function NewEstimate() {
     });
   };
 
-  // Ved områdeskift: vælg områdets første produkt, hvis det nuværende
-  // produkt ikke findes i det nye område – og nulstil variant/tilbehør.
+  // Ved områdeskift: behold antal pr. linje, men skift til det nye områdes
+  // produkter, hvor linjens produkt ikke findes dér.
   const setArea = (area: AreaType) => {
     setTechnical((t) => {
       const products = productsForArea(area);
-      const keep = products.some((p) => p.id === t.luminaireProductId);
-      const product = keep
-        ? products.find((p) => p.id === t.luminaireProductId)
-        : products[0];
-      return {
-        ...t,
-        areaType: area,
-        luminaireProductId: product?.id,
-        luminaireVariant: keep
-          ? t.luminaireVariant
-          : product?.variants?.[0]?.label,
-        accessories: keep ? t.accessories : [],
-      };
+      const remapped = (t.luminaireLines ?? [defaultLine(area)]).map((line) => {
+        const keep = products.some((p) => p.id === line.productId);
+        if (keep) return line;
+        const product = products[0];
+        return {
+          ...line,
+          productId: product?.id,
+          variantLabel: product?.variants?.[0]?.label,
+          accessories: [],
+        };
+      });
+      return { ...t, areaType: area, luminaireLines: remapped };
     });
   };
 
@@ -261,6 +300,7 @@ export function NewEstimate() {
         energyExtra,
         customLux,
         elprisText,
+        discountText,
       };
       localStorage.setItem(DRAFT_KEY, JSON.stringify(wizardDraft));
     } catch {
@@ -275,16 +315,16 @@ export function NewEstimate() {
     energyExtra,
     customLux,
     elprisText,
+    discountText,
   ]);
 
   const pricing = useMemo(() => calculatePricing(technical), [technical]);
 
-  // Nyt anlægs watt: brugerens indtastning > variantens nominelle watt >
-  // config-standard. Følger automatisk produkt-/variantvalget.
-  const variantWatt = resolveVariantWatt(
-    resolveProduct(technical.areaType, technical.luminaireProductId),
-    technical.luminaireVariant,
-  );
+  // Nyt anlægs watt: brugerens indtastning > vægtet gennemsnit af de valgte
+  // armaturlinjers nominelle watt > config-standard.
+  const weightedWatt = averageNewWatt(technical);
+  const variantWatt =
+    weightedWatt !== undefined ? Math.round(weightedWatt * 10) / 10 : undefined;
   const newWatt =
     energyExtra.newWattOverride ??
     variantWatt ??
@@ -332,8 +372,9 @@ export function NewEstimate() {
       computeBusinessCase(
         buildLiveBusinessCaseInput({
           // Montering indgår ikke i tilbagebetalingstiden (jf. green lights
-          // beregningsmetode) – kun armaturer og styringstilvalg.
-          investment: pricing.materialCost + pricing.controlCost,
+          // beregningsmetode) – armaturer + styringstilvalg minus rabat.
+          investment:
+            pricing.materialCost + pricing.controlCost - pricing.discountAmount,
           comparison: energyComparison,
           luminaireCount: technical.luminaireCount,
           electricityPrice: technical.electricityPrice,
@@ -526,159 +567,45 @@ export function NewEstimate() {
         {step === 3 && (
           <section className="card p-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <Field
-                label={`Antal armaturer${
-                  technical.luminaireCount > 0
-                    ? `: ${num.format(technical.luminaireCount)}`
-                    : ""
-                }`}
-                tooltip="Det forventede antal armaturer i projektet."
-              >
-                <div className="flex items-center gap-3">
-                  <input
-                    type="range"
-                    className="brand-range flex-1"
-                    min={0}
-                    max={500}
-                    step={1}
-                    value={technical.luminaireCount}
-                    onChange={(e) =>
-                      setTechnical({
-                        ...technical,
-                        luminaireCount: Number(e.target.value),
-                      })
+              {/* Armaturlinjer – flere armaturtyper i samme projekt */}
+              <div className="md:col-span-2">
+                <div className="flex items-center justify-between gap-3 mb-2">
+                  <span className="label">
+                    Armaturer i projektet
+                    {technical.luminaireCount > 0 &&
+                      ` · i alt ${num.format(technical.luminaireCount)} stk.`}
+                  </span>
+                  <button
+                    type="button"
+                    className="btn-outline text-xs px-3 py-1.5"
+                    onClick={() =>
+                      setLines([...lines, defaultLine(technical.areaType)])
                     }
-                  />
-                  <input
-                    type="number"
-                    className="input w-24"
-                    min={0}
-                    placeholder="0"
-                    value={technical.luminaireCount || ""}
-                    onChange={(e) =>
-                      setTechnical({
-                        ...technical,
-                        luminaireCount: Number(e.target.value) || 0,
-                      })
-                    }
-                  />
+                  >
+                    + Tilføj armatur
+                  </button>
                 </div>
-              </Field>
-
-              <Field
-                label="Armatur"
-                tooltip="Vælg armaturprodukt for det valgte område. Prisen pr. stk. afhænger af variant, styringssystem og kelvin."
-              >
-                <div className="flex flex-wrap gap-2">
-                  {productsForArea(technical.areaType).map((p) => {
-                    const active = technical.luminaireProductId === p.id;
-                    const shown = resolveUnitPrice(
-                      p,
-                      technical.controlTypes ?? [],
-                      technical.kelvin,
-                      active ? technical.luminaireVariant : undefined,
-                    );
-                    return (
-                      <button
-                        type="button"
-                        key={p.id}
-                        onClick={() =>
-                          setTechnical({
-                            ...technical,
-                            luminaireProductId: p.id,
-                            luminaireVariant: p.variants?.[0]?.label,
-                            accessories: [],
-                          })
-                        }
-                        className={`chip border ${
-                          active
-                            ? "bg-brand-500 text-white border-brand-500"
-                            : "bg-white text-ink-soft border-surface-line hover:border-brand-300"
-                        }`}
-                      >
-                        {p.name} · {dkkInt(shown.price)}
-                      </button>
-                    );
-                  })}
+                <div className="space-y-3">
+                  {lines.map((line, i) => (
+                    <LuminaireLineRow
+                      key={i}
+                      line={line}
+                      areaType={technical.areaType}
+                      controlTypes={technical.controlTypes ?? []}
+                      kelvin={technical.kelvin}
+                      canRemove={lines.length > 1}
+                      onChange={(patch) => {
+                        const next = [...lines];
+                        next[i] = { ...line, ...patch };
+                        setLines(next);
+                      }}
+                      onRemove={() =>
+                        setLines(lines.filter((_, idx) => idx !== i))
+                      }
+                    />
+                  ))}
                 </div>
-                {(() => {
-                  const product = productsForArea(technical.areaType).find(
-                    (p) => p.id === technical.luminaireProductId,
-                  );
-                  if (!product) return null;
-                  const variants = product.variants ?? [];
-                  const accessories = product.accessories ?? [];
-                  if (variants.length <= 1 && accessories.length === 0) {
-                    return null;
-                  }
-                  return (
-                    <div className="mt-3 space-y-3">
-                      {variants.length > 1 && (
-                        <div>
-                          <span className="label">Variant</span>
-                          <select
-                            className="select mt-1"
-                            value={
-                              technical.luminaireVariant ?? variants[0].label
-                            }
-                            onChange={(e) =>
-                              setTechnical({
-                                ...technical,
-                                luminaireVariant: e.target.value,
-                              })
-                            }
-                          >
-                            {variants.map((v) => (
-                              <option key={v.label} value={v.label}>
-                                {v.label}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      )}
-                      {accessories.length > 0 && (
-                        <div>
-                          <span className="label">Tilbehør (pr. armatur)</span>
-                          <div className="flex flex-wrap gap-2 mt-1">
-                            {accessories.map((a) => {
-                              const on = (technical.accessories ?? []).includes(
-                                a.name,
-                              );
-                              return (
-                                <button
-                                  type="button"
-                                  key={a.name}
-                                  onClick={() =>
-                                    setTechnical({
-                                      ...technical,
-                                      accessories: on
-                                        ? (technical.accessories ?? []).filter(
-                                            (x) => x !== a.name,
-                                          )
-                                        : [
-                                            ...(technical.accessories ?? []),
-                                            a.name,
-                                          ],
-                                    })
-                                  }
-                                  className={`chip border ${
-                                    on
-                                      ? "bg-brand-500 text-white border-brand-500"
-                                      : "bg-white text-ink-soft border-surface-line hover:border-brand-300"
-                                  }`}
-                                >
-                                  {on ? "✓ " : "+ "}
-                                  {a.name} · {dkkInt(a.pricePerUnit)}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
-              </Field>
+              </div>
 
               <div className="md:col-span-2">
                 <ControlSelector
@@ -840,6 +767,31 @@ export function NewEstimate() {
                         : undefined,
                     })
                   }
+                />
+              </Field>
+
+              <Field
+                label="Tilbudsrabat (%)"
+                tooltip="Valgfri procentvis rabat på armaturer og styringstilvalg (ikke installation). Vises som separat linje i estimatet og PDF'en."
+              >
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  className="input"
+                  placeholder="fx 10"
+                  value={discountText}
+                  onChange={(e) => {
+                    const raw = e.target.value
+                      .replace(/[^0-9.,]/g, "")
+                      .replace(/([.,].*)[.,]/g, "$1");
+                    setDiscountText(raw);
+                    const n = Number(raw.replace(",", "."));
+                    setTechnical({
+                      ...technical,
+                      discountPct:
+                        Number.isFinite(n) && n > 0 ? Math.min(100, n) : 0,
+                    });
+                  }}
                 />
               </Field>
 
@@ -1144,6 +1096,14 @@ export function NewEstimate() {
               />
             </div>
 
+            {pricing.discountAmount > 0 && (
+              <div className="rounded-xl bg-brand-50 border border-brand-100 px-4 py-3 text-sm text-brand-800">
+                Tilbudsrabat ({num.format(pricing.discountPct)}%):{" "}
+                <strong>−{dkkInt(pricing.discountAmount)}</strong> på armaturer
+                og styringstilvalg.
+              </div>
+            )}
+
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <SmallStat
                 label="Armaturpris pr. stk."
@@ -1276,6 +1236,12 @@ export function NewEstimate() {
                     value={dkkInt(pricing.controlCost)}
                   />
                 )}
+                {pricing.discountAmount > 0 && (
+                  <Row
+                    label={`Rabat (${num.format(pricing.discountPct)}%)`}
+                    value={`−${dkkInt(pricing.discountAmount)}`}
+                  />
+                )}
               </div>
 
               <div className="mt-4 pt-4 border-t border-surface-line space-y-2">
@@ -1335,6 +1301,151 @@ export function NewEstimate() {
           </div>
         </div>
       </aside>
+    </div>
+  );
+}
+
+// Én armaturlinje: produkt + variant + antal + tilbehør med live-pris.
+function LuminaireLineRow({
+  line,
+  areaType,
+  controlTypes,
+  kelvin,
+  canRemove,
+  onChange,
+  onRemove,
+}: {
+  line: LuminaireLine;
+  areaType: AreaType;
+  controlTypes: ControlType[];
+  kelvin: KelvinValue;
+  canRemove: boolean;
+  onChange: (patch: Partial<LuminaireLine>) => void;
+  onRemove: () => void;
+}) {
+  const products = productsForArea(areaType);
+  const product =
+    products.find((p) => p.id === line.productId) ?? products[0];
+  const variants = product?.variants ?? [];
+  const accessories = product?.accessories ?? [];
+  const resolved = resolveUnitPrice(
+    product,
+    controlTypes,
+    kelvin,
+    line.variantLabel,
+  );
+  const watt = resolveVariantWatt(product, line.variantLabel);
+  const count = Math.max(0, line.count || 0);
+
+  return (
+    <div className="rounded-2xl border border-surface-line p-4">
+      <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_110px] gap-3">
+        <div>
+          <span className="label">Armatur</span>
+          <select
+            className="select mt-1"
+            value={product?.id ?? ""}
+            onChange={(e) => {
+              const next = products.find((p) => p.id === e.target.value);
+              onChange({
+                productId: next?.id,
+                variantLabel: next?.variants?.[0]?.label,
+                accessories: [],
+              });
+            }}
+          >
+            {products.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <span className="label">Variant</span>
+          <select
+            className="select mt-1 disabled:opacity-50"
+            disabled={variants.length <= 1}
+            value={line.variantLabel ?? variants[0]?.label ?? ""}
+            onChange={(e) => onChange({ variantLabel: e.target.value })}
+          >
+            {variants.map((v) => (
+              <option key={v.label} value={v.label}>
+                {v.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <span className="label">Antal</span>
+          <input
+            type="number"
+            min={0}
+            className="input mt-1"
+            placeholder="0"
+            value={line.count || ""}
+            onChange={(e) =>
+              onChange({
+                count:
+                  e.target.value === ""
+                    ? 0
+                    : Math.max(0, Number(e.target.value)),
+              })
+            }
+          />
+        </div>
+      </div>
+
+      {accessories.length > 0 && (
+        <div className="flex flex-wrap gap-2 mt-3">
+          {accessories.map((a) => {
+            const on = (line.accessories ?? []).includes(a.name);
+            return (
+              <button
+                type="button"
+                key={a.name}
+                onClick={() =>
+                  onChange({
+                    accessories: on
+                      ? (line.accessories ?? []).filter((x) => x !== a.name)
+                      : [...(line.accessories ?? []), a.name],
+                  })
+                }
+                className={`chip border ${
+                  on
+                    ? "bg-brand-500 text-white border-brand-500"
+                    : "bg-white text-ink-soft border-surface-line hover:border-brand-300"
+                }`}
+              >
+                {on ? "✓ " : "+ "}
+                {a.name} · {dkkInt(a.pricePerUnit)}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-surface-line">
+        <span className="text-[11px] text-ink-mute">
+          {dkkInt(resolved.price)}/stk.
+          {watt !== undefined && ` · ${watt} W`}
+          {count > 0 && (
+            <>
+              {" "}
+              · <strong className="text-ink">{dkkInt(resolved.price * count)}</strong>
+            </>
+          )}
+        </span>
+        {canRemove && (
+          <button
+            type="button"
+            className="text-xs font-semibold text-red-600 hover:underline"
+            onClick={onRemove}
+          >
+            Fjern
+          </button>
+        )}
+      </div>
     </div>
   );
 }

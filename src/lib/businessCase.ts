@@ -117,7 +117,9 @@ export function buildBusinessCaseInput(
   const investment =
     est.actual?.actualMaterial != null
       ? est.actual.actualMaterial + (est.actual.actualControl ?? 0)
-      : est.pricing.materialCost + est.pricing.controlCost;
+      : est.pricing.materialCost +
+        est.pricing.controlCost -
+        (est.pricing.discountAmount ?? 0);
 
   if (est.energyComparison) {
     return buildLiveBusinessCaseInput({

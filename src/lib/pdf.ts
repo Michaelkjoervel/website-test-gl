@@ -10,7 +10,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import type { CustomerEstimate } from "./types";
-import { controlLabel } from "./estimateEngine";
+import { controlLabel, luminaireLinesLabels } from "./estimateEngine";
 import { resolveProduct } from "./pricingConfig";
 import { dkkInt, formatDate, num, pct } from "./format";
 
@@ -139,18 +139,7 @@ export function generateEstimatePdf(est: CustomerEstimate): jsPDF {
     body: [
       ["Områdetype", t.areaType],
       ["Antal armaturer", num.format(t.luminaireCount)],
-      [
-        "Armatur",
-        [
-          resolveProduct(t.areaType, t.luminaireProductId)?.name ?? "—",
-          t.luminaireVariant,
-        ]
-          .filter(Boolean)
-          .join(" · "),
-      ],
-      ...(t.accessories && t.accessories.length > 0
-        ? [["Tilbehør", t.accessories.join(", ")]]
-        : []),
+      ["Armaturer", luminaireLinesLabels(t).join("\n")],
       ["Styring", controlLabel(t)],
       ["Lux-niveau", `${typeof t.luxLevel === "number" ? t.luxLevel : t.luxLevel} lux`],
       ["Kelvin", String(t.kelvin)],
@@ -230,6 +219,14 @@ export function generateEstimatePdf(est: CustomerEstimate): jsPDF {
       ["Materiale (armaturer inkl. styringssystem)", dkkInt(est.pricing.materialCost)],
       ["Installation", dkkInt(est.pricing.installationCost)],
       ["Styringstilvalg (gateway m.v.)", dkkInt(est.pricing.controlCost)],
+      ...((est.pricing.discountAmount ?? 0) > 0
+        ? [
+            [
+              `Tilbudsrabat (${est.pricing.discountPct}%)`,
+              `−${dkkInt(est.pricing.discountAmount)}`,
+            ],
+          ]
+        : []),
       ["I alt", dkkInt(est.pricing.totalCost)],
     ],
     theme: "plain",

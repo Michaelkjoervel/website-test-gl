@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { storage } from "../lib/storage";
 import { downloadEstimatePdf } from "../lib/pdf";
 import { ConfidenceBadge, ConfidenceMeter } from "../components/Confidence";
-import { controlLabel } from "../lib/estimateEngine";
+import { controlLabel, luminaireLinesLabels } from "../lib/estimateEngine";
 import { resolveProduct } from "../lib/pricingConfig";
 import { dkkInt, formatDate, num, pct } from "../lib/format";
 import type {
@@ -148,20 +148,8 @@ export function EstimateDetail() {
               ["Områdetype", est.technical.areaType],
               ["Antal armaturer", num.format(est.technical.luminaireCount)],
               [
-                "Armatur",
-                [
-                  resolveProduct(
-                    est.technical.areaType,
-                    est.technical.luminaireProductId,
-                  )?.name ?? "—",
-                  est.technical.luminaireVariant,
-                ]
-                  .filter(Boolean)
-                  .join(" · "),
-              ],
-              [
-                "Tilbehør",
-                (est.technical.accessories ?? []).join(", ") || "—",
+                "Armaturer",
+                luminaireLinesLabels(est.technical).join("; "),
               ],
               ["Styring", controlLabel(est.technical)],
               [
@@ -187,6 +175,14 @@ export function EstimateDetail() {
               ["Materiale (inkl. styringssystem)", dkkInt(est.pricing.materialCost)],
               ["Installation", dkkInt(est.pricing.installationCost)],
               ["Styringstilvalg", dkkInt(est.pricing.controlCost)],
+              ...((est.pricing.discountAmount ?? 0) > 0
+                ? ([
+                    [
+                      `Tilbudsrabat (${est.pricing.discountPct}%)`,
+                      `−${dkkInt(est.pricing.discountAmount)}`,
+                    ],
+                  ] as [string, string][])
+                : []),
               ["I alt", dkkInt(est.pricing.totalCost)],
             ]}
             highlightLast
