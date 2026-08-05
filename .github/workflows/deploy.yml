@@ -41,6 +41,7 @@ jobs:
       # Saml ét samlet site:
       #   - tidsregistreringen (anden branch) i roden -> /app.html bevares uændret
       #   - estimatet (denne branch) under /estimat/
+      #   - dokumenttjek (selvstændigt, statisk værktøj) under /dokumenttjek/
       - name: Saml samlet site
         run: |
           rm -rf _site
@@ -49,6 +50,8 @@ jobs:
           git archive FETCH_HEAD | tar -x -C _site
           mkdir -p _site/estimat
           cp -r dist/. _site/estimat/
+          mkdir -p _site/dokumenttjek
+          cp -r dokumenttjek/. _site/dokumenttjek/
 
       - uses: actions/configure-pages@v5
 
