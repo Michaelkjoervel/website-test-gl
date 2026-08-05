@@ -173,16 +173,24 @@ export function EstimateDetail() {
           <DefList
             items={[
               ["Materiale (inkl. styringssystem)", dkkInt(est.pricing.materialCost)],
-              ["Installation", dkkInt(est.pricing.installationCost)],
               ["Styringstilvalg", dkkInt(est.pricing.controlCost)],
               ...((est.pricing.discountAmount ?? 0) > 0
                 ? ([
                     [
-                      `Tilbudsrabat (${est.pricing.discountPct}%)`,
+                      `Tilbudsrabat (${est.pricing.discountPct}%) – kun på armaturer og styring`,
                       `−${dkkInt(est.pricing.discountAmount)}`,
+                    ],
+                    [
+                      "Armaturer og styring efter rabat",
+                      dkkInt(
+                        est.pricing.materialCost +
+                          est.pricing.controlCost -
+                          est.pricing.discountAmount,
+                      ),
                     ],
                   ] as [string, string][])
                 : []),
+              ["Installation (uden rabat)", dkkInt(est.pricing.installationCost)],
               ["I alt", dkkInt(est.pricing.totalCost)],
             ]}
             highlightLast

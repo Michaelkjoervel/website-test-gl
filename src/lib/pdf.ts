@@ -217,16 +217,26 @@ export function generateEstimatePdf(est: CustomerEstimate): jsPDF {
     head: [["Komponent", "Estimeret pris"]],
     body: [
       ["Materiale (armaturer inkl. styringssystem)", dkkInt(est.pricing.materialCost)],
-      ["Installation", dkkInt(est.pricing.installationCost)],
       ["Styringstilvalg (gateway m.v.)", dkkInt(est.pricing.controlCost)],
+      // Rabatten fratrækkes KUN armaturer + styringstilvalg – aldrig
+      // installationen. Derfor vises mellemsummen før installationen.
       ...((est.pricing.discountAmount ?? 0) > 0
         ? [
             [
-              `Tilbudsrabat (${est.pricing.discountPct}%)`,
+              `Tilbudsrabat (${est.pricing.discountPct}%) – kun på armaturer og styring`,
               `−${dkkInt(est.pricing.discountAmount)}`,
+            ],
+            [
+              "Armaturer og styring efter rabat",
+              dkkInt(
+                est.pricing.materialCost +
+                  est.pricing.controlCost -
+                  est.pricing.discountAmount,
+              ),
             ],
           ]
         : []),
+      ["Installation (uden rabat)", dkkInt(est.pricing.installationCost)],
       ["I alt", dkkInt(est.pricing.totalCost)],
     ],
     theme: "plain",
@@ -250,7 +260,11 @@ export function generateEstimatePdf(est: CustomerEstimate): jsPDF {
     },
     // Vis sumlinje med fed top-streg
     didParseCell: (data) => {
-      if (data.section === "body" && data.row.index === 3) {
+      // Fremhæv altid sidste række ("I alt"), uanset antal rabatlinjer.
+      if (
+        data.section === "body" &&
+        data.row.index === data.table.body.length - 1
+      ) {
         data.cell.styles.fillColor = [255, 255, 255];
         data.cell.styles.lineColor = BRAND.green;
         data.cell.styles.lineWidth = 1;

@@ -1087,20 +1087,29 @@ export function NewEstimate() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <SmallStat label="Materiale" value={dkkInt(pricing.materialCost)} />
               <SmallStat
-                label="Installation"
-                value={dkkInt(pricing.installationCost)}
-              />
-              <SmallStat
                 label="Styringstilvalg"
                 value={dkkInt(pricing.controlCost)}
+              />
+              <SmallStat
+                label="Installation (uden rabat)"
+                value={dkkInt(pricing.installationCost)}
               />
             </div>
 
             {pricing.discountAmount > 0 && (
               <div className="rounded-xl bg-brand-50 border border-brand-100 px-4 py-3 text-sm text-brand-800">
                 Tilbudsrabat ({num.format(pricing.discountPct)}%):{" "}
-                <strong>−{dkkInt(pricing.discountAmount)}</strong> på armaturer
-                og styringstilvalg.
+                <strong>−{dkkInt(pricing.discountAmount)}</strong> — fratrækkes
+                kun armaturer og styringstilvalg, ikke installationen.
+                Armaturer og styring efter rabat:{" "}
+                <strong>
+                  {dkkInt(
+                    pricing.materialCost +
+                      pricing.controlCost -
+                      pricing.discountAmount,
+                  )}
+                </strong>
+                .
               </div>
             )}
 
@@ -1223,13 +1232,10 @@ export function NewEstimate() {
                 {dkkInt(pricing.budgetRange.high)}
               </div>
 
-              {/* Opdeling så armaturprisen ikke blandes med installation */}
+              {/* Opdeling: rabatten fratrækkes KUN armaturer/styring – ikke
+                  installationen. Derfor vises mellemsum før installationen. */}
               <div className="mt-4 pt-4 border-t border-surface-line space-y-2">
                 <Row label="Materiale" value={dkkInt(pricing.materialCost)} />
-                <Row
-                  label="Installation"
-                  value={dkkInt(pricing.installationCost)}
-                />
                 {pricing.controlCost > 0 && (
                   <Row
                     label="Styringstilvalg"
@@ -1237,11 +1243,27 @@ export function NewEstimate() {
                   />
                 )}
                 {pricing.discountAmount > 0 && (
-                  <Row
-                    label={`Rabat (${num.format(pricing.discountPct)}%)`}
-                    value={`−${dkkInt(pricing.discountAmount)}`}
-                  />
+                  <>
+                    <Row
+                      label={`Rabat (${num.format(
+                        pricing.discountPct,
+                      )}%) på armaturer`}
+                      value={`−${dkkInt(pricing.discountAmount)}`}
+                    />
+                    <Row
+                      label="Armaturer efter rabat"
+                      value={dkkInt(
+                        pricing.materialCost +
+                          pricing.controlCost -
+                          pricing.discountAmount,
+                      )}
+                    />
+                  </>
                 )}
+                <Row
+                  label="Installation (uden rabat)"
+                  value={dkkInt(pricing.installationCost)}
+                />
               </div>
 
               <div className="mt-4 pt-4 border-t border-surface-line space-y-2">
