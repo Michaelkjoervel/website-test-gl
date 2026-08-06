@@ -111,8 +111,9 @@
     border-radius: 12px; padding: 9px 15px; font-size: 13.5px; font-weight: 600;
     transition: background 0.15s, border-color 0.15s, color 0.15s;
   }
-  .btn-primary { background: var(--brand); color: #fff; box-shadow: 0 1px 2px rgba(15,26,10,0.1); }
-  .btn-primary:hover { background: var(--brand-600); }
+  /* brand-600 frem for brand-500: bedre kontrast til den hvide tekst */
+  .btn-primary { background: var(--brand-600); color: #fff; box-shadow: 0 1px 2px rgba(15,26,10,0.1); }
+  .btn-primary:hover { background: var(--brand-700); }
   .btn-outline { background: #fff; border: 1px solid var(--line); color: var(--ink-soft); }
   .btn-outline:hover { border-color: var(--brand-400); color: var(--ink); }
   .btn-ghost { background: transparent; color: var(--ink-soft); }
@@ -261,7 +262,7 @@
           <div class="sub">Dokumenttjek</div>
         </div>
       </div>
-      <span class="privacy-chip"><span class="dot"></span> Alt sker lokalt i din browser – intet uploades</span>
+      <span class="privacy-chip"><span class="dot"></span> Alt sker lokalt i din browser – filer sendes ikke til nogen server</span>
     </header>
 
     <div class="hero">
@@ -318,7 +319,7 @@
           <textarea id="text-in" placeholder="Indsæt teksten her …" spellcheck="false"></textarea>
           <div class="row" style="margin-top:12px">
             <button class="btn btn-primary" id="fix-text">Ret teksten</button>
-            <span class="muted" id="text-status"></span>
+            <span class="muted" id="text-status" aria-live="polite"></span>
           </div>
         </div>
         <div class="card" id="text-out-card" hidden>
@@ -392,6 +393,7 @@
         <label class="check"><input type="checkbox" id="f-wholeword" checked /> Kun hele ord</label>
         <label class="check"><input type="checkbox" id="f-matchcase" /> Forskel på store/små bogstaver</label>
         <label class="check"><input type="checkbox" id="f-smartcase" checked /> Bevar stort begyndelsesbogstav</label>
+        <label class="check"><input type="checkbox" id="f-afterdigit" /> Må stå lige efter et tal (enheder)</label>
         <label class="check"><input type="checkbox" id="f-regex" /> Regulært udtryk (avanceret)</label>
       </div>
       <div class="dialog-test">
@@ -401,8 +403,8 @@
         <div class="out" id="f-test-out"></div>
       </div>
       <div class="dialog-actions">
-        <button class="btn btn-ghost" value="cancel" formnovalidate>Annuller</button>
-        <button class="btn btn-primary" value="save" id="dialog-save">Gem regel</button>
+        <button type="button" class="btn btn-ghost" id="dialog-cancel">Annuller</button>
+        <button type="submit" class="btn btn-primary" value="save" id="dialog-save">Gem regel</button>
       </div>
     </form>
   </dialog>

@@ -29,7 +29,9 @@ function buildRegex(rule) {
   let source = rule.regex ? rule.find : escapeRegExp(rule.find);
   if (rule.wholeWord) {
     // \b forstår ikke æ/ø/å – brug unicode-sikre ord-grænser i stedet.
-    source = `(?<!${WORD_CHAR})(?:${source})(?!${WORD_CHAR})`;
+    // afterDigit: enheder må gerne stå klistret efter et tal ("2400m2").
+    const before = rule.afterDigit ? "(?<!\\p{L})" : `(?<!${WORD_CHAR})`;
+    source = `${before}(?:${source})(?!${WORD_CHAR})`;
   }
   return new RegExp(source, rule.matchCase ? "gu" : "giu");
 }
@@ -179,6 +181,28 @@ function nearestParagraph(node, ns) {
 }
 
 /**
+ * Deler et afsnits indholdselementer op i "øer" af <w:t>-tekststykker.
+ * Tabulatorer og linjeskift (<w:tab>, <w:br>, <w:cr>) skiller øerne, så
+ * en regel aldrig kan matche hen over et usynligt skillet egn – fx må
+ * "kr" sidst før en tabulator ikke smelte sammen med tallet efter den.
+ */
+function textIslands(p, ns) {
+  const islands = [];
+  let current = [];
+  for (const el of Array.from(p.getElementsByTagNameNS(ns, "*"))) {
+    if (nearestParagraph(el, ns) !== p) continue; // tekstbokse har egne <w:p>
+    if (el.localName === "t") {
+      current.push(el);
+    } else if (el.localName === "tab" || el.localName === "br" || el.localName === "cr") {
+      if (current.length) islands.push(current);
+      current = [];
+    }
+  }
+  if (current.length) islands.push(current);
+  return islands;
+}
+
+/**
  * Retter én XML-del (document.xml, header1.xml …). Teksten samles pr.
  * afsnit (<w:p>) hen over alle dets <w:t>-stykker, så regler også rammer
  * ord, som Word har delt over flere "runs". Kun tekstindholdet ændres –
@@ -192,24 +216,21 @@ function processXmlPart(xmlText, rules, where) {
   let mutated = false;
 
   for (const p of Array.from(doc.getElementsByTagNameNS(ns, "p"))) {
-    // Kun tekst der hører til NETOP dette afsnit (tekstbokse har egne <w:p>).
-    const tNodes = Array.from(p.getElementsByTagNameNS(ns, "t")).filter(
-      (t) => nearestParagraph(t, ns) === p,
-    );
-    if (!tNodes.length) continue;
+    for (const tNodes of textIslands(p, ns)) {
+      const segs = tNodes.map((t) => t.textContent);
+      const before = segs.slice();
+      const pChanges = applyRulesToSegments(segs, rules, where);
+      if (!pChanges.length) continue;
 
-    const segs = tNodes.map((t) => t.textContent);
-    const before = segs.slice();
-    const pChanges = applyRulesToSegments(segs, rules, where);
-    if (!pChanges.length) continue;
-
-    mutated = true;
-    changes.push(...pChanges);
-    tNodes.forEach((t, i) => {
-      if (segs[i] !== before[i]) t.textContent = segs[i];
-      // Word kræver xml:space="preserve" for at bevare kant-mellemrum.
-      if (/^\s|\s$/.test(segs[i])) t.setAttributeNS(XML_NS, "xml:space", "preserve");
-    });
+      mutated = true;
+      changes.push(...pChanges);
+      tNodes.forEach((t, i) => {
+        if (segs[i] === before[i]) return;
+        t.textContent = segs[i];
+        // Word kræver xml:space="preserve" for at bevare kant-mellemrum.
+        if (/^\s|\s$/.test(segs[i])) t.setAttributeNS(XML_NS, "xml:space", "preserve");
+      });
+    }
   }
 
   if (!mutated) return { mutated: false, changes: [], xml: xmlText };
@@ -254,7 +275,7 @@ async function processDocx(arrayBuffer, rules) {
  * 3) REGLER: indlæsning, normalisering og lagring
  * ════════════════════════════════════════════════════════════════════ */
 
-const LS_RULES = "gl_dokumenttjek_rules_v1";
+const LS_RULES = "gl_dokumenttjek_rules_v2";
 const LS_SETTINGS = "gl_dokumenttjek_settings_v1";
 
 function uid() {
@@ -272,6 +293,7 @@ function normalizeRule(r) {
     regex: !!r.regex,
     matchCase: !!r.matchCase,
     wholeWord: !!r.wholeWord,
+    afterDigit: !!r.afterDigit,
     smartCase: r.smartCase === undefined ? !r.matchCase : !!r.smartCase,
     enabled: r.enabled === undefined ? true : !!r.enabled,
   };
@@ -287,8 +309,8 @@ function loadRules() {
     if (!raw) return defaultRules();
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return defaultRules();
-    const rules = parsed.map(normalizeRule).filter(Boolean);
-    return rules.length ? rules : defaultRules();
+    // En tom (men gyldig) liste respekteres – brugeren kan have slettet alt.
+    return parsed.map(normalizeRule).filter(Boolean);
   } catch {
     return defaultRules();
   }
@@ -426,10 +448,20 @@ async function processDocxFile(file) {
   }
 }
 
+/** Læser en tekstfil som UTF-8 og falder tilbage til Windows-1252 (ældre systemer). */
+async function readTextFile(file) {
+  const buf = await file.arrayBuffer();
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(buf);
+  } catch {
+    return new TextDecoder("windows-1252").decode(buf);
+  }
+}
+
 async function processTxtFile(file) {
   const card = addPendingCard(file.name);
   try {
-    const text = await file.text();
+    const text = await readTextFile(file);
     const { text: fixed, changes } = applyRulesToText(text, enabledRules());
     const blob = new Blob([fixed], { type: "text/plain;charset=utf-8" });
     const name = outName(file.name, ".txt");
@@ -453,6 +485,7 @@ function addErrorCard(name, message) {
   const card = el("div", { class: "card file-card" });
   fillErrorCard(card, name, message);
   resultsBox.prepend(card);
+  updateResultButtons();
 }
 
 function fillErrorCard(card, name, message) {
@@ -533,9 +566,9 @@ function downloadBlob(blob, name) {
 }
 
 function updateResultButtons() {
-  const has = state.results.length > 0;
   $("#download-all").hidden = state.results.length < 2;
-  $("#clear-results").hidden = !has;
+  // "Ryd listen" skal også kunne rydde rene fejlkort.
+  $("#clear-results").hidden = resultsBox.childElementCount === 0;
 }
 
 $("#download-all").addEventListener("click", async () => {
@@ -543,9 +576,9 @@ $("#download-all").addEventListener("click", async () => {
   const used = new Set();
   for (const r of state.results) {
     let name = r.outName;
+    const dot = r.outName.lastIndexOf(".");
     let i = 2;
     while (used.has(name)) {
-      const dot = name.lastIndexOf(".");
       name = dot > 0 ? `${r.outName.slice(0, dot)} (${i})${r.outName.slice(dot)}` : `${r.outName} (${i})`;
       i++;
     }
@@ -565,14 +598,15 @@ $("#clear-results").addEventListener("click", () => {
 /* ── Tekst-fanen ───────────────────────────────────────────────────── */
 
 const EXAMPLE_TEXT = `Tilbud fra Greenlight
+Vor ref.: MVH · CO2-sensor, varenr. CO2-5566
 
 Hej Peter
 
 Tak for din henvendelse.  Hermed fremsendes tilbudet ihht. vores aftale.
 
-Vi tilbyder 120 stk. LED-armaturer (140 lm/w) til jeres lager på 2.400 m2.
+Vi tilbyder 120 stk. LED-armaturer (140 lm/w) til jeres lager på 2.400m2.
 Prisen er 245.000 kr excl. moms, inkl montering jvf. bilag 1.
-Forventet besparelse: 45.000 kwh og 18 ton co2 pr. år.
+Forventet besparelse: 45.000 kwh og 18 ton co2 pr. år (CO2-besparelsen fremgår af bilag 2).
 Betaling: 14 dage netto. Ordrebekræftigelse fremsendes pr. email.
 
 Se mere på www.green-light.dk eller skriv til info@green-light.dk.
@@ -589,6 +623,10 @@ $("#fix-text").addEventListener("click", () => {
   const input = $("#text-in").value;
   if (!input.trim()) {
     $("#text-status").textContent = "Indsæt først noget tekst.";
+    return;
+  }
+  if (!enabledRules().length) {
+    $("#text-status").textContent = "Alle regler er slået fra – slå regler til under Tjeklisten.";
     return;
   }
   const { text, changes } = applyRulesToText(input, enabledRules());
@@ -659,6 +697,7 @@ function renderRuleRow(rule) {
   const toggle = el("label", { class: "switch", title: rule.enabled ? "Slå fra" : "Slå til" },
     el("input", {
       type: "checkbox",
+      "aria-label": `Regel til/fra: ${rule.find} → ${rule.replace}`,
       ...(rule.enabled ? { checked: "" } : {}),
       onchange: (e) => {
         rule.enabled = e.target.checked;
@@ -671,6 +710,7 @@ function renderRuleRow(rule) {
 
   const flags = el("div", { class: "rule-flags" },
     rule.wholeWord ? el("span", { class: "flag" }, "hele ord") : null,
+    rule.afterDigit ? el("span", { class: "flag" }, "efter tal") : null,
     rule.matchCase ? el("span", { class: "flag" }, "store/små") : null,
     rule.smartCase && !rule.matchCase ? el("span", { class: "flag" }, "smart case") : null,
     rule.regex ? el("span", { class: "flag" }, "regex") : null,
@@ -741,6 +781,7 @@ function openDialog(rule) {
   $("#f-note").value = rule ? rule.note : "";
   $("#f-category").value = rule ? rule.category : "Egne regler";
   $("#f-wholeword").checked = rule ? rule.wholeWord : true;
+  $("#f-afterdigit").checked = rule ? rule.afterDigit : false;
   $("#f-matchcase").checked = rule ? rule.matchCase : false;
   $("#f-smartcase").checked = rule ? rule.smartCase : true;
   $("#f-regex").checked = rule ? rule.regex : false;
@@ -760,6 +801,7 @@ function ruleFromForm() {
     regex: $("#f-regex").checked,
     matchCase: $("#f-matchcase").checked,
     wholeWord: $("#f-wholeword").checked,
+    afterDigit: $("#f-afterdigit").checked,
     smartCase: $("#f-smartcase").checked,
     enabled: true,
   });
@@ -798,13 +840,15 @@ function updateDialogTest() {
   );
 }
 
-for (const id of ["f-find", "f-replace", "f-test", "f-regex", "f-matchcase", "f-wholeword", "f-smartcase"]) {
+for (const id of ["f-find", "f-replace", "f-test", "f-regex", "f-matchcase", "f-wholeword", "f-afterdigit", "f-smartcase"]) {
   $("#" + id).addEventListener("input", updateDialogTest);
 }
 
+// Annuller er en almindelig knap (ikke submit), så Enter i et felt GEMMER
+// reglen i stedet for at smide indtastningen væk.
+$("#dialog-cancel").addEventListener("click", () => dialog.close());
+
 form.addEventListener("submit", (e) => {
-  const submitter = e.submitter;
-  if (!submitter || submitter.value !== "save") return; // Annuller
   const rule = validateForm();
   if (!rule) { e.preventDefault(); return; }
   if (state.editingId) {
@@ -856,6 +900,18 @@ $("#reset-rules").addEventListener("click", () => {
 });
 
 /* ── Init ──────────────────────────────────────────────────────────── */
+
+// Motoren kræver lookbehind-regex (Chrome/Edge 105+, Firefox 121+,
+// Safari 16.4+). I ældre browsere ville reglerne blive sprunget tavst
+// over – vis i stedet en tydelig advarsel.
+try {
+  new RegExp("(?<!a)b", "u");
+} catch {
+  const warn = el("div", { class: "banner warn" },
+    "Din browser er for gammel til værktøjets tekstmotor, og dokumenter vil IKKE blive rettet. ",
+    "Brug en nyere browser (Chrome/Edge 105+, Firefox 121+, Safari 16.4+).");
+  document.querySelector("main").prepend(warn);
+}
 
 renderRules();
 updateResultButtons();
