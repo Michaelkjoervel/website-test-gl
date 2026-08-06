@@ -551,16 +551,28 @@ version en **regelbaseret** similarity-matcher:
 
 ---
 
+## Selvstændigt værktøj: Dokumenttjek
+
+Repoet indeholder også **Dokumenttjek** ([`dokumenttjek/`](dokumenttjek/)) –
+et selvstændigt værktøj, der ensretter tilbud og ordrebekræftelser efter en
+redigerbar tjekliste (stavning, forkortelser, enheder, formuleringer). Upload
+en .docx, få alle afvigelser rettet automatisk med fuld ændringsrapport, og
+hent filen igen med formateringen bevaret. Det deler ingen kode med
+estimatberegneren, kræver intet build-step og behandler alt lokalt i
+browseren. Se [`dokumenttjek/README.md`](dokumenttjek/README.md).
+
 ## Deployment
 
-Estimatet og tidsregistreringsværktøjet bor i samme repo og udgives via
-`.github/workflows/deploy.yml` til ét fælles GitHub Pages-site:
+Estimatet, tidsregistreringsværktøjet og Dokumenttjek bor i samme repo og
+udgives via `.github/workflows/deploy.yml` til ét fælles GitHub Pages-site:
 
 - `…/website-test-gl/` og `…/website-test-gl/app.html` → tidsregistreringen
   (serveres uændret fra branchen `claude/time-tracking-tool-aTwpD`, som
   workflowen henter og lægger i roden)
 - `…/website-test-gl/estimat/` → dette estimatværktøj (Vite-build under
   undermappen `/estimat/`)
+- `…/website-test-gl/dokumenttjek/` → Dokumenttjek (statiske filer, kopieres
+  direkte fra `dokumenttjek/`)
 
 Workflowen bygger estimatet, henter tidsregistreringens statiske filer og
 samler dem i ét `_site/`, der udgives samlet. Estimatet bruger relativ Vite

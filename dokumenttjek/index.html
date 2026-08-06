@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>green light · Dokumenttjek</title>
+<meta name="description" content="Ensretter tilbud og ordrebekræftelser efter green lights tjekliste – helt lokalt i browseren." />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%239FC34A'/%3E%3Ctext x='32' y='42' font-family='Inter,system-ui,sans-serif' font-size='26' font-weight='700' fill='white' text-anchor='middle'%3Egl%3C/text%3E%3C/svg%3E" />
+<style>
+  :root {
+    --brand: #9FC34A;
+    --brand-50: #F4F8E8;
+    --brand-100: #E8F1D1;
+    --brand-300: #BCD575;
+    --brand-400: #A6C747;
+    --brand-600: #84A538;
+    --brand-700: #65802A;
+    --ink: #0F1A0A;
+    --ink-soft: #3D4A33;
+    --ink-mute: #6B7466;
+    --surface-soft: #F8FAF4;
+    --line: #E5EBDD;
+    --danger: #B4232A;
+    --danger-soft: #FBEAEA;
+    --ok-soft: #EAF4DB;
+    --shadow-card: 0 1px 2px rgba(15,26,10,0.04), 0 8px 24px rgba(15,26,10,0.06);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--surface-soft);
+    background-image:
+      radial-gradient(at 0% 0%, rgba(159,195,74,0.06) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, rgba(159,195,74,0.04) 0px, transparent 50%);
+    background-attachment: fixed;
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 20px; }
+
+  header.site {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 22px 0 18px;
+  }
+  .brandmark { display: flex; align-items: center; gap: 12px; }
+  .brandmark .mark {
+    width: 40px; height: 40px; border-radius: 12px; background: var(--brand);
+    color: #fff; font-weight: 700; font-size: 15px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 0 6px rgba(159,195,74,0.15);
+  }
+  .brandmark .name { font-weight: 700; font-size: 15px; line-height: 1.2; }
+  .brandmark .sub { font-size: 11px; color: var(--ink-mute); }
+  .privacy-chip {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: #fff; border: 1px solid var(--line); border-radius: 999px;
+    padding: 6px 12px; font-size: 12px; color: var(--ink-soft);
+  }
+  .privacy-chip .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--brand); }
+
+  .hero { padding: 6px 0 4px; }
+  .hero h1 { font-size: 26px; margin: 0 0 6px; letter-spacing: -0.01em; }
+  .hero p { margin: 0; color: var(--ink-soft); font-size: 14px; max-width: 62ch; }
+
+  nav.tabs {
+    display: flex; gap: 6px; margin: 22px 0 18px; border-bottom: 1px solid var(--line);
+    flex-wrap: wrap;
+  }
+  nav.tabs button {
+    appearance: none; background: none; border: none; cursor: pointer;
+    font: inherit; font-size: 14px; font-weight: 600; color: var(--ink-mute);
+    padding: 10px 14px; border-bottom: 2px solid transparent; margin-bottom: -1px;
+  }
+  nav.tabs button:hover { color: var(--ink); }
+  nav.tabs button.active { color: var(--ink); border-bottom-color: var(--brand); }
+  nav.tabs button .count {
+    background: var(--brand-50); color: var(--brand-700); border-radius: 999px;
+    font-size: 11px; padding: 1px 7px; margin-left: 6px;
+  }
+
+  main { padding-bottom: 40px; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .card {
+    background: #fff; border: 1px solid var(--line); border-radius: 20px;
+    box-shadow: var(--shadow-card); padding: 20px; margin-bottom: 16px;
+  }
+
+  .dropzone {
+    border: 2px dashed var(--brand-300); border-radius: 20px; background: #fff;
+    padding: 44px 24px; text-align: center; cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    margin-bottom: 14px;
+  }
+  .dropzone:hover, .dropzone.drag { background: var(--brand-50); border-color: var(--brand-400); }
+  .dropzone .big { font-size: 16px; font-weight: 600; }
+  .dropzone .hint { font-size: 13px; color: var(--ink-mute); margin-top: 6px; }
+  .dropzone .icon { font-size: 30px; margin-bottom: 8px; }
+
+  .row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .row.between { justify-content: space-between; }
+  .muted { color: var(--ink-mute); font-size: 13px; }
+  .small { font-size: 12px; }
+
+  button.btn {
+    appearance: none; border: none; cursor: pointer; font: inherit;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    border-radius: 12px; padding: 9px 15px; font-size: 13.5px; font-weight: 600;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+  }
+  /* brand-600 frem for brand-500: bedre kontrast til den hvide tekst */
+  .btn-primary { background: var(--brand-600); color: #fff; box-shadow: 0 1px 2px rgba(15,26,10,0.1); }
+  .btn-primary:hover { background: var(--brand-700); }
+  .btn-outline { background: #fff; border: 1px solid var(--line); color: var(--ink-soft); }
+  .btn-outline:hover { border-color: var(--brand-400); color: var(--ink); }
+  .btn-ghost { background: transparent; color: var(--ink-soft); }
+  .btn-ghost:hover { background: var(--brand-50); }
+  .btn-danger { background: #fff; border: 1px solid var(--line); color: var(--danger); }
+  .btn-danger:hover { border-color: var(--danger); background: var(--danger-soft); }
+  .btn-sm { padding: 5px 10px; font-size: 12.5px; border-radius: 10px; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .file-card { padding: 16px 18px; }
+  .file-card h3 { margin: 0; font-size: 15px; display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .file-card h3 .fname { overflow-wrap: anywhere; }
+  .badge {
+    display: inline-flex; align-items: center; border-radius: 999px;
+    font-size: 11.5px; font-weight: 600; padding: 2px 9px; white-space: nowrap;
+  }
+  .badge.ok { background: var(--ok-soft); color: var(--brand-700); }
+  .badge.info { background: var(--brand-50); color: var(--brand-700); }
+  .badge.warn { background: #FDF3E0; color: #8a5a00; }
+  .badge.err { background: var(--danger-soft); color: var(--danger); }
+  .badge.where { background: var(--surface-soft); color: var(--ink-mute); border: 1px solid var(--line); font-weight: 500; }
+
+  .rule-summary { margin: 10px 0 0; padding: 0; list-style: none; font-size: 13px; color: var(--ink-soft); }
+  .rule-summary li { padding: 3px 0; }
+  .rule-summary .cnt { color: var(--ink-mute); }
+
+  details.changes { margin-top: 12px; }
+  details.changes summary {
+    cursor: pointer; font-size: 13px; font-weight: 600; color: var(--brand-700);
+    user-select: none;
+  }
+  .change-list { margin: 10px 0 0; padding: 0; list-style: none; }
+  .change-list li {
+    font-size: 13px; padding: 7px 10px; border-radius: 10px; background: var(--surface-soft);
+    margin-bottom: 6px; overflow-wrap: anywhere;
+  }
+  .change-list .ctx { color: var(--ink-mute); }
+  del { background: var(--danger-soft); color: var(--danger); text-decoration: line-through; border-radius: 4px; padding: 0 2px; }
+  ins { background: var(--ok-soft); color: var(--brand-700); text-decoration: none; font-weight: 600; border-radius: 4px; padding: 0 2px; }
+
+  code, .mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12.5px; background: var(--surface-soft); border: 1px solid var(--line);
+    border-radius: 6px; padding: 1px 6px; overflow-wrap: anywhere;
+  }
+
+  textarea {
+    width: 100%; min-height: 180px; resize: vertical;
+    border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px;
+    font: inherit; font-size: 13.5px; color: var(--ink); background: #fff;
+  }
+  textarea:focus { outline: none; border-color: var(--brand-400); box-shadow: 0 0 0 3px rgba(159,195,74,0.2); }
+  textarea[readonly] { background: var(--surface-soft); }
+
+  label.check { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-soft); cursor: pointer; }
+  label.check input { accent-color: var(--brand-600); width: 15px; height: 15px; }
+
+  /* Toggle-switch */
+  .switch { position: relative; display: inline-block; width: 34px; height: 20px; flex: none; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch .slider {
+    position: absolute; inset: 0; border-radius: 999px; background: #D6DDCC;
+    transition: background 0.15s; cursor: pointer;
+  }
+  .switch .slider::before {
+    content: ""; position: absolute; width: 16px; height: 16px; border-radius: 999px;
+    background: #fff; top: 2px; left: 2px; transition: transform 0.15s;
+    box-shadow: 0 1px 2px rgba(15,26,10,0.25);
+  }
+  .switch input:checked + .slider { background: var(--brand); }
+  .switch input:checked + .slider::before { transform: translateX(14px); }
+  .switch input:focus-visible + .slider { box-shadow: 0 0 0 3px rgba(159,195,74,0.35); }
+
+  .rules-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .rules-toolbar .spacer { flex: 1; }
+  .cat-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-mute); margin: 22px 0 8px; }
+  .cat-title:first-child { margin-top: 0; }
+  .rule-row {
+    display: flex; align-items: flex-start; gap: 12px;
+    background: #fff; border: 1px solid var(--line); border-radius: 14px;
+    padding: 12px 14px; margin-bottom: 8px;
+  }
+  .rule-row.disabled .rule-main { opacity: 0.45; }
+  .rule-main { flex: 1; min-width: 0; }
+  .rule-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .rule-line .arrow { color: var(--ink-mute); }
+  .rule-note { font-size: 12px; color: var(--ink-mute); margin-top: 4px; }
+  .rule-flags { display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
+  .flag {
+    font-size: 10.5px; font-weight: 600; color: var(--ink-mute);
+    border: 1px solid var(--line); border-radius: 6px; padding: 0 5px;
+  }
+  .rule-actions { display: flex; gap: 2px; flex: none; }
+  .icon-btn {
+    appearance: none; background: none; border: none; cursor: pointer;
+    border-radius: 8px; padding: 5px 7px; font-size: 13px; color: var(--ink-mute);
+  }
+  .icon-btn:hover { background: var(--surface-soft); color: var(--ink); }
+  .icon-btn.danger:hover { background: var(--danger-soft); color: var(--danger); }
+
+  dialog {
+    border: none; border-radius: 20px; box-shadow: var(--shadow-card);
+    padding: 24px; width: min(560px, calc(100vw - 40px));
+  }
+  dialog::backdrop { background: rgba(15,26,10,0.35); }
+  dialog h2 { margin: 0 0 16px; font-size: 17px; }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 12px; font-weight: 600; color: var(--ink-soft); margin-bottom: 4px; letter-spacing: 0.02em; }
+  .field input[type="text"] {
+    width: 100%; border: 1px solid var(--line); border-radius: 12px; padding: 9px 12px;
+    font: inherit; font-size: 13.5px;
+  }
+  .field input[type="text"]:focus { outline: none; border-color: var(--brand-400); box-shadow: 0 0 0 3px rgba(159,195,74,0.2); }
+  .field .err-msg { color: var(--danger); font-size: 12px; margin-top: 4px; }
+  .opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; margin: 14px 0; }
+  .dialog-test {
+    background: var(--surface-soft); border: 1px solid var(--line); border-radius: 14px;
+    padding: 12px 14px; margin: 14px 0;
+  }
+  .dialog-test .out { font-size: 13px; margin-top: 6px; overflow-wrap: anywhere; }
+  .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+
+  .banner {
+    border-radius: 14px; padding: 12px 16px; font-size: 13px; margin-bottom: 14px;
+  }
+  .banner.warn { background: #FDF3E0; color: #6b4700; border: 1px solid #F3E0B8; }
+
+  footer.site {
+    border-top: 1px solid var(--line); padding: 18px 0 30px; margin-top: 20px;
+    font-size: 11.5px; color: var(--ink-mute);
+  }
+
+  @media (max-width: 640px) {
+    header.site { flex-direction: column; align-items: flex-start; gap: 10px; }
+    .opts { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="site">
+      <div class="brandmark">
+        <div class="mark">gl</div>
+        <div>
+          <div class="name">green light</div>
+          <div class="sub">Dokumenttjek</div>
+        </div>
+      </div>
+      <span class="privacy-chip"><span class="dot"></span> Alt sker lokalt i din browser – filer sendes ikke til nogen server</span>
+    </header>
+
+    <div class="hero">
+      <h1>Ensret tilbud og ordrebekræftelser</h1>
+      <p>
+        Upload et Word-dokument, og programmet retter automatisk stavning, forkortelser,
+        enheder og formuleringer efter green lights tjekliste – og viser dig præcis, hvad
+        der blev ændret. Formatering, logo og layout bevares.
+      </p>
+    </div>
+
+    <nav class="tabs" role="tablist">
+      <button id="tab-docs" class="active" data-panel="panel-docs">Ret dokumenter</button>
+      <button id="tab-text" data-panel="panel-text">Indsæt tekst</button>
+      <button id="tab-rules" data-panel="panel-rules">Tjeklisten <span class="count" id="rule-count">0</span></button>
+    </nav>
+
+    <main>
+      <!-- ── Dokumenter ─────────────────────────────────────────── -->
+      <section id="panel-docs" class="panel active">
+        <div id="no-rules-banner" class="banner warn" hidden>
+          Alle regler er slået fra – dokumenter bliver ikke ændret. Slå regler til under <strong>Tjeklisten</strong>.
+        </div>
+
+        <div class="dropzone" id="dropzone" tabindex="0" role="button"
+             aria-label="Upload dokumenter (klik eller træk filer hertil)">
+          <div class="icon">📄</div>
+          <div class="big">Træk dokumenter hertil – eller klik for at vælge</div>
+          <div class="hint">Word-dokumenter (.docx) og tekstfiler (.txt) · gerne flere ad gangen</div>
+        </div>
+        <input type="file" id="file-input" accept=".docx,.txt" multiple hidden />
+
+        <div class="row between" style="margin-bottom:16px">
+          <label class="check">
+            <input type="checkbox" id="keep-name" />
+            Behold oprindeligt filnavn (ellers tilføjes »- ensrettet«)
+          </label>
+          <div class="row" style="gap:8px">
+            <button class="btn btn-outline btn-sm" id="download-all" hidden>Hent alle rettede filer (zip)</button>
+            <button class="btn btn-ghost btn-sm" id="clear-results" hidden>Ryd listen</button>
+          </div>
+        </div>
+
+        <div id="results"></div>
+      </section>
+
+      <!-- ── Tekst ──────────────────────────────────────────────── -->
+      <section id="panel-text" class="panel">
+        <div class="card">
+          <div class="row between" style="margin-bottom:10px">
+            <strong style="font-size:14px">Indsæt tekst – fx fra en e-mail eller et udkast</strong>
+            <button class="btn btn-ghost btn-sm" id="insert-example">Indsæt eksempel</button>
+          </div>
+          <textarea id="text-in" placeholder="Indsæt teksten her …" spellcheck="false"></textarea>
+          <div class="row" style="margin-top:12px">
+            <button class="btn btn-primary" id="fix-text">Ret teksten</button>
+            <span class="muted" id="text-status" aria-live="polite"></span>
+          </div>
+        </div>
+        <div class="card" id="text-out-card" hidden>
+          <div class="row between" style="margin-bottom:10px">
+            <strong style="font-size:14px">Rettet tekst</strong>
+            <div class="row" style="gap:8px">
+              <button class="btn btn-outline btn-sm" id="copy-text">Kopiér</button>
+              <button class="btn btn-outline btn-sm" id="download-text">Hent som .txt</button>
+            </div>
+          </div>
+          <textarea id="text-out" readonly spellcheck="false"></textarea>
+          <div id="text-changes"></div>
+        </div>
+      </section>
+
+      <!-- ── Tjeklisten (regler) ───────────────────────────────── -->
+      <section id="panel-rules" class="panel">
+        <div class="card" style="padding:16px 18px">
+          <p class="muted" style="margin:0">
+            Tjeklisten er programmets hjerte: hver regel beskriver én ensretning
+            (<em>find&nbsp;→&nbsp;erstat</em>), og reglerne køres oppefra og ned på alle dokumenter.
+            Har I allerede en tjekliste på skrift, opretter I blot hvert punkt som en regel her.
+            Ændringer gemmes automatisk i denne browser – brug <em>Eksportér</em> til at dele
+            listen med kollegerne, som så bruger <em>Importér</em>.
+          </p>
+        </div>
+
+        <div class="rules-toolbar">
+          <button class="btn btn-primary btn-sm" id="add-rule">+ Ny regel</button>
+          <button class="btn btn-outline btn-sm" id="import-rules">Importér …</button>
+          <button class="btn btn-outline btn-sm" id="export-rules">Eksportér</button>
+          <span class="spacer"></span>
+          <span class="muted small" id="rules-meta"></span>
+          <button class="btn btn-ghost btn-sm" id="reset-rules">Gendan standardregler</button>
+        </div>
+        <input type="file" id="import-input" accept=".json,application/json" hidden />
+
+        <div id="rules-list"></div>
+      </section>
+    </main>
+
+    <footer class="site">
+      green light a/s · Dokumenttjek – selvstændigt værktøj til ensretning af udgående dokumenter.
+      Dokumenterne behandles udelukkende lokalt i din browser og sendes ingen steder hen.
+    </footer>
+  </div>
+
+  <!-- ── Regel-dialog ──────────────────────────────────────────── -->
+  <dialog id="rule-dialog">
+    <h2 id="dialog-title">Ny regel</h2>
+    <form method="dialog" id="rule-form">
+      <div class="field">
+        <label for="f-find">Find</label>
+        <input type="text" id="f-find" autocomplete="off" spellcheck="false" required />
+        <div class="err-msg" id="f-find-err" hidden></div>
+      </div>
+      <div class="field">
+        <label for="f-replace">Erstat med</label>
+        <input type="text" id="f-replace" autocomplete="off" spellcheck="false" />
+      </div>
+      <div class="field">
+        <label for="f-note">Note (hvorfor? – vises i listen)</label>
+        <input type="text" id="f-note" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label for="f-category">Kategori</label>
+        <input type="text" id="f-category" autocomplete="off" list="category-list" />
+        <datalist id="category-list"></datalist>
+      </div>
+      <div class="opts">
+        <label class="check"><input type="checkbox" id="f-wholeword" checked /> Kun hele ord</label>
+        <label class="check"><input type="checkbox" id="f-matchcase" /> Forskel på store/små bogstaver</label>
+        <label class="check"><input type="checkbox" id="f-smartcase" checked /> Bevar stort begyndelsesbogstav</label>
+        <label class="check"><input type="checkbox" id="f-afterdigit" /> Må stå lige efter et tal (enheder)</label>
+        <label class="check"><input type="checkbox" id="f-regex" /> Regulært udtryk (avanceret)</label>
+      </div>
+      <div class="dialog-test">
+        <label class="check" style="font-weight:600; font-size:12px">Afprøv reglen på en tekst</label>
+        <input type="text" id="f-test" autocomplete="off" spellcheck="false" placeholder="Skriv en prøvetekst …"
+               style="width:100%; border:1px solid var(--line); border-radius:10px; padding:7px 10px; font:inherit; font-size:13px; margin-top:6px" />
+        <div class="out" id="f-test-out"></div>
+      </div>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-ghost" id="dialog-cancel">Annuller</button>
+        <button type="submit" class="btn btn-primary" value="save" id="dialog-save">Gem regel</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="jszip.min.js"></script>
+  <script src="rules.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
