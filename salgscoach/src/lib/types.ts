@@ -566,13 +566,28 @@ export interface CoachRequest {
   effort?: "hurtig" | "grundig";
 }
 
+/**
+ * Anmodning om en talt session.
+ *
+ * Bemærk hvad der IKKE står her: `instructions`. Systeminstruktionen —
+ * salgsmanualen, coachens adfærd og kundens skjulte oplysninger — bygges
+ * udelukkende på serveren og bages ind i den midlertidige nøgle. Sendte
+ * browseren instruktionen, ville manualen og kundens skjulte kort ligge frit
+ * tilgængeligt i klienten, og hele rollespillet ville være meningsløst.
+ */
 export interface RealtimeSessionRequest {
-  instructions: string;
-  voice: RealtimeVoice;
+  modeId: TrainingModeId;
+  coachMode: CoachMode;
   language: "da" | "en";
+  scenario?: Scenario;
+  /** Uigennemsigtig, krypteret pakke fra serveren. Klienten kan ikke læse den. */
+  hiddenBlob?: string;
+  intake?: string;
+  documentText?: string;
+  sellerContext?: unknown;
+  voice?: RealtimeVoice;
   /** Hvor ivrig turtagningen skal være — telefonøvelser er hurtigere. */
   eagerness?: "low" | "auto" | "high";
-  modeId: TrainingModeId;
 }
 
 export type RealtimeVoice =

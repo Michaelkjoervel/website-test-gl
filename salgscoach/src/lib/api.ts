@@ -840,11 +840,18 @@ export async function createRealtimeSession(
     const payload = await request<Record<string, unknown>>(
       "/coach-session",
       {
-        instructions: input.instructions,
-        voice: input.voice,
-        language: input.language,
-        eagerness: input.eagerness ?? "auto",
+        // Kun rå kontekst — serveren bygger selv systeminstruktionen, så
+        // manualen og kundens skjulte oplysninger aldrig passerer browseren.
         modeId: input.modeId,
+        coachMode: input.coachMode,
+        language: input.language,
+        scenario: input.scenario,
+        hiddenBlob: input.hiddenBlob,
+        intake: input.intake,
+        documentText: input.documentText,
+        sellerContext: input.sellerContext,
+        voice: input.voice,
+        eagerness: input.eagerness ?? "auto",
       },
       { timeoutMs: TIMEOUT.quick, label: "Stemmeforbindelsen", signal: opts.signal },
     );
@@ -876,7 +883,7 @@ export async function createRealtimeSession(
       clientSecret,
       expiresAt: str(payload.expiresAt) ?? new Date(Date.now() + 60_000).toISOString(),
       model: str(payload.model) ?? "",
-      voice: (str(payload.voice) as RealtimeVoice | undefined) ?? input.voice,
+      voice: (str(payload.voice) as RealtimeVoice | undefined) ?? input.voice ?? "cedar",
       api: str(payload.api) ?? "",
     };
   } catch (e) {
@@ -914,18 +921,21 @@ function patternToContext(p: DevelopmentPattern): SellerContextPattern {
   return { area: p.area, statement: p.statement, occurrences: p.occurrences };
 }
 
+/** `date` findes kun på opsummeringen — TrainingSession har `startedAt`. */
+function isDigest(s: TrainingSession | SessionDigest): s is SessionDigest {
+  return "date" in s;
+}
+
 function headlineOf(s: TrainingSession | SessionDigest): string | undefined {
-  if ("feedback" in s) return s.feedback?.headline;
-  return s.headline;
+  return isDigest(s) ? s.headline : s.feedback?.headline;
 }
 
 function focusOf(s: TrainingSession | SessionDigest): string[] {
-  if ("developmentFocus" in s) return s.developmentFocus ?? [];
-  return s.focus ?? [];
+  return isDigest(s) ? s.focus ?? [] : s.developmentFocus ?? [];
 }
 
 function dateOf(s: TrainingSession | SessionDigest): string {
-  return "startedAt" in s ? s.startedAt : s.date;
+  return isDigest(s) ? s.date : s.startedAt;
 }
 
 function unique(values: readonly (string | undefined)[], max: number): string[] {
@@ -941,15 +951,33 @@ function unique(values: readonly (string | undefined)[], max: number): string[] 
   return out;
 }
 
+type ProfileOrSeller = SellerProfile | Seller | null | undefined;
+
+/** SellerProfile har sellerId; Seller har role. Det er nok til at kende dem fra hinanden. */
+function asProfile(v: ProfileOrSeller): SellerProfile | null {
+  return v && "sellerId" in v ? v : null;
+}
+
+function asSeller(v: ProfileOrSeller): Seller | null {
+  return v && "role" in v ? v : null;
+}
+
 /**
  * Byg den sælgerkontekst serveren forventer. Kun konklusioner — aldrig
  * transskriptioner. Tåler at profilen endnu ikke findes (ny sælger).
+ *
+ * Rækkefølgen er (profil, sælger, sessioner) — men de to første må gerne
+ * bytte plads: vi finder selv ud af hvad der er hvad, så et kaldsted ikke
+ * kan komme til at sende en tom kontekst afsted i tavshed.
  */
 export function buildSellerContext(
-  profile: SellerProfile | null | undefined,
-  seller: Seller | null | undefined,
+  profileOrSeller: ProfileOrSeller,
+  sellerOrProfile?: ProfileOrSeller,
   recentSessions: readonly (TrainingSession | SessionDigest)[] = [],
 ): SellerContext {
+  const profile = asProfile(profileOrSeller) ?? asProfile(sellerOrProfile);
+  const seller = asSeller(sellerOrProfile) ?? asSeller(profileOrSeller);
+
   const sorted = [...recentSessions].sort(
     (a, b) => new Date(dateOf(b)).getTime() - new Date(dateOf(a)).getTime(),
   );
@@ -991,3 +1019,29 @@ export function buildSellerContext(
     recentHeadlines,
   };
 }
+
+/* ------------------------------------------------------------- Samlet API */
+
+/**
+ * Samme funktioner som ovenfor, samlet i ét objekt.
+ *
+ * Skærmbillederne importerer `api` og kalder `api.analyseSession(...)`, fordi
+ * det gør kaldstedet selvforklarende ("det her går til serveren"). De
+ * navngivne eksporter bevares uændret til test og til punktvis import.
+ */
+export const api = {
+  getManifest,
+  clearManifestCache,
+  generateScenario,
+  converse,
+  analyseSession,
+  buildProfile,
+  analyseMaterial,
+  teamOverview,
+  createRealtimeSession,
+  speak,
+  fileToDataUrl,
+  toAudioDataUrl,
+  /** Ren klientfunktion (intet netværk) — med her, så kaldstedet slipper for to imports. */
+  buildSellerContext,
+} as const;

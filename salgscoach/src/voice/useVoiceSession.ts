@@ -11,7 +11,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RealtimeVoiceSession, realtimeSupported, type VoiceState } from "./realtime";
 import { BrowserVoiceSession, browserVoiceSupported } from "./browserVoice";
-import { api } from "../lib/api";
+import { api, type SellerContext } from "../lib/api";
 import { newId } from "../lib/ids";
 import type {
   CoachMode,
@@ -30,7 +30,7 @@ export interface StartParams {
   hiddenBlob?: string;
   intake?: string;
   documentText?: string;
-  sellerContext: unknown;
+  sellerContext?: SellerContext;
   voice?: RealtimeVoice;
   /** Telefonøvelser skal føles hurtige og ubehagelige. */
   eagerness?: "low" | "auto" | "high";
@@ -148,16 +148,14 @@ export function useVoiceSession(): VoiceSessionApi {
             scenario: p.scenario,
             hiddenBlob: p.hiddenBlob,
             intake: p.intake,
+            documentText: p.documentText,
             sellerContext: p.sellerContext,
-            messages: lines.current.map((u) => ({
-              role: u.role === "saelger" ? ("user" as const) : ("assistant" as const),
-              content: u.text,
-            })),
+            messages: lines.current,
           });
           let audio: string | undefined;
           try {
             const spoken = await api.speak({ text: res.reply, voice: p.voice || "cedar" });
-            audio = spoken.audio;
+            audio = api.toAudioDataUrl(spoken.audio);
           } catch {
             /* uden lyd viser vi stadig teksten */
           }
@@ -200,13 +198,13 @@ export function useVoiceSession(): VoiceSessionApi {
             eagerness: p.eagerness,
           });
 
-          if ("clientSecret" in res && res.clientSecret) {
+          if (res.ok) {
             const session = new RealtimeVoiceSession();
             rt.current = session;
             await session.connect({
               clientSecret: res.clientSecret,
               model: res.model,
-              api: res.api,
+              api: res.api === "beta" ? "beta" : "ga",
               events: {
                 onState: setState,
                 onTranscript: (speaker, text, final) => {
@@ -227,10 +225,14 @@ export function useVoiceSession(): VoiceSessionApi {
             return;
           }
 
-          const reason =
-            "error" in res && res.error
-              ? String(res.error)
-              : "Realtime-stemmen er ikke tilgængelig lige nu.";
+          const reason = res.error || "Realtime-stemmen er ikke tilgængelig lige nu.";
+          if (!res.fallbackToBrowserVoice) {
+            // Fx 401/403: reservestemmen hjælper ikke — sælgeren skal logge ind.
+            setError(reason);
+            setState("fejl");
+            setStarting(false);
+            return;
+          }
           await startBrowserVoice(p, `${reason} Vi kører videre på reservestemmen.`);
           setStarting(false);
           return;
