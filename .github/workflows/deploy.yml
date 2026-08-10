@@ -38,10 +38,26 @@ jobs:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
 
+      # Salgscoachen er en SELVSTÆNDIG app med sin egen package.json og sit eget
+      # build. Den bygges derfor for sig — og med continue-on-error, så et brud
+      # her aldrig kan vælte deployet af estimatet, tidsregistreringen eller
+      # dokumenttjekket. Fejler den, udelades /salgscoach/ blot fra sitet.
+      - name: Byg salgscoach
+        id: salgscoach
+        continue-on-error: true
+        working-directory: salgscoach
+        run: npm ci && npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+          VITE_COACH_API_BASE: ${{ vars.VITE_COACH_API_BASE }}
+          VITE_COACH_MANAGERS: ${{ vars.VITE_COACH_MANAGERS }}
+
       # Saml ét samlet site:
       #   - tidsregistreringen (anden branch) i roden -> /app.html bevares uændret
       #   - estimatet (denne branch) under /estimat/
       #   - dokumenttjek (selvstændigt, statisk værktøj) under /dokumenttjek/
+      #   - salgscoach (selvstændig app) under /salgscoach/
       - name: Saml samlet site
         run: |
           rm -rf _site
@@ -52,6 +68,12 @@ jobs:
           cp -r dist/. _site/estimat/
           mkdir -p _site/dokumenttjek
           cp -r dokumenttjek/. _site/dokumenttjek/
+          if [ -d salgscoach/dist ]; then
+            mkdir -p _site/salgscoach
+            cp -r salgscoach/dist/. _site/salgscoach/
+          else
+            echo "::warning::salgscoach blev ikke bygget – springes over i dette deploy."
+          fi
 
       - uses: actions/configure-pages@v5
 

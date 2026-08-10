@@ -27,3 +27,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+
+# Salgscoach (selvstændig app med eget build)
+salgscoach/node_modules
+salgscoach/dist

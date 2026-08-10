@@ -8,6 +8,18 @@
     "api/extract.js": {
       "maxDuration": 60,
       "memory": 1024
+    },
+    "api/coach.js": {
+      "maxDuration": 300,
+      "memory": 1024
+    },
+    "api/coach-session.js": {
+      "maxDuration": 60,
+      "memory": 1024
+    },
+    "api/coach-speak.js": {
+      "maxDuration": 60,
+      "memory": 1024
     }
   }
 }
