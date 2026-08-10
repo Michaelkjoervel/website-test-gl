@@ -1008,8 +1008,8 @@ function ManualTab({
         <NeedsOverview building={building} onBuild={onBuild} />
       ) : overview.manualDrift.length === 0 ? (
         <Notice>
-          Analysen finder ikke systematisk afvigelse fra manualen i det materiale der er. Det er ikke det
-          samme som at manualen bliver brugt overalt — det kræver flere sessioner at sige.
+          Analysen finder ikke systematisk afvigelse fra manualen i de sessioner der er analyseret. Det er
+          ikke det samme som at manualen bliver brugt overalt — det kræver flere sessioner at afgøre.
         </Notice>
       ) : (
         <ul className="space-y-3">

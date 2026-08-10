@@ -22,6 +22,7 @@ import {
   formatMinutes,
   formatWhen,
   plural,
+  relativeTime,
   skillAreaLabel,
   trendStyle,
 } from "../lib/format";
@@ -74,11 +75,6 @@ const MODE_FALLBACK_TITLE: Record<TrainingModeId, string> = {
   materialepraesentation: "Materialepræsentation",
 };
 
-interface ModeLite {
-  id: TrainingModeId;
-  title?: string;
-}
-
 /* -------------------------------------------------------------------------- */
 /* Skærmen                                                                     */
 /* -------------------------------------------------------------------------- */
@@ -126,7 +122,7 @@ export function Development() {
     let alive = true;
     void (async () => {
       try {
-        const manifest = (await api.getManifest()) as unknown as { modes?: ModeLite[] };
+        const manifest = await api.getManifest();
         if (!alive || !Array.isArray(manifest?.modes)) return;
         const map: Partial<Record<TrainingModeId, string>> = {};
         for (const m of manifest.modes) if (m?.id && m.title) map[m.id] = m.title;
@@ -197,7 +193,8 @@ export function Development() {
       setProfile(updated);
       setSavingGoals(true);
       try {
-        await saveProfile(updated);
+        const saved = await saveProfile(updated);
+        setProfile(saved ?? updated);
       } catch (e) {
         setProfile(previous);
         toast(e instanceof Error ? e.message : "Kunne ikke gemmes. Prøv igen.", "fejl");
@@ -260,13 +257,16 @@ export function Development() {
       )}
 
       {!profile ? (
-        <NoProfileYet sessions={stats.count} />
+        // Ved en hentefejl står ErrorNote alene — vi påstår ikke, at profilen
+        // ikke findes, når vi i virkeligheden ikke fik fat i den.
+        error ? null : (
+          <NoProfileYet sessions={stats.count} />
+        )
       ) : (
         <>
           {/* --------------------------------------------------- Vurderingen */}
           <Panel as="section" className="border-brand-800/70">
-            <div className="eyebrow">Salgsdirektørens vurdering</div>
-            <h2 className="sr-only">Salgsdirektørens vurdering</h2>
+            <h2 className="eyebrow">Salgsdirektørens vurdering</h2>
             {profile.narrative?.trim() ? (
               <CoachText
                 text={profile.narrative}
@@ -279,7 +279,7 @@ export function Development() {
               </p>
             )}
             <p className="mt-5 border-t border-base-line pt-4 text-xs text-ink-mute">
-              Senest skrevet om {formatWhen(profile.updatedAt)} · bygger på{" "}
+              Senest opdateret {relativeTime(profile.updatedAt)} · bygger på{" "}
               {plural(stats.count, "gennemført samtale", "gennemførte samtaler")}
             </p>
           </Panel>
@@ -358,8 +358,8 @@ export function Development() {
                 desc="Anbefalingerne rammer bevidst det, du er dårligst til. Det er ikke der, det er behageligt at træne — det er der, der er mest at hente."
               />
               <div className="grid gap-4 lg:grid-cols-3">
-                {recommended.map((r) => (
-                  <RecommendationCard key={`${r.modeId}-${r.priority}`} rec={r} title={modeTitle(r.modeId)} />
+                {recommended.map((r, i) => (
+                  <RecommendationCard key={`${r.modeId}-${r.priority}-${i}`} rec={r} title={modeTitle(r.modeId)} />
                 ))}
               </div>
             </section>
@@ -610,7 +610,11 @@ function PatternCard({ pattern, kind }: { pattern: DevelopmentPattern; kind: "sv
                 </blockquote>
                 <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                   <span className="text-xs text-ink-mute">{formatDateCompact(e.date)}</span>
-                  <Link to={`/debriefing/${e.sessionId}`} className="btn-ghost btn-sm -mr-2">
+                  <Link
+                    to={`/debriefing/${e.sessionId}`}
+                    className="btn-ghost btn-sm -mr-2"
+                    aria-label={`Åbn samtalen fra ${formatDateCompact(e.date)}`}
+                  >
                     Åbn samtalen
                     <Icon.Arrow width={14} height={14} />
                   </Link>
@@ -702,6 +706,7 @@ function RecommendationCard({ rec, title }: { rec: RecommendedTraining; title: s
       <Link
         to={`/traening/${rec.modeId}`}
         className={`mt-5 w-full ${top ? "btn-primary" : "btn-outline"}`}
+        aria-label={`Start øvelsen ${title}`}
       >
         Start øvelsen
         <Icon.Arrow width={16} height={16} />

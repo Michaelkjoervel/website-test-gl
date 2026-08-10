@@ -35,6 +35,7 @@ import {
   listSellers,
   makeLocalSeller,
   resolveSeller,
+  seedSellers,
   sellerAvatar,
 } from "./sellers";
 import { setActiveSeller } from "./store";
@@ -432,7 +433,9 @@ function LocalModeGate() {
   const { sellers, setLocalSeller } = useAuth();
   const [initials, setInitials] = useState("");
 
-  const list = sellers.length ? sellers : [];
+  // Registret hentes asynkront; indtil da viser vi seed-sælgerne, så vælgeren
+  // aldrig står tom.
+  const list = sellers.length ? sellers : seedSellers();
 
   const choose = (seller: Seller) => setLocalSeller(seller);
 

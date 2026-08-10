@@ -48,8 +48,13 @@ import type {
 
 /* --------------------------------------------------------------- Regler */
 
-/** 20 MB. Store PDF'er er næsten altid scannede — dem hjælper vi ikke alligevel. */
-export const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
+/**
+ * Grænsen følger den, api-laget selv håndhæver på vejen til serveren
+ * (MAX_FILE_BYTES i lib/api). Sælgeren skal få beskeden med det samme frem for
+ * efter at have ventet på en upload der alligevel bliver afvist. Er materialet
+ * større, er det næsten altid en scannet PDF — og den kan alligevel ikke læses.
+ */
+export const MAX_UPLOAD_BYTES = 12 * 1024 * 1024;
 
 /** Bevidst uden gamle binære Office-formater; dropzonen forklarer hvorfor. */
 export const ACCEPTED_EXTENSIONS = [".pdf", ".pptx", ".docx", ".xlsx", ".txt", ".csv", ".md"];
@@ -57,8 +62,8 @@ export const ACCEPTED_EXTENSIONS = [".pdf", ".pptx", ".docx", ".xlsx", ".txt", "
 /** Filer vi kan læse direkte i browseren og sende som ren tekst. */
 const TEXT_EXTENSIONS = [".txt", ".csv", ".md"];
 
-/** Hvor meget af materialets tekst der kommer med ind i en øvelse. */
-const MAX_INTAKE_TEXT = 12000;
+/** Hvor meget af materialets tekst der følger med ind i en øvelse. */
+const MAX_MATERIAL_TEXT = 12000;
 
 export const KIND_LABEL: Record<DocumentKind, string> = {
   pdf: "PDF",
@@ -101,7 +106,9 @@ export function isQuotaError(err: unknown): boolean {
   if (!e) return false;
   if (e.name === "QuotaExceededError" || e.name === "NS_ERROR_DOM_QUOTA_REACHED") return true;
   if (e.code === 22 || e.code === 1014) return true;
-  return /quota|exceeded|lager|storage full/i.test(e.message ?? "");
+  // Bevidst snæver: "exceeded" alene rammer også fx svar om forbrugsgrænser
+  // fra API'et, og de skal ikke ende som en besked om browserens lager.
+  return /quota|storage[ _-]?full|lagerplads/i.test(e.message ?? "");
 }
 
 /** Én fejlbesked der er til at handle på — også når fejlen er lageret. */
@@ -109,8 +116,9 @@ export function storageErrorMessage(err: unknown, what: string): string {
   if (isQuotaError(err)) {
     return `Der er ikke plads til flere ${what} i browserens lager. Slet et ældre materiale, og prøv igen. Selve filerne gemmes aldrig — kun den udtrukne tekst og analysen.`;
   }
+  const label = what.charAt(0).toUpperCase() + what.slice(1);
   const msg = (err as Error | null)?.message?.trim();
-  return msg ? `${what} kunne ikke gemmes: ${msg}` : `${what} kunne ikke gemmes. Prøv igen.`;
+  return msg ? `${label} kunne ikke gemmes: ${msg}` : `${label} kunne ikke gemmes. Prøv igen.`;
 }
 
 /** Hører materialet til den indloggede sælger? Ellers vises det ikke. */
@@ -119,58 +127,82 @@ export function belongsToSeller(doc: SalesDocument, seller: Seller): boolean {
 }
 
 /**
- * Bygger den træningssession sælgeren sendes videre til.
+ * Sessionen bærer materialet videre ad tre adskilte veje, fordi de læses af
+ * tre forskellige parter:
  *
- * Materialet følger med på to måder, fordi de bruges forskelligt:
- *   · documentId  — så samtalesiden kan hente hele dokumentet, hvis den vil.
- *   · intake      — den tekst modellen får med det samme: hvad materialet er,
- *                   hvad sælgeren har sagt om kunden, salgsdirektørens
- *                   hovedkonklusion, de spørgsmål kunden vil stille, og selve
- *                   materialets tekst (forkortet, så en session ikke fylder
- *                   lageret op).
+ *   · documentId   — nøglen tilbage til dokumentet, så en debriefing eller en
+ *                    senere øvelse kan hente hele analysen frem igen.
+ *   · intake       — briefingen SÆLGEREN ser på skærmen, inden mikrofonen
+ *                    åbnes. Kort og læsbar. Aldrig et tekstdump.
+ *   · documentText — materialets faktiske tekst plus salgsdirektørens
+ *                    konklusioner. Den går til modellen (og til analysen
+ *                    bagefter), men vises aldrig for sælgeren. Det er dét, der
+ *                    gør, at "kunden" kan udfordre præcis det, der står i
+ *                    materialet, frem for at tale generelt om belysning.
+ *
+ * Feltet documentText findes ikke på TrainingSession endnu; LiveSession læser
+ * det som en udvidelse — nøjagtig som hiddenBlob fra TrainingSetup.
  */
+export type MaterialSession = TrainingSession & { documentText?: string };
+
 export function buildMaterialSession(opts: {
   doc: SalesDocument;
   seller: Seller;
   modeId: "materialepraesentation" | "fri-coaching";
-}): TrainingSession {
+}): MaterialSession {
   const { doc, seller, modeId } = opts;
-  const parts: string[] = [];
-
+  const presenting = modeId === "materialepraesentation";
   const pages = doc.pages ? `, ${plural(doc.pages, "side", "sider")}` : "";
-  parts.push(
-    modeId === "materialepraesentation"
-      ? `Sælgeren skal nu præsentere sit eget materiale højt: ${doc.name} (${KIND_LABEL[doc.kind]}${pages}).`
-      : `Sælgeren vil tale med salgsdirektøren om sit eget materiale: ${doc.name} (${KIND_LABEL[doc.kind]}${pages}).`,
+  const heading = `${doc.name} (${KIND_LABEL[doc.kind]}${pages})`;
+  const context = doc.customerContext?.trim();
+  const a = doc.analysis;
+
+  /* ---- Briefingen sælgeren ser ---- */
+  const brief: string[] = [
+    presenting
+      ? `Du skal præsentere dit eget materiale højt: **${heading}**. Kunden sidder med materialet foran sig og reagerer på det, der faktisk står i det.`
+      : `Du taler med salgsdirektøren om **${heading}**. Spørg til det du er i tvivl om — og bliv presset på det, der ikke holder.`,
+  ];
+  if (context) brief.push(`**Kunden:** ${context}`);
+  if (a?.headline) brief.push(`**Salgsdirektørens konklusion:** ${a.headline}`);
+  brief.push(
+    presenting
+      ? "Tag kunden igennem materialet, som du ville gøre på et rigtigt møde. Begynd med hvorfor I sidder der."
+      : "Start med at sige, hvad du gerne vil have hjælp til.",
   );
 
-  const context = doc.customerContext?.trim();
-  if (context) parts.push(`Kundekontekst fra sælgeren: ${context}`);
+  /* ---- Materialet som modellen får det ---- */
+  const material: string[] = [`MATERIALE: ${heading}`];
+  if (context) material.push(`KUNDEKONTEKST FRA SÆLGEREN: ${context}`);
 
-  const a = doc.analysis;
   if (a) {
-    parts.push(`Salgsdirektørens hovedkonklusion (${a.overall}): ${a.headline}`);
-    if (a.readsAsWrittenFor) parts.push(`Materialet taler som skrevet til: ${a.readsAsWrittenFor}`);
+    const lines = [`Samlet vurdering: ${a.overall} — ${a.headline}`];
+    if (a.readsAsWrittenFor) lines.push(`Materialet taler som skrevet til: ${a.readsAsWrittenFor}`);
 
     const asks = a.customerWillAsk ?? [];
     if (asks.length) {
-      parts.push(`Spørgsmål kunden med sikkerhed vil stille:\n${asks.map((q) => `- ${q}`).join("\n")}`);
+      lines.push(
+        presenting
+          ? `Stil disse spørgsmål undervejs, når de passer naturligt ind:\n${asks.map((q) => `- ${q}`).join("\n")}`
+          : `Spørgsmål kunden med sikkerhed vil stille:\n${asks.map((q) => `- ${q}`).join("\n")}`,
+      );
     }
     const gaps = a.internalSellingGaps ?? [];
     if (gaps.length) {
-      parts.push(
+      lines.push(
         `Det materialet mangler, for at kunden kan sælge det internt:\n${gaps.map((g) => `- ${g}`).join("\n")}`,
       );
     }
+    material.push(`SALGSDIREKTØRENS ANALYSE (baggrund — citér den ikke):\n${lines.join("\n")}`);
   }
 
   const text = (doc.extractedText ?? "").trim();
   if (text) {
     const clipped =
-      text.length > MAX_INTAKE_TEXT
-        ? `${text.slice(0, MAX_INTAKE_TEXT)}\n[Teksten er forkortet her. Hele materialet ligger på dokumentet.]`
+      text.length > MAX_MATERIAL_TEXT
+        ? `${text.slice(0, MAX_MATERIAL_TEXT)}\n[Teksten er forkortet her.]`
         : text;
-    parts.push(`--- MATERIALETS TEKST ---\n${clipped}`);
+    material.push(`--- MATERIALETS TEKST ---\n${clipped}`);
   }
 
   return {
@@ -178,10 +210,11 @@ export function buildMaterialSession(opts: {
     sellerId: seller.id,
     sellerInitials: seller.initials,
     modeId,
-    coachMode: modeId === "materialepraesentation" ? "realistisk" : "coach",
+    coachMode: presenting ? "realistisk" : "coach",
     language: config.defaultLanguage,
     voiceEngine: "realtime",
-    intake: parts.join("\n\n"),
+    intake: brief.join("\n\n"),
+    documentText: material.join("\n\n"),
     documentId: doc.id,
     status: "kladde",
     startedAt: new Date().toISOString(),

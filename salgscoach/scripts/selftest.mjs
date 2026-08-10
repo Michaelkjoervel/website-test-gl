@@ -128,7 +128,8 @@ function stubFetch() {
     if (u.includes("/v1/responses")) {
       const format = body?.text?.format;
       if (format?.type === "json_schema" && format.schema) {
-        return json({ output_text: JSON.stringify(sampleFromSchema(format.schema)) });
+        const raw = format.schema?.schema && format.schema?.name ? format.schema.schema : format.schema;
+        return json({ output_text: JSON.stringify(sampleFromSchema(raw)) });
       }
       return json({ output_text: "Hvad sagde kunden helt præcist? Og hvordan ved du det?" });
     }
@@ -244,7 +245,8 @@ async function main() {
     ["MATERIAL_SCHEMA", prompt.MATERIAL_SCHEMA],
     ["TEAM_SCHEMA", prompt.TEAM_SCHEMA],
   ]) {
-    const problems = checkStrictSchema(name, schema);
+    const raw = schema?.schema && schema?.name ? schema.schema : schema;
+    const problems = checkStrictSchema(name, raw);
     ok(`${name} er et gyldigt strict-skema`, problems.length === 0, problems.slice(0, 3).join(" · "));
   }
 
@@ -411,7 +413,11 @@ async function main() {
   ok("materiale returnerer en analyse", Boolean(mat.payload?.analysis?.sections));
 
   const team = await invoke(coach, {
-    body: { action: "team", profiles: [], sessions: [] },
+    body: {
+      action: "team",
+      profiles: [{ sellerId: "u1", initials: "KMA", narrative: "", weaknesses: [], strengths: [], signals: {}, recommended: [], manualGaps: [], ownGoals: [], sessionsCount: 7, totalMinutes: 60, updatedAt: "2026-08-01" }],
+      sessions: [{ id: "s1", date: "2026-08-01", modeId: "kunderollespil", focus: [], durationMin: 7, categories: [], initials: "KMA" }],
+    },
   });
   ok("team svarer 200", team.status === 200, JSON.stringify(team.payload).slice(0, 160));
 

@@ -54,6 +54,7 @@ import {
   PROFILE_SCHEMA,
   MATERIAL_SCHEMA,
   TEAM_SCHEMA,
+  pruneNulls,
 } from "./_coachprompt.mjs";
 
 export const config = {
@@ -91,8 +92,34 @@ function safeBuild(fn, args, fallback = "") {
 }
 
 function trim(value, max) {
-  const s = typeof value === "string" ? value : value == null ? "" : String(value);
+  // Objekter SKAL serialiseres, ikke String()-es. Ellers blev sælgerens
+  // udviklingsprofil til "[object Object]", og coachen mistede hele sin
+  // hukommelse om personen — uden at noget fejlede synligt.
+  let s;
+  if (value == null) s = "";
+  else if (typeof value === "string") s = value;
+  else if (typeof value === "object") {
+    try {
+      s = JSON.stringify(value, null, 2);
+    } catch {
+      s = "";
+    }
+  } else s = String(value);
   return s.length > max ? `${s.slice(0, max)}\n…[forkortet]` : s;
+}
+
+/**
+ * sellerContext er et OBJEKT, og promptbyggeren læser .weaknesses/.focusAreas
+ * direkte. Den må derfor ikke serialiseres på vejen — så mister coachen
+ * hukommelsen om sælgeren uden at noget fejler synligt. Vi begrænser i stedet
+ * størrelsen ved at klippe listerne, og beholder formen.
+ */
+function boundContext(value, maxItems = 8) {
+  if (!value || typeof value !== "object") return null;
+  const cut = (v) => (Array.isArray(v) ? v.slice(0, maxItems) : v);
+  const out = {};
+  for (const [k, v] of Object.entries(value)) out[k] = cut(v);
+  return out;
 }
 
 function lang(body) {
@@ -161,7 +188,7 @@ async function doScenarie(body, apiKey) {
 
   const language = lang(body);
   const scenarioConfig = body?.config && typeof body.config === "object" ? body.config : { auto: true };
-  const sellerContext = trim(body?.sellerContext, 6000);
+  const sellerContext = boundContext(body?.sellerContext);
 
   // Personaen er startpunktet: et rigtigt menneske med en rigtig dagsorden.
   let persona = null;
@@ -207,7 +234,7 @@ async function doScenarie(body, apiKey) {
   });
   if (!r.ok) return { status: r.status, payload: { error: r.error || "Scenariet kunne ikke genereres." } };
 
-  const scenario = r.data;
+  const scenario = pruneNulls(r.data);
   if (!scenario || typeof scenario !== "object") {
     return { status: 502, payload: { error: "Modellen returnerede et ubrugeligt scenarie." } };
   }
@@ -254,7 +281,7 @@ async function doSamtale(body, apiKey) {
     language: lang(body),
     scenario: body?.scenario || null,
     hidden: openHidden(body?.hiddenBlob), // åbnes KUN her på serveren
-    sellerContext: trim(body?.sellerContext, 6000),
+    sellerContext: boundContext(body?.sellerContext),
     intake: trim(body?.intake, 6000),
     documentText: trim(body?.documentText, 40_000),
     purpose: "text",
@@ -271,7 +298,10 @@ async function doSamtale(body, apiKey) {
 }
 
 async function doAnalyse(body, apiKey) {
-  const transcript = renderTranscript(body?.transcript);
+  // Klienten sender samtalen som "messages" (samme felt som i en samtale).
+  // Vi tager imod begge navne, så en omdøbning ét sted ikke koster feedbacken.
+  const transcript =
+    renderTranscript(body?.transcript) || renderTranscript(body?.messages);
   if (!transcript.trim()) {
     return { status: 400, payload: { error: "Der er ingen samtale at analysere ('transcript' er tom)." } };
   }
@@ -285,7 +315,7 @@ async function doAnalyse(body, apiKey) {
     language: lang(body),
     scenario: body?.scenario || null,
     hidden: openHidden(body?.hiddenBlob),
-    sellerContext: trim(body?.sellerContext, 6000),
+    sellerContext: boundContext(body?.sellerContext),
     intake: trim(body?.intake, 6000),
     documentText: trim(body?.documentText, 40_000),
   });
@@ -303,7 +333,7 @@ async function doAnalyse(body, apiKey) {
   });
   if (!r.ok) return { status: r.status, payload: { error: r.error || "Feedbacken kunne ikke laves." } };
 
-  return { status: 200, payload: { feedback: stamp(r.data) } };
+  return { status: 200, payload: { feedback: stamp(pruneNulls(r.data)) } };
 }
 
 async function doProfil(body, apiKey) {
@@ -340,7 +370,7 @@ async function doProfil(body, apiKey) {
   });
   if (!r.ok) return { status: r.status, payload: { error: r.error || "Udviklingsprofilen kunne ikke opdateres." } };
 
-  const profile = r.data && typeof r.data === "object" ? r.data : null;
+  const profile = r.data && typeof r.data === "object" ? pruneNulls(r.data) : null;
   if (profile && !profile.updatedAt) profile.updatedAt = nowIso();
   return { status: 200, payload: { profile } };
 }
@@ -366,7 +396,7 @@ async function doMateriale(body, apiKey) {
 
   const instructions = safeBuild(buildMaterialInstructions, {
     customerContext: trim(body?.customerContext, 6000),
-    sellerContext: trim(body?.sellerContext, 6000),
+    sellerContext: boundContext(body?.sellerContext),
     language,
   });
   if (!instructions) {
@@ -391,7 +421,7 @@ async function doMateriale(body, apiKey) {
     return { status: r.status, payload: { error: r.error || "Materialet kunne ikke analyseres.", extractedText, pages, kind } };
   }
 
-  return { status: 200, payload: { extractedText, pages, kind, analysis: stamp(r.data) } };
+  return { status: 200, payload: { extractedText, pages, kind, analysis: stamp(pruneNulls(r.data)) } };
 }
 
 async function doTeam(body, apiKey) {
@@ -421,7 +451,7 @@ async function doTeam(body, apiKey) {
   });
   if (!r.ok) return { status: r.status, payload: { error: r.error || "Ledelsesoverblikket kunne ikke laves." } };
 
-  const overview = r.data && typeof r.data === "object" ? r.data : null;
+  const overview = r.data && typeof r.data === "object" ? pruneNulls(r.data) : null;
   if (overview && !overview.updatedAt) overview.updatedAt = nowIso();
   return { status: 200, payload: { overview } };
 }

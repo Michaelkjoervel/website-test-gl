@@ -169,6 +169,19 @@ async function resolveTarget(sellerId?: string): Promise<{ me: Identity; target:
   return { me, target: wanted };
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Ledelsesoverblikket har ofte kun initialerne. seller_id er uuid, så et
+ * opslag på "KMA" ville sprænge forespørgslen — vi slår i stedet op på
+ * initial-kolonnen. Egne kald rammer altid uuid'et.
+ */
+function ownerColumn(target: string, initialsColumn: string): { column: string; value: string } {
+  return UUID_RE.test(target)
+    ? { column: "seller_id", value: target }
+    : { column: initialsColumn, value: target.toUpperCase() };
+}
+
 async function requireManager(): Promise<Identity> {
   const me = await currentIdentity();
   if (!me.isManager) {
@@ -291,10 +304,11 @@ export async function listSessions(sellerId?: string): Promise<TrainingSession[]
     return sortByStart(readLocal<TrainingSession>(LOCAL_SESSIONS_KEY).filter((s) => s.sellerId === target));
   }
 
+  const owner = ownerColumn(target, "seller_initials");
   const { data, error } = await supabase!
     .from(SESSIONS_TABLE)
     .select("id,seller_id,seller_initials,data")
-    .eq("seller_id", target)
+    .eq(owner.column, owner.value)
     .order("created_at", { ascending: false });
   if (error) throw friendly(error);
   return (data ?? []).map((r) => (r as SessionRow).data);
@@ -319,7 +333,10 @@ export async function listAllSessions(
     .from(SESSIONS_TABLE)
     .select("id,seller_id,seller_initials,data")
     .order("created_at", { ascending: false });
-  if (opts.sellerId) query = query.eq("seller_id", opts.sellerId);
+  if (opts.sellerId) {
+    const owner = ownerColumn(opts.sellerId, "seller_initials");
+    query = query.eq(owner.column, owner.value);
+  }
   if (opts.limit) query = query.limit(opts.limit);
 
   const { data, error } = await query;
@@ -419,10 +436,11 @@ export async function getProfile(sellerId?: string): Promise<SellerProfile | und
     return readLocal<SellerProfile>(LOCAL_PROFILES_KEY).find((p) => p.sellerId === target);
   }
 
+  const owner = ownerColumn(target, "initials");
   const { data, error } = await supabase!
     .from(PROFILES_TABLE)
     .select("seller_id,initials,data")
-    .eq("seller_id", target)
+    .eq(owner.column, owner.value)
     .maybeSingle();
   if (error) throw friendly(error);
   return data ? (data as ProfileRow).data : undefined;
@@ -521,10 +539,11 @@ export async function listDocuments(sellerId?: string): Promise<SalesDocument[]>
       .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
   }
 
+  const owner = ownerColumn(target, "seller_initials");
   const { data, error } = await supabase!
     .from(DOCUMENTS_TABLE)
     .select("id,seller_id,seller_initials,data")
-    .eq("seller_id", target)
+    .eq(owner.column, owner.value)
     .order("created_at", { ascending: false });
   if (error) throw friendly(error);
   return (data ?? []).map((r) => (r as DocumentRow).data);

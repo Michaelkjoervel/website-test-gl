@@ -95,7 +95,7 @@ function fejltekst(e: unknown): string {
   return besked.trim() || "Ukendt fejl.";
 }
 
-function pænModeId(id: string): string {
+function paentModeNavn(id: string): string {
   const t = id.replace(/-/g, " ").trim();
   return t ? t.charAt(0).toUpperCase() + t.slice(1) : "Øvelse";
 }
@@ -175,7 +175,7 @@ export function Home() {
   }, [sessioner]);
 
   const antalSessioner = profil?.sessionsCount ?? sessioner.length;
-  const sidstTrænet = profil?.lastSessionAt ?? sidsteSession;
+  const sidstTraenet = profil?.lastSessionAt ?? sidsteSession;
 
   const anbefalinger = useMemo(
     () => [...(profil?.recommended ?? [])].sort((a, b) => a.priority - b.priority).slice(0, 3),
@@ -188,7 +188,7 @@ export function Home() {
     if (!historikKlar) return "";
     if (antalSessioner > 0) {
       const antal = plural(antalSessioner, "gennemført samtale", "gennemførte samtaler");
-      return sidstTrænet ? `${antal} · sidst ${relativeTime(sidstTrænet)}` : antal;
+      return sidstTraenet ? `${antal} · sidst ${relativeTime(sidstTraenet)}` : antal;
     }
     return "Ingen samtaler endnu.";
   })();
@@ -247,8 +247,8 @@ export function Home() {
       <section>
         <SectionHeader
           eyebrow="Træningsformer"
-          title="Vælg en øvelse"
-          desc="Du kan starte med det samme. Alt andet er valgfrit."
+          title="Alle øvelser"
+          desc="Vælg en, og du er i gang. Opsætningen bagefter er valgfri."
         />
 
         {modesFejl && (
@@ -257,7 +257,7 @@ export function Home() {
           </ErrorNote>
         )}
 
-        {!modesFejl && modes === null && <ØvelseSkelet />}
+        {!modesFejl && modes === null && <OevelseSkelet />}
 
         {!modesFejl && modes !== null && synligeModes.length === 0 && (
           <div className="panel-quiet p-6 text-center">
@@ -265,7 +265,7 @@ export function Home() {
             <p className="body-mute mx-auto mt-1.5 max-w-md">
               Serveren svarede uden øvelser. Prøv at hente listen igen.
             </p>
-            <button className="btn-outline mt-5" onClick={() => void hentManifest()}>
+            <button type="button" className="btn-outline mt-5" onClick={() => void hentManifest()}>
               Hent igen
             </button>
           </div>
@@ -274,7 +274,7 @@ export function Home() {
         {!modesFejl && synligeModes.length > 0 && (
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {synligeModes.map((m) => (
-              <ØvelseKort key={m.id} mode={m} onStart={() => start(m.id)} />
+              <OevelseKort key={m.id} mode={m} onStart={() => start(m.id)} />
             ))}
           </div>
         )}
@@ -285,7 +285,7 @@ export function Home() {
 
 /* ------------------------------------------------------------ Delkomponenter */
 
-function ModpartMærke({ mode }: { mode: TrainingMode | undefined }) {
+function ModpartMaerke({ mode }: { mode: TrainingMode | undefined }) {
   if (!mode) return null;
   return mode.counterpart === "salgsdirektoer" ? (
     <span className="chip-brand">Salgsdirektøren</span>
@@ -308,14 +308,14 @@ function AnbefalingKort({
     <button
       type="button"
       onClick={onStart}
-      className="tile border-brand-900 bg-brand-950/30 hover:border-brand-600"
+      className="tile group border-brand-900 bg-brand-950/30 hover:border-brand-600"
     >
       <div className="flex items-start gap-3">
         <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-brand-800 bg-brand-950 text-brand-400">
           <I width={17} height={17} />
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className="title-md truncate">{mode?.title ?? pænModeId(rec.modeId)}</h3>
+          <h3 className="title-md truncate">{mode?.title ?? paentModeNavn(rec.modeId)}</h3>
           {mode && <p className="mt-0.5 text-xs text-ink-mute">{formatMinuteRange(mode.minutes)}</p>}
         </div>
       </div>
@@ -332,7 +332,7 @@ function AnbefalingKort({
       )}
 
       <div className="mt-auto flex items-center gap-2 pt-2">
-        <ModpartMærke mode={mode} />
+        <ModpartMaerke mode={mode} />
         <span className="ml-auto inline-flex items-center gap-1.5 text-sm font-semibold text-brand-400">
           Start
           <Icon.Arrow width={15} height={15} />
@@ -342,10 +342,10 @@ function AnbefalingKort({
   );
 }
 
-function ØvelseKort({ mode, onStart }: { mode: TrainingMode; onStart: () => void }) {
+function OevelseKort({ mode, onStart }: { mode: TrainingMode; onStart: () => void }) {
   const I = ikonFor(mode.icon, mode.id);
   return (
-    <button type="button" onClick={onStart} className="tile h-full">
+    <button type="button" onClick={onStart} className="tile group h-full">
       <div className="flex items-start gap-3">
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-base-line2 bg-base-panel2 text-ink-soft transition-colors group-hover:border-brand-700 group-hover:text-brand-400">
           <I width={18} height={18} />
@@ -364,7 +364,7 @@ function ØvelseKort({ mode, onStart }: { mode: TrainingMode; onStart: () => voi
       <p className="body-mute line-clamp-2">{truncate(mode.description, 130)}</p>
 
       <div className="mt-auto flex flex-wrap items-center gap-2 pt-2">
-        <ModpartMærke mode={mode} />
+        <ModpartMaerke mode={mode} />
         <span className="text-xs text-ink-mute">{formatMinuteRange(mode.minutes)}</span>
         <Icon.Arrow
           width={16}
@@ -376,7 +376,7 @@ function ØvelseKort({ mode, onStart }: { mode: TrainingMode; onStart: () => voi
   );
 }
 
-function ØvelseSkelet() {
+function OevelseSkelet() {
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" role="status" aria-label="Henter træningsformer">
       {Array.from({ length: 6 }).map((_, i) => (

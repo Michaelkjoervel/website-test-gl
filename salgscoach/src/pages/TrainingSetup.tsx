@@ -522,7 +522,7 @@ export function TrainingSetup() {
               </span>
               <div className="min-w-0">
                 <div className="eyebrow">Øvelse {String(mode.order ?? 0).padStart(2, "0")}</div>
-                <h1 className="title-lg mt-0.5 truncate">{mode.title}</h1>
+                <h1 className="title-lg mt-0.5">{mode.title}</h1>
               </div>
             </div>
 
@@ -533,22 +533,9 @@ export function TrainingSetup() {
               <span className="chip">{formatMinuteRange(mode.minutes)}</span>
               {brugerScenarie && <span className="chip">Scenarie genereres</span>}
             </div>
-
-            {mode.trains?.length > 0 && (
-              <div className="panel-inset mt-5 px-4 py-3">
-                <div className="eyebrow mb-2">Du træner</div>
-                <ul className="space-y-1.5">
-                  {mode.trains.slice(0, 4).map((t, i) => (
-                    <li key={i} className="flex gap-2.5 text-sm leading-relaxed text-ink-soft">
-                      <span className="mt-[9px] h-1 w-1 shrink-0 rounded-full bg-brand-600" />
-                      <span>{t}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
           </div>
 
+          {/* Knappen står før alt sekundært — også på mobil. */}
           <div className="shrink-0 md:w-64">
             {startKnap(true)}
             <p className="mt-2.5 text-xs leading-relaxed text-ink-mute">
@@ -560,6 +547,20 @@ export function TrainingSetup() {
             )}
           </div>
         </div>
+
+        {mode.trains.length > 0 && (
+          <div className="panel-inset mt-6 px-4 py-3.5 md:max-w-2xl">
+            <div className="eyebrow mb-2">Du træner</div>
+            <ul className="space-y-1.5">
+              {mode.trains.slice(0, 4).map((t, i) => (
+                <li key={i} className="flex gap-2.5 text-sm leading-relaxed text-ink-soft">
+                  <span className="mt-[9px] h-1 w-1 shrink-0 rounded-full bg-brand-600" />
+                  <span>{t}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {fase.kind === "startfejl" && (
           <div className="mt-5 space-y-3">
@@ -689,7 +690,8 @@ export function TrainingSetup() {
             <span className="min-w-0 flex-1">
               <span className="title-md block">Tilpas scenariet</span>
               <span className="body-mute mt-0.5 block">
-                Valgfrit. Uden valg genererer coachen en situation, der ligner jeres virkelighed.
+                Valgfrit. Uden valg bygger coachen selv en situation, der ligner jeres
+                virkelighed. Sværhedsgraden er hård som standard og blødes ikke op.
               </span>
             </span>
             <span className={`shrink-0 text-ink-mute transition-transform ${aabenTilpas ? "rotate-90" : ""}`}>

@@ -202,6 +202,14 @@ export interface TrainingSession {
   developmentFocus: string[];
   /** Sessionen er en gentagelse af en tidligere. */
   retryOf?: string;
+  /**
+   * Krypteret pakke med kundens skjulte oplysninger. Uigennemsigtig for
+   * klienten — den bæres blot med og gives tilbage til serveren, som er den
+   * eneste der kan åbne den. Må aldrig vises i UI'et.
+   */
+  hiddenBlob?: string;
+  /** Udtrukket materialetekst, når øvelsen handler om et uploadet dokument. */
+  documentText?: string;
 }
 
 /* ------------------------------------------------------------- Feedback */

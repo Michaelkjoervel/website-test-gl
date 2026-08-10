@@ -24,12 +24,21 @@ export function Panel({
   children,
   className = "",
   as: As = "div",
+  id,
+  ...rest
 }: {
   children: ReactNode;
   className?: string;
   as?: "div" | "section" | "article";
+  id?: string;
+  "aria-labelledby"?: string;
+  role?: string;
 }) {
-  return <As className={`panel p-5 md:p-6 ${className}`}>{children}</As>;
+  return (
+    <As id={id} className={`panel p-5 md:p-6 ${className}`} {...rest}>
+      {children}
+    </As>
+  );
 }
 
 export function SectionHeader({

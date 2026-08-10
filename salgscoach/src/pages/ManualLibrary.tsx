@@ -203,6 +203,30 @@ export function ManualLibrary() {
     );
   }
 
+  // Uden indeks har siden intet at navigere i. Så siger vi det — frem for at
+  // vise en tom manual, der ligner en manual uden indhold.
+  if (!manual) {
+    return (
+      <div className="space-y-6 pb-8">
+        <header>
+          <div className="eyebrow">green light · intern metodik</div>
+          <h1 className="title-xl mt-1.5">Salgsmanualen</h1>
+        </header>
+        {error ? (
+          <ErrorNote onRetry={() => setAttempt((n) => n + 1)}>
+            {error} Indekset er ikke indlæst.
+          </ErrorNote>
+        ) : (
+          <Notice>
+            Manualens indeks er tomt lige nu. Selve manualteksten ligger på green lights server —
+            den vises aldrig her — men kapitler og principtitler burde være tilgængelige. Prøv igen
+            om lidt.
+          </Notice>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8 pb-8">
       {/* ------------------------------------------------------- Overskrift */}
@@ -261,7 +285,7 @@ export function ManualLibrary() {
         </div>
         {view === "principper" && (
           <span className="text-xs text-ink-mute">
-            Skal du til møde om lidt? Checklisterne er lavet til telefonen.
+            Checklisterne er lavet til at blive åbnet på telefonen lige før et møde.
           </span>
         )}
       </div>
@@ -497,7 +521,11 @@ function PrincipleRow({
 
       <div className="mt-3 flex flex-wrap gap-2">
         {primary ? (
-          <Link to={`/traening/${primary}`} className="btn-primary btn-sm">
+          <Link
+            to={`/traening/${primary}`}
+            className="btn-primary btn-sm"
+            aria-label={`Træn "${principle.title}" i ${modeTitle(primary)}`}
+          >
             Træn det her
             <Icon.Arrow width={15} height={15} />
           </Link>
@@ -508,8 +536,13 @@ function PrincipleRow({
         )}
         <Link
           to="/traening/fri-coaching"
-          state={{ topic: principle.title, principleId: principle.id }}
+          state={{
+            topic: principle.title,
+            principleId: principle.id,
+            principleTitle: principle.title,
+          }}
           className="btn-outline btn-sm"
+          aria-label={`Spørg salgsdirektøren om "${principle.title}"`}
         >
           <Icon.Mic width={15} height={15} />
           Spørg salgsdirektøren om det
@@ -524,7 +557,12 @@ function PrincipleRow({
               <span aria-hidden="true">·</span>
               <span>Indgår også i</span>
               {others.map((m) => (
-                <Link key={m} to={`/traening/${m}`} className="chip-select">
+                <Link
+                  key={m}
+                  to={`/traening/${m}`}
+                  className="chip-select"
+                  aria-label={`Træn "${principle.title}" i ${modeTitle(m)}`}
+                >
                   {modeTitle(m)}
                 </Link>
               ))}

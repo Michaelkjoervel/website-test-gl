@@ -121,11 +121,16 @@ export async function callModel({ instructions, input, schema, schemaName, model
   };
   if (instructions) body.instructions = String(instructions);
   if (schema) {
+    // Skemaerne i _coachprompt.mjs eksporteres i OpenAIs egen indpakning
+    // { name, strict, schema }. Sendte vi den indpakning videre som selve
+    // skemaet, ville modellen få et skema der beskriver indpakningen — og
+    // svare med { name, strict, schema } i stedet for feedbacken.
+    const wrapped = schema && typeof schema === "object" && schema.schema && schema.name;
     body.text = {
       format: {
         type: "json_schema",
-        name: schemaName || "svar",
-        schema,
+        name: schemaName || (wrapped ? schema.name : "svar"),
+        schema: wrapped ? schema.schema : schema,
         strict: true,
       },
     };

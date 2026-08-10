@@ -214,6 +214,19 @@ export class BrowserVoiceSession {
     await this.flush();
   }
 
+  /**
+   * Afbryd modparten. Reservemotoren kan ikke stoppe midt i en sætning som
+   * realtime — men den kan stoppe afspilningen, og det er trods alt det,
+   * knappen lover sælgeren.
+   */
+  interrupt() {
+    if (this.audio && !this.audio.paused) {
+      this.audio.pause();
+      this.audio.currentTime = 0;
+      if (!this.stopped) this.setState("lytter");
+    }
+  }
+
   pause() {
     this.stopped = true;
     try {

@@ -17,7 +17,7 @@
 // aldrig kunne vælte selve feedbacken.
 // =============================================================================
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { useAuth } from "../lib/auth";
@@ -38,6 +38,7 @@ import {
   formatDuration,
   formatNumber,
   formatPercent,
+  ratingLabel,
   skillAreaLabel,
 } from "../lib/format";
 import { newId } from "../lib/ids";
@@ -204,14 +205,23 @@ export function Debrief() {
           sellerContext = undefined;
         }
 
+        // Den forseglede brief og materialeteksten følger sessionen, men står
+        // ikke i TrainingSession — de sættes af opsætningen og samtalen.
+        const extras = target as TrainingSession & {
+          hiddenBlob?: string;
+          documentText?: string;
+        };
+
         const { feedback } = await api.analyseSession({
           modeId: target.modeId,
           coachMode: target.coachMode,
           language: target.language,
           scenario: target.scenario,
+          hiddenBlob: extras.hiddenBlob,
           messages: target.transcript,
           sellerContext,
           intake: target.intake,
+          documentText: extras.documentText,
           durationSec: target.durationSec,
           // Hårde tal tælles i browseren: modellen skal vurdere, ikke tælle ord.
           metrics: countMetrics(target),
@@ -221,9 +231,10 @@ export function Debrief() {
           ...target,
           feedback,
           status: "analyseret",
+          summary: feedback.headline || target.summary,
           developmentFocus: target.developmentFocus?.length
             ? target.developmentFocus
-            : feedback.focusNextTime.slice(0, 2),
+            : (feedback.focusNextTime ?? []).slice(0, 2),
         };
         setSession(updated);
 
@@ -252,15 +263,26 @@ export function Debrief() {
 
   useEffect(() => {
     if (!session?.feedback || !seller || profileStarted.current) return;
+    // Kun sælgerens egen profil skrives her. En leder der kigger med, ændrer intet.
+    if (session.sellerId !== seller.id) return;
     profileStarted.current = true;
 
     void (async () => {
       try {
+        const previousProfile = await getProfile(seller.id);
+        // Er profilen allerede skrevet efter denne vurdering, er der intet nyt.
+        if (
+          previousProfile?.updatedAt &&
+          new Date(previousProfile.updatedAt).getTime() >=
+            new Date(session.feedback?.generatedAt ?? 0).getTime()
+        ) {
+          return;
+        }
+
         const all = await listSessions(seller.id);
         // Den netop analyserede session kan nå at være ældre i lageret.
         const merged = [session, ...all.filter((s) => s.id !== session.id)];
         const analysed = merged.filter((s) => s.status !== "kladde");
-        const previousProfile = await getProfile(seller.id);
 
         const { profile } = await api.buildProfile({
           initials: seller.initials,
@@ -386,32 +408,32 @@ export function Debrief() {
               tone="brand"
               icon={Icon.Check}
               title="Det gjorde du godt"
-              items={fb.didWell}
+              items={fb.didWell ?? []}
             />
             <VerdictBlock
               tone="warn"
               icon={Icon.Warn}
               title="Det holdt dig tilbage"
-              items={fb.heldBack}
+              items={fb.heldBack ?? []}
             />
             <VerdictBlock
               tone="danger"
               icon={Icon.Target}
               title="Det gik du glip af"
-              items={fb.missed}
+              items={fb.missed ?? []}
             />
             <VerdictBlock
               tone="client"
               icon={Icon.Handshake}
               title="Sådan ville jeg have gjort"
-              items={fb.iWouldHaveDone}
+              items={fb.iWouldHaveDone ?? []}
             />
             <VerdictBlock
               tone="focus"
               icon={Icon.Arrow}
               title="Fokus næste gang"
               eyebrow="Det du skal tage med videre"
-              items={fb.focusNextTime}
+              items={fb.focusNextTime ?? []}
               emphasis
             />
           </div>
@@ -509,15 +531,15 @@ function Header({
             <span className="eyebrow">Samlet vurdering</span>
             <RatingPill rating={feedback.overall} size="sm" />
           </div>
-          <h1 className="mt-3 max-w-[44ch] text-[23px] font-bold leading-[1.24] text-ink md:text-[32px]">
-            {feedback.headline}
+          <h1 className="title-xl mt-3 max-w-[44ch]">
+            {feedback.headline?.trim() || `Samlet vurdering: ${ratingLabel(feedback.overall)}`}
           </h1>
           <p className="mt-4 text-xs text-ink-faint">
             Vurderet af Salgsdirektøren · {formatDateTime(feedback.generatedAt)}
           </p>
         </>
       ) : (
-        <h1 className="mt-4 max-w-[30ch] text-[22px] font-bold leading-tight text-ink md:text-[28px]">
+        <h1 className="title-xl mt-4 max-w-[30ch]">
           {session.scenario?.title || modeLabel(session.modeId)}
         </h1>
       )}

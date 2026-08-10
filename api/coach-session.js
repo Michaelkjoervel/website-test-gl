@@ -67,6 +67,19 @@ function findMode(modeId) {
 
 const EAGERNESS = ["low", "auto", "high"];
 
+/**
+ * sellerContext er et OBJEKT, og promptbyggeren læser .weaknesses/.focusAreas
+ * direkte. Det må derfor ikke serialiseres på vejen — så mister coachen sin
+ * hukommelse om sælgeren, uden at noget fejler synligt. Vi begrænser i stedet
+ * størrelsen ved at klippe listerne og beholder formen.
+ */
+function boundContext(value, maxItems = 8) {
+  if (!value || typeof value !== "object") return null;
+  const out = {};
+  for (const [k, v] of Object.entries(value)) out[k] = Array.isArray(v) ? v.slice(0, maxItems) : v;
+  return out;
+}
+
 export default async function handler(req, res) {
   setCors(req, res);
   if (req.method === "OPTIONS") return res.status(204).end();
@@ -115,7 +128,7 @@ export default async function handler(req, res) {
       language,
       scenario: body?.scenario || null,
       hidden: openHidden(body?.hiddenBlob), // åbnes KUN her — aldrig i browseren
-      sellerContext: trim(body?.sellerContext, 6000),
+      sellerContext: boundContext(body?.sellerContext),
       intake: trim(body?.intake, 6000),
       documentText: trim(body?.documentText, 40_000),
       purpose: "realtime",
