@@ -26,10 +26,13 @@ import {
   EmptyState,
   ErrorNote,
   Field,
+  LoadingBlock,
   Notice,
+  PageState,
   Panel,
   RatingPill,
   SectionHeader,
+  Skel,
   Spinner,
   useToast,
 } from "../ui/primitives";
@@ -117,34 +120,47 @@ export function ManagerSeller() {
   const key = (initials ?? "").trim().toUpperCase();
 
   // Adgangskontrollen først. Ruten er lederens, uanset om menupunktet er synligt.
-  if (!seller) {
-    return (
-      <div className="flex items-center gap-3 py-16 text-sm text-ink-mute">
-        <Spinner /> Henter din adgang
-      </div>
-    );
-  }
+  if (!seller) return <SellerSkeleton label="Henter din adgang" />;
   if (!isManager) return <NoManagerAccess />;
   if (!key) return <UnknownSeller initials="" />;
 
   return <SellerInner initials={key} />;
 }
 
+function SellerSkeleton({ label }: { label: string }) {
+  return (
+    <div role="status" aria-label={label}>
+      <div className="mb-8" aria-hidden="true">
+        <Skel w={148} h={16} />
+      </div>
+      <div className="page-head flex items-center gap-4" aria-hidden="true">
+        <Skel w={52} h={52} className="rounded-xl" />
+        <div className="space-y-2.5">
+          <Skel w={132} h={24} />
+          <Skel w={196} h={11} />
+        </div>
+      </div>
+      <LoadingBlock label={label} rows={3} />
+    </div>
+  );
+}
+
 function UnknownSeller({ initials }: { initials: string }) {
   return (
-    <div className="space-y-5">
-      <BackLink />
-      <Panel as="section">
-        <EmptyState
-          title={initials ? `Ingen sælger med initialerne ${initials}` : "Der er ikke valgt nogen sælger"}
-          desc="Gå tilbage til ledelsesoverblikket og vælg en sælger fra oversigten."
-          action={
-            <Link className="btn-primary btn-sm" to="/ledelse">
-              Til ledelsesoverblikket
-            </Link>
-          }
-        />
-      </Panel>
+    <div>
+      <div className="mb-8">
+        <BackLink />
+      </div>
+      <PageState
+        eyebrow="Salgsledelse"
+        title={initials ? `Ingen sælger med initialerne ${initials}` : "Der er ikke valgt nogen sælger"}
+        desc="Vælg en sælger fra oversigten i ledelsesoverblikket."
+        actions={
+          <Link className="btn-primary" to="/ledelse">
+            Til ledelsesoverblikket
+          </Link>
+        }
+      />
     </div>
   );
 }
@@ -296,13 +312,7 @@ function SellerInner({ initials }: { initials: string }) {
 
   /* ------------------------------------------------------------------ Render */
 
-  if (loading) {
-    return (
-      <div className="flex items-center gap-3 py-16 text-sm text-ink-mute">
-        <Spinner /> Henter {initials}
-      </div>
-    );
-  }
+  if (loading) return <SellerSkeleton label={`Henter ${initials}`} />;
 
   if (notFound) return <UnknownSeller initials={initials} />;
 

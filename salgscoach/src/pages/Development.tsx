@@ -31,9 +31,11 @@ import {
   EmptyState,
   ErrorNote,
   Notice,
+  PageHeader,
   Panel,
   RatingPill,
   SectionHeader,
+  Skel,
   Spinner,
   useToast,
 } from "../ui/primitives";
@@ -223,36 +225,42 @@ export function Development() {
 
   /* ------------------------------------------------------------ Render */
 
-  if (!seller) {
+  if (!seller || loading) {
     return (
-      <div className="flex items-center gap-3 py-20 text-ink-mute">
-        <Spinner /> Henter din profil…
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center gap-3 py-20 text-ink-mute">
-        <Spinner /> Henter din udvikling…
+      <div role="status" aria-label="Henter din udvikling">
+        <div className="page-head" aria-hidden="true">
+          <Skel w={196} h={11} />
+          <div className="mt-3">
+            <Skel w="42%" h={32} />
+          </div>
+          <div className="mt-4 space-y-2">
+            <Skel w="72%" h={11} />
+            <Skel w="48%" h={11} />
+          </div>
+        </div>
+        <div className="panel space-y-3 p-5 md:p-6" aria-hidden="true">
+          <Skel w={182} h={10} />
+          <Skel w="100%" h={12} />
+          <Skel w="96%" h={12} />
+          <Skel w="64%" h={12} />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-10 pb-6">
-      <header>
-        <div className="eyebrow">Fortroligt · dig og salgsledelsen</div>
-        <h1 className="title-xl mt-1.5">Min udvikling</h1>
-        <p className="body mt-2 max-w-2xl">
-          Salgsdirektørens løbende vurdering af dig. Den skrives om efter hver øvelse og bygger
-          udelukkende på det, du faktisk har sagt i samtalerne.
-        </p>
-      </header>
+    <div className="space-y-10 pb-6 md:space-y-14">
+      <PageHeader
+        eyebrow="Fortroligt · dig og salgsledelsen"
+        title="Min udvikling"
+        desc="Salgsdirektørens løbende vurdering af dig. Den skrives om efter hver øvelse og bygger udelukkende på det, du faktisk har sagt i samtalerne."
+      />
 
       {error && (
-        <ErrorNote onRetry={() => setAttempt((n) => n + 1)}>
-          {error} Vurderingen er ikke hentet — prøv igen.
+        <ErrorNote title="Din udvikling kunne ikke hentes" onRetry={() => setAttempt((n) => n + 1)}>
+          Vurderingen ligger på green lights server. Den er ikke væk — den kunne bare ikke hentes
+          lige nu.
+          <span className="mt-3 block text-xs text-danger-300/70">{error}</span>
         </ErrorNote>
       )}
 
@@ -462,24 +470,25 @@ export function Development() {
 
 function NoProfileYet({ sessions }: { sessions: number }) {
   return (
-    <div className="space-y-5">
-      <EmptyState
-        icon={<Icon.Chart width={26} height={26} />}
-        title="Din profil er ikke bygget endnu"
-        desc="Vurderingen skrives ud fra rigtige samtaler — ikke ud fra en test. Der skal typisk fire-fem gennemførte øvelser til, før mønstrene er til at stole på. Indtil da ville en profil være et gæt, og et gæt er værre end ingenting."
-        action={
-          <Link to="/" className="btn-primary">
-            Se træningsformerne
-            <Icon.Arrow width={16} height={16} />
-          </Link>
-        }
-      />
-      <Notice>
-        {sessions > 0
-          ? `Du har ${plural(sessions, "gennemført samtale", "gennemførte samtaler")}. Der er endnu ikke nok til, at coachen vil skrive en vurdering.`
-          : "Så snart du har gennemført din første samtale, begynder coachen at samle op."}
-      </Notice>
-    </div>
+    <EmptyState
+      icon={<Icon.Chart width={22} height={22} />}
+      title="Din profil er ikke bygget endnu"
+      desc={
+        sessions > 0
+          ? `Vurderingen skrives ud fra rigtige samtaler. Du har ${plural(
+              sessions,
+              "gennemført samtale",
+              "gennemførte samtaler",
+            )} — der skal typisk fire-fem til, før mønstrene er til at stole på.`
+          : "Vurderingen skrives ud fra rigtige samtaler, ikke ud fra en test. Der skal typisk fire-fem gennemførte øvelser til, før mønstrene er til at stole på."
+      }
+      action={
+        <Link to="/" className="btn-primary">
+          Se træningsformerne
+          <Icon.Arrow width={16} height={16} />
+        </Link>
+      }
+    />
   );
 }
 

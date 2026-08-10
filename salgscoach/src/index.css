@@ -10,9 +10,11 @@
   }
   body {
     @apply bg-base text-ink font-sans antialiased;
-    background-image:
-      radial-gradient(1200px 600px at 12% -10%, rgba(159, 195, 74, 0.09), transparent 60%),
-      radial-gradient(900px 500px at 100% 0%, rgba(111, 168, 255, 0.05), transparent 55%);
+    /* Én enkelt, meget lav grøn hældning. Farve må ikke bruges dekorativt:
+       grøn = green light / salgsdirektøren, blå = rollespilskunden. Derfor
+       ligger der ikke længere en blå glød i baggrunden. */
+    background-image: linear-gradient(180deg, rgba(159, 195, 74, 0.045) 0%, transparent 420px);
+    background-repeat: no-repeat;
     background-attachment: fixed;
     -webkit-tap-highlight-color: transparent;
   }
@@ -42,10 +44,19 @@
   h3 {
     @apply tracking-tight;
   }
+
+  /* Sidste udvej for tastaturet: alt der ikke selv tegner en fokusring, får
+     denne. Komponenter med egen ring sætter focus:outline-none og vinder. */
+  :focus-visible {
+    outline: 2px solid #a6c747;
+    outline-offset: 2px;
+  }
 }
 
 @layer components {
-  /* ---------- Flader ---------- */
+  /* ---------- Flader ----------
+     Ét skyggeniveau. Kortene skal ligge i fladen, ikke svæve over den —
+     ellers bliver skærmen til "kortsuppe" hvor alt råber lige højt. */
   .panel {
     @apply rounded-2xl border border-base-line bg-base-panel shadow-panel;
   }
@@ -59,27 +70,31 @@
     @apply border-t border-base-line;
   }
 
-  /* ---------- Typografi ---------- */
+  /* ---------- Typografi ----------
+     Fire trin, ikke flere. Springet mellem trinnene skal kunne ses på en
+     armslængdes afstand, ellers er hierarkiet ikke et hierarki. */
   .eyebrow {
-    @apply text-2xs font-semibold uppercase tracking-[0.14em] text-ink-mute;
+    @apply text-[11px] font-semibold uppercase leading-4 tracking-[0.13em] text-ink-mute;
   }
   .title-xl {
-    @apply text-[26px] leading-tight font-bold text-ink md:text-[32px];
+    @apply text-[28px] font-bold leading-[1.15] text-ink md:text-[34px];
   }
   .title-lg {
-    @apply text-xl font-bold text-ink md:text-2xl;
+    @apply text-xl font-bold leading-tight text-ink md:text-[22px];
   }
   .title-md {
-    @apply text-base font-semibold text-ink;
+    /* Bemærk: IKKE "text-base" — "base" er også en farve i paletten, og
+       farve-utilityen vinder, så overskriften ville blive sort på sort. */
+    @apply text-[15px] font-semibold leading-snug text-ink md:text-[16px];
   }
   .body {
-    @apply text-sm leading-relaxed text-ink-soft;
+    @apply text-sm leading-relaxed text-ink-soft md:text-[15px];
   }
   .body-mute {
-    @apply text-sm leading-relaxed text-ink-mute;
+    @apply text-sm leading-relaxed text-ink-mute md:text-[15px];
   }
   .label {
-    @apply text-xs font-medium tracking-wide text-ink-soft;
+    @apply text-xs font-semibold uppercase tracking-[0.08em] text-ink-mute;
   }
   .prose-coach {
     @apply text-[15px] leading-[1.65] text-ink-soft;
@@ -88,10 +103,24 @@
     @apply font-semibold text-ink;
   }
 
-  /* ---------- Knapper ---------- */
+  /* Sidehoved: samme mål på hver skærm, så overskrifterne står på samme
+     grundlinje uanset hvilken side man kommer fra. */
+  .page-head {
+    @apply mb-7 md:mb-9;
+  }
+  .page-head .eyebrow + h1 {
+    @apply mt-2;
+  }
+  .page-head p {
+    @apply mt-2.5 max-w-[62ch];
+  }
+
+  /* ---------- Knapper ----------
+     Fælles mindstehøjde, så en række knapper altid flugter, og så ingen
+     berøringsflade bliver under 40 px på telefonen. */
   .btn {
-    @apply inline-flex select-none items-center justify-center gap-2 rounded-xl px-4 py-2.5
-           text-sm font-semibold transition-all duration-150
+    @apply inline-flex min-h-[42px] select-none items-center justify-center gap-2 rounded-xl px-4 py-2.5
+           text-sm font-semibold transition-colors duration-150
            focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2
            focus-visible:ring-offset-base disabled:cursor-not-allowed disabled:opacity-45;
   }
@@ -110,26 +139,34 @@
     @apply btn border border-danger-600/60 bg-danger-900/50 text-danger-300 hover:bg-danger-900;
   }
   .btn-sm {
-    @apply px-3 py-1.5 text-xs;
+    @apply min-h-[36px] px-3 py-1.5 text-[13px];
   }
   .btn-lg {
-    @apply px-6 py-3.5 text-[15px];
+    @apply min-h-[52px] px-6 py-3.5 text-[15px];
+  }
+  .btn-icon {
+    @apply px-0;
+    width: 42px;
+  }
+  .btn-icon.btn-sm {
+    width: 36px;
   }
 
   /* ---------- Felter ---------- */
   .input,
   .select,
   .textarea {
-    @apply w-full rounded-xl border border-base-line bg-base/70 px-4 py-2.5 text-sm text-ink
-           placeholder:text-ink-faint focus:border-brand-600 focus:outline-none
-           focus:ring-2 focus:ring-brand-900 transition-colors;
+    @apply w-full rounded-xl border border-base-line bg-base/70 px-4 py-3 text-sm text-ink
+           placeholder:text-ink-faint focus:border-brand-500 focus:outline-none
+           focus:ring-2 focus:ring-brand-700/50 transition-colors;
+    min-height: 46px;
   }
   .textarea {
-    @apply min-h-[96px] resize-y leading-relaxed;
+    @apply min-h-[104px] resize-y leading-relaxed;
   }
   .select {
     @apply appearance-none bg-[length:14px] bg-[right_14px_center] bg-no-repeat pr-10;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%2376806F'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%2376806F' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M4 6.5l4 4 4-4'/%3E%3C/svg%3E");
   }
 
   /* ---------- Chips & badges ---------- */
@@ -150,18 +187,23 @@
     @apply chip border-danger-600/40 bg-danger-900 text-danger-300;
   }
   .chip-select {
-    @apply chip cursor-pointer transition-colors hover:border-base-line2 hover:text-ink;
+    @apply chip min-h-[36px] cursor-pointer px-3 transition-colors hover:border-base-line2 hover:text-ink
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2
+           focus-visible:ring-offset-base;
   }
   .chip-select[data-on="true"] {
     @apply border-brand-600 bg-brand-950 text-brand-200;
   }
 
-  /* ---------- Kort som kan klikkes ---------- */
-  /* Bemærk: "group" kan ikke @apply'es — sæt den direkte i markup ved siden af .tile. */
+  /* ---------- Kort som kan klikkes ----------
+     Ingen løft, ingen skyggekast. Et internt værktøj skal ikke opføre sig som
+     en landingsside; kanten og fladen skifter, og det er nok.
+     Bemærk: "group" kan ikke @apply'es — sæt den direkte i markup. */
   .tile {
     @apply relative flex flex-col gap-2 rounded-2xl border border-base-line bg-base-panel p-5
-           text-left transition-all duration-150 hover:-translate-y-0.5 hover:border-brand-700
-           hover:shadow-lift focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400;
+           text-left transition-colors duration-150 hover:border-brand-700 hover:bg-base-panel2
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400
+           focus-visible:ring-offset-2 focus-visible:ring-offset-base;
   }
 
   /* ---------- Stemme-tilstande ---------- */
@@ -176,6 +218,14 @@
     -webkit-mask-image: linear-gradient(to bottom, transparent, #000 18px, #000 calc(100% - 18px), transparent);
     mask-image: linear-gradient(to bottom, transparent, #000 18px, #000 calc(100% - 18px), transparent);
   }
+
+  /* ---------- Skelet ----------
+     Ventetid skal have form. En grå bjælke der ligner det indhold der kommer,
+     siger mere end en spinner. */
+  .skel {
+    @apply rounded bg-base-panel2;
+    animation: skel 1.6s ease-in-out infinite;
+  }
 }
 
 @layer utilities {
@@ -188,6 +238,49 @@
   }
   .safe-b {
     padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .safe-t {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .safe-x {
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+}
+
+@keyframes skel {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+/* -----------------------------------------------------------------------------
+ * Læsbarhed på telefonen. Står bevidst uden for @layer, så det ligger sidst i
+ * kaskaden: ingen brødtekst eller etiket må ende under 13 px i hånden.
+ * -------------------------------------------------------------------------- */
+@media (max-width: 767px) {
+  .text-xs {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+  .text-2xs {
+    font-size: 11.5px;
+    line-height: 1.4;
+  }
+  .eyebrow {
+    font-size: 11.5px;
+  }
+  /* Ingen berøringsflade under 40 px i hånden. */
+  .btn-sm,
+  .chip-select {
+    min-height: 40px;
+  }
+  .btn-icon.btn-sm {
+    width: 40px;
   }
 }
 

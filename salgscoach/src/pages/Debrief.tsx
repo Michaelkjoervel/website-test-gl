@@ -38,9 +38,23 @@ import {
   formatDuration,
   formatNumber,
   formatPercent,
+  plural,
   ratingLabel,
   skillAreaLabel,
 } from "../lib/format";
+
+/**
+ * Hvad salgsdirektøren rent faktisk laver, mens sælgeren venter. Samme
+ * rækkefølge og samme ordlyd som under selve øvelsen — ventetiden skal føles
+ * som ét forløb, ikke to forskellige skærme.
+ */
+const ANALYSE_STEPS: readonly { at: number; text: string }[] = [
+  { at: 0, text: "Læser hele samtalen igennem" },
+  { at: 6, text: "Skiller fakta fra antagelser" },
+  { at: 14, text: "Vurderer spørgsmål, lytning og taletid" },
+  { at: 23, text: "Holder samtalen op mod salgsmanualen" },
+  { at: 32, text: "Skriver feedbacken og dit næste fokus" },
+];
 import { newId } from "../lib/ids";
 import type {
   ConversationMetrics,
@@ -57,15 +71,17 @@ import { Icon } from "../ui/icons";
 import {
   Bar,
   CoachText,
-  EmptyState,
   ErrorNote,
   Modal,
   Notice,
+  PageState,
   Panel,
   RatingPill,
   SectionHeader,
+  Skel,
   Spinner,
   Stat,
+  StepWait,
   useToast,
 } from "../ui/primitives";
 
@@ -156,6 +172,7 @@ export function Debrief() {
 
   const [analysing, setAnalysing] = useState(false);
   const [analyseError, setAnalyseError] = useState<string | null>(null);
+  const [analyseSec, setAnalyseSec] = useState(0);
 
   const [transcriptOpen, setTranscriptOpen] = useState(false);
   const [profileUpdated, setProfileUpdated] = useState(false);
@@ -184,6 +201,16 @@ export function Debrief() {
     profileStarted.current = false;
     void load();
   }, [load]);
+
+  /* Uret under analysen. Ventetiden er lang nok til, at den skal kunne aflæses
+     — ikke gættes. Kører kun mens vi faktisk venter. */
+  useEffect(() => {
+    if (!analysing) return;
+    setAnalyseSec(0);
+    const from = Date.now();
+    const id = window.setInterval(() => setAnalyseSec(Math.floor((Date.now() - from) / 1000)), 1000);
+    return () => window.clearInterval(id);
+  }, [analysing]);
 
   /* ---------------------------------------------------------------- Analyse */
 
@@ -329,34 +356,70 @@ export function Debrief() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <Spinner size={24} />
+      <div className="space-y-6" role="status" aria-label="Henter debriefingen">
+        <div>
+          <Skel w={148} h={11} />
+          <div className="mt-3">
+            <Skel w="58%" h={30} />
+          </div>
+          <div className="mt-4">
+            <Skel w="40%" h={12} />
+          </div>
+        </div>
+        <div className="panel space-y-3 p-5 md:p-6" aria-hidden="true">
+          <Skel w="34%" h={13} />
+          <Skel w="100%" h={10} />
+          <Skel w="92%" h={10} />
+          <Skel w="68%" h={10} />
+        </div>
+        <div className="panel space-y-3 p-5 md:p-6" aria-hidden="true">
+          <Skel w="28%" h={13} />
+          <Skel w="100%" h={10} />
+          <Skel w="80%" h={10} />
+        </div>
       </div>
     );
   }
 
   if (loadError) {
     return (
-      <div className="space-y-4">
-        <ErrorNote onRetry={() => void load()}>{loadError}</ErrorNote>
-        <Link to="/historik" className="btn-outline btn-sm">
-          <Icon.Back width={15} height={15} />
-          Til historikken
-        </Link>
-      </div>
+      <PageState
+        eyebrow="Debriefing"
+        title="Debriefingen kunne ikke hentes"
+        desc="Samtalen er ikke væk. Den ligger, hvor den blev gemt — det er kun visningen her, der ikke kunne bygges."
+        detail={loadError}
+        tone="danger"
+        actions={
+          <>
+            <button type="button" className="btn-primary" onClick={() => void load()}>
+              <Icon.Repeat width={16} height={16} />
+              Prøv igen
+            </button>
+            <Link to="/historik" className="btn-outline">
+              <Icon.Back width={15} height={15} />
+              Til historikken
+            </Link>
+          </>
+        }
+      />
     );
   }
 
   if (!session) {
     return (
-      <EmptyState
-        icon={<Icon.History width={26} height={26} />}
+      <PageState
+        eyebrow="Debriefing"
         title="Øvelsen findes ikke"
-        desc="Enten er den slettet, eller også hører den til en anden sælger."
-        action={
-          <Link to="/historik" className="btn-primary">
-            Se din historik
-          </Link>
+        desc="Enten er den slettet, eller også hører den til en anden sælger. Dine egne øvelser står i historikken."
+        actions={
+          <>
+            <Link to="/historik" className="btn-primary">
+              Se din historik
+            </Link>
+            <Link to="/" className="btn-outline">
+              Til træningen
+            </Link>
+          </>
         }
       />
     );
@@ -372,25 +435,28 @@ export function Debrief() {
 
       {/* ------------------------------------------------------ Venteposition */}
       {!fb && analysing && (
-        <Panel className="flex flex-col items-center gap-4 py-14 text-center">
-          <Spinner size={26} />
-          <h2 className="title-lg">Salgsdirektøren gennemgår samtalen</h2>
-          <p className="body max-w-[52ch]">
-            Hele referatet bliver læst igennem: hvad du fik etableret, hvad du stadig kun antager,
-            og hvad du gik forbi. Det tager typisk under et minut.
-          </p>
-        </Panel>
+        <StepWait
+          eyebrow="Vurdering"
+          title="Salgsdirektøren gennemgår samtalen"
+          desc={`${plural(session.transcript.length, "replik", "replikker")} · ${formatDuration(
+            session.durationSec,
+          )} samtale. Hele referatet bliver læst igennem frem for skimmet, så det tager typisk 10-40 sekunder.`}
+          steps={ANALYSE_STEPS}
+          seconds={analyseSec}
+          note="Du kan blive på siden. Samtalen er allerede gemt, og vurderingen lægger sig oven på den."
+        />
       )}
 
       {!fb && !analysing && analyseError && (
-        <div className="space-y-3">
-          <ErrorNote onRetry={() => void analyse(session)}>
-            Vurderingen kunne ikke hentes. {analyseError}
-          </ErrorNote>
-          <p className="body-mute">
-            Samtalen er gemt. Du kan trygt prøve igen — referatet forsvinder ikke.
-          </p>
-        </div>
+        <ErrorNote
+          title="Vurderingen kunne ikke hentes"
+          onRetry={() => void analyse(session)}
+          retryLabel="Prøv vurderingen igen"
+        >
+          Samtalen er gemt, og referatet forsvinder ikke. Det er kun salgsdirektørens gennemgang,
+          der mangler.
+          <span className="mt-3 block text-xs text-danger-300/70">{analyseError}</span>
+        </ErrorNote>
       )}
 
       {!fb && !analysing && !analyseError && !session.transcript.length && (

@@ -63,9 +63,29 @@ export interface BrowserVoiceEvents {
 export interface BrowserVoiceOptions {
   language: "da" | "en";
   events: BrowserVoiceEvents;
-  /** Kaldes når sælgeren har talt færdig — skal returnere modpartens svar. */
-  respond: (sellerText: string) => Promise<{ text: string; audio?: string }>;
+  /**
+   * Kaldes når sælgeren har talt færdig — skal returnere modpartens svar.
+   * `recorded` fortæller om replikken allerede står i referatet, så den ikke
+   * bliver skrevet ind to gange.
+   */
+  respond: (
+    sellerText: string,
+    opts: { recorded: boolean },
+  ) => Promise<{ text: string; audio?: string }>;
 }
+
+/**
+ * Fejl hvor talegenkendelsen ikke kommer i gang igen af sig selv. De må ikke
+ * fortie: står der "Lytter" på skærmen, mens mikrofonen er død, taler sælgeren
+ * ud i ingenting uden at vide det.
+ */
+const FATAL_RECOGNITION_ERRORS: Readonly<Record<string, string>> = {
+  "not-allowed": "Adgang til mikrofonen blev afvist.",
+  "service-not-allowed": "Browseren må ikke bruge talegenkendelsen på denne maskine.",
+  "audio-capture": "Der blev ikke fundet nogen mikrofon.",
+  network: "Talegenkendelsen kunne ikke nå sin sprogtjeneste (netværket blokerer den).",
+  "language-not-supported": "Talegenkendelsen understøtter ikke dansk i denne browser.",
+};
 
 export class BrowserVoiceSession {
   private rec: SpeechRecognitionLike | null = null;
@@ -135,9 +155,14 @@ export class BrowserVoiceSession {
 
     rec.onerror = (e) => {
       if (e.error === "no-speech" || e.error === "aborted") return;
-      if (e.error === "not-allowed") {
-        this.opts.events.onError?.("Adgang til mikrofonen blev afvist.");
+      const fatal = FATAL_RECOGNITION_ERRORS[e.error];
+      if (fatal) {
+        // Genkendelsen kommer ikke igen af sig selv — stop genstarterne, og
+        // sig det højt, så hooken kan skifte øvelsen over på skrift.
+        this.stopped = true;
+        window.clearTimeout(this.restartTimer);
         this.setState("fejl");
+        this.opts.events.onError?.(fatal);
         return;
       }
       this.opts.events.onError?.(`Talegenkendelsen fejlede (${e.error}).`);
@@ -165,17 +190,22 @@ export class BrowserVoiceSession {
     }
   }
 
-  /** Send det sælgeren har sagt videre og afspil modpartens svar. */
-  private async flush() {
+  /**
+   * Send det sælgeren har sagt videre og afspil modpartens svar.
+   * `record: false` bruges til beskeder der skal til modparten, men IKKE ind i
+   * referatet — fx sælgerens anmodning om coaching.
+   */
+  private async flush(opts: { record?: boolean } = {}) {
+    const record = opts.record !== false;
     const text = this.buffer.trim();
     if (!text || this.busy) return;
     this.buffer = "";
     this.busy = true;
-    this.opts.events.onTranscript?.("saelger", text, true);
+    if (record) this.opts.events.onTranscript?.("saelger", text, true);
     this.setState("taenker");
 
     try {
-      const reply = await this.opts.respond(text);
+      const reply = await this.opts.respond(text, { recorded: record });
       if (this.stopped) return;
       this.opts.events.onTranscript?.("modpart", reply.text, true);
       if (reply.audio) {
@@ -209,9 +239,9 @@ export class BrowserVoiceSession {
   }
 
   /** Skriftligt input i reservemotoren (fx hvis mikrofonen driller). */
-  async say(text: string) {
+  async say(text: string, opts: { record?: boolean } = {}) {
     this.buffer = text;
-    await this.flush();
+    await this.flush(opts);
   }
 
   /**
@@ -225,6 +255,27 @@ export class BrowserVoiceSession {
       this.audio.currentTime = 0;
       if (!this.stopped) this.setState("lytter");
     }
+  }
+
+  /**
+   * Slå mikrofonen fra og til uden at forlade øvelsen. Reservemotoren har
+   * ingen lydspor at slukke — genkendelsen SKAL stoppes, ellers lytter
+   * browseren videre, mens knappen siger "Slået fra".
+   */
+  setMuted(muted: boolean) {
+    if (muted) {
+      this.stopped = true;
+      window.clearTimeout(this.restartTimer);
+      try {
+        this.rec?.abort();
+      } catch {
+        /* ignorér */
+      }
+      return;
+    }
+    if (this.state === "afsluttet" || this.state === "fejl") return;
+    this.stopped = false;
+    void this.start();
   }
 
   pause() {

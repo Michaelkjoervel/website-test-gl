@@ -20,7 +20,7 @@ import { newId } from "../lib/ids";
 import { config as appConfig } from "../config";
 import { formatMinuteRange, truncate } from "../lib/format";
 import { Icon, type IconName } from "../ui/icons";
-import { ChipGroup, ErrorNote, Field, Notice } from "../ui/primitives";
+import { ChipGroup, ErrorNote, Field, Notice, PageState, Skel } from "../ui/primitives";
 import type {
   CoachMode,
   CoachModeSpec,
@@ -219,6 +219,12 @@ function foerste(...lister: string[][]): string[] {
 function fejltekst(e: unknown): string {
   const besked = e instanceof Error ? e.message : String(e ?? "");
   return besked.trim() || "Ukendt fejl.";
+}
+
+/** Et læsbart navn ud fra rute-id'et, når manifestet ikke kan nås. */
+function paentModeNavn(id: string): string {
+  const t = id.replace(/-/g, " ").trim();
+  return t ? t.charAt(0).toUpperCase() + t.slice(1) : "Ukendt";
 }
 
 /* =========================================================================== */
@@ -452,29 +458,54 @@ export function TrainingSetup() {
 
   if (fase.kind === "manifestfejl") {
     return (
-      <div className="mx-auto max-w-2xl space-y-4">
-        <TilbageLink />
-        <ErrorNote onRetry={() => void hentManifest()}>
-          Øvelsen kunne ikke hentes. {truncate(fase.besked, 140)}
-        </ErrorNote>
+      <div>
+        <div className="mb-8">
+          <TilbageLink />
+        </div>
+        <PageState
+          eyebrow={`Øvelse · ${paentModeNavn(modeId)}`}
+          title="Øvelsen kunne ikke hentes"
+          desc="Beskrivelsen af øvelsen ligger på green lights server, og den svarer ikke lige nu. Der er ikke sat noget i gang, og der er intet at fortryde — prøv igen om et øjeblik."
+          detail={truncate(fase.besked, 180)}
+          tone="danger"
+          actions={
+            <>
+              <button type="button" className="btn-primary" onClick={() => void hentManifest()}>
+                <Icon.Repeat width={16} height={16} />
+                Prøv igen
+              </button>
+              <Link to="/" className="btn-outline">
+                Alle øvelser
+              </Link>
+            </>
+          }
+        />
       </div>
     );
   }
 
   if (fase.kind === "ukendt" || !mode) {
     return (
-      <div className="mx-auto max-w-2xl space-y-4">
-        <TilbageLink />
-        <div className="panel p-6 md:p-8">
-          <h1 className="title-lg">Den øvelse findes ikke</h1>
-          <p className="body mt-2">
-            Der er ingen træningsform der hedder “{truncate(modeId, 40)}”. Den kan være
-            omdøbt eller fjernet fra manifestet.
-          </p>
-          <Link to="/" className="btn-primary mt-6">
-            Se alle øvelser
-          </Link>
+      <div>
+        <div className="mb-8">
+          <TilbageLink />
         </div>
+        <PageState
+          eyebrow="Øvelse"
+          title="Den øvelse findes ikke"
+          desc={
+            <>
+              Der er ingen træningsform der hedder{" "}
+              <span className="text-ink">»{truncate(modeId, 40)}«</span>. Den kan være omdøbt
+              eller taget ud af værktøjet.
+            </>
+          }
+          actions={
+            <Link to="/" className="btn-primary">
+              Se alle øvelser
+            </Link>
+          }
+        />
       </div>
     );
   }
@@ -825,7 +856,7 @@ function TilbageLink() {
   return (
     <Link
       to="/"
-      className="inline-flex items-center gap-2 text-sm font-medium text-ink-mute transition-colors hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 rounded-lg"
+      className="-ml-2 inline-flex min-h-[40px] items-center gap-2 rounded-lg px-2 text-sm font-medium text-ink-mute transition-colors hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2 focus-visible:ring-offset-base"
     >
       <Icon.Back width={16} height={16} />
       Alle øvelser
@@ -865,23 +896,34 @@ function Linje({ icon, children }: { icon: ReactNode; children: ReactNode }) {
 
 function Skelet() {
   return (
-    <div className="space-y-6" role="status" aria-label="Henter øvelsen">
-      <div className="h-4 w-28 animate-pulse rounded bg-base-panel2" aria-hidden="true" />
-      <div className="panel p-6" aria-hidden="true">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 animate-pulse rounded-xl bg-base-panel2" />
-          <div className="space-y-2">
-            <div className="h-2.5 w-16 animate-pulse rounded bg-base-panel2" />
-            <div className="h-4 w-48 animate-pulse rounded bg-base-panel2" />
+    <div className="space-y-6 md:space-y-8" role="status" aria-label="Henter øvelsen">
+      <Skel w={112} h={16} />
+      <div className="panel p-5 md:p-7" aria-hidden="true">
+        <div className="flex flex-col gap-6 md:flex-row md:justify-between">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-3">
+              <Skel w={40} h={40} className="rounded-xl" />
+              <div className="space-y-2">
+                <Skel w={64} h={9} />
+                <Skel w={184} h={14} />
+              </div>
+            </div>
+            <div className="mt-6 space-y-2">
+              <Skel w="100%" h={10} />
+              <Skel w="72%" h={10} />
+            </div>
           </div>
+          <Skel w={256} h={52} className="rounded-xl" />
         </div>
-        <div className="mt-6 space-y-2">
-          <div className="h-2.5 w-full animate-pulse rounded bg-base-panel2" />
-          <div className="h-2.5 w-3/4 animate-pulse rounded bg-base-panel2" />
-        </div>
-        <div className="mt-6 h-12 w-full animate-pulse rounded-xl bg-base-panel2 md:w-64" />
       </div>
-      <div className="panel h-40 animate-pulse" aria-hidden="true" />
+      <div className="panel p-5 md:p-6" aria-hidden="true">
+        <Skel w={228} h={14} />
+        <div className="mt-5 grid gap-2.5 sm:grid-cols-3">
+          <Skel h={92} className="rounded-xl" />
+          <Skel h={92} className="rounded-xl" />
+          <Skel h={92} className="rounded-xl" />
+        </div>
+      </div>
     </div>
   );
 }

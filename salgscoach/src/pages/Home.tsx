@@ -17,7 +17,7 @@ import { useAuth } from "../lib/auth";
 import { getProfile, listSessions } from "../lib/store";
 import { formatMinuteRange, plural, relativeTime, truncate } from "../lib/format";
 import { Icon, type IconName } from "../ui/icons";
-import { ErrorNote, SectionHeader } from "../ui/primitives";
+import { EmptyState, ErrorNote, PageHeader, SectionHeader, Skel } from "../ui/primitives";
 import type {
   RecommendedTraining,
   Seller,
@@ -200,24 +200,22 @@ export function Home() {
   /* ------------------------------------------------------------- Render */
 
   return (
-    <div className="space-y-10 md:space-y-12">
-      {/* -------------------------------------------------------- Spørgsmålet */}
-      <header className="animate-fade-up">
-        <h1 className="title-xl max-w-2xl">
-          Hvad vil du arbejde med i dag{navn ? `, ${navn}` : ""}?
-        </h1>
-        <p className="body-mute mt-2 min-h-[20px]">{kontekstlinje}</p>
-      </header>
+    <div className="space-y-10 md:space-y-14">
+      {/* ------------------------------------------------------------- Hoved */}
+      <PageHeader
+        eyebrow={navn ? `Sælger · ${navn}` : "Salgscoach"}
+        title="Træning"
+        desc="Vælg en øvelse. Samtalen føres med stemmen, og du får en vurdering af den bagefter."
+        meta={kontekstlinje || undefined}
+      />
 
       {/* ------------------------------------------------------- Første gang */}
       {foersteGang && (
         <section className="panel-quiet border-l-2 border-l-brand-600 p-5 md:p-6">
           <h2 className="title-md">Første gang her</h2>
-          <p className="body mt-2 max-w-2xl">
-            Du taler dig igennem en salgssituation med din egen stemme — enten med en kunde,
-            der ikke giver noget væk gratis, eller med salgsdirektøren, der går dig efter i
-            sømmene. Bagefter får du en ærlig vurdering af det, du faktisk sagde, og coachen
-            er ikke høflig for høflighedens skyld.
+          <p className="body mt-2 max-w-[62ch]">
+            Du taler en salgssituation igennem med din egen stemme — med en kunde eller med
+            salgsdirektøren. Bagefter vurderes det, du faktisk sagde.
           </p>
         </section>
       )}
@@ -230,7 +228,7 @@ export function Home() {
             title="Fortsæt hvor du slap"
             desc="Valgt ud fra dine seneste samtaler — ikke ud fra hvad der er behageligst at træne."
           />
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {anbefalinger.map((r, i) => (
               <AnbefalingKort
                 key={`${r.modeId}-${i}`}
@@ -252,27 +250,34 @@ export function Home() {
         />
 
         {modesFejl && (
-          <ErrorNote onRetry={() => void hentManifest()}>
-            Træningsformerne kunne ikke hentes. {truncate(modesFejl, 140)}
+          <ErrorNote
+            title="Træningsformerne kunne ikke hentes"
+            onRetry={() => void hentManifest()}
+            retryLabel="Hent listen igen"
+          >
+            Listen over øvelser ligger på green lights server, og den svarer ikke lige nu. Alt
+            andet i værktøjet virker — historik, udvikling og materiale ligger allerede her.
+            <span className="mt-3 block text-xs text-danger-300/70">{truncate(modesFejl, 160)}</span>
           </ErrorNote>
         )}
 
         {!modesFejl && modes === null && <OevelseSkelet />}
 
         {!modesFejl && modes !== null && synligeModes.length === 0 && (
-          <div className="panel-quiet p-6 text-center">
-            <div className="title-md">Ingen træningsformer tilgængelige</div>
-            <p className="body-mute mx-auto mt-1.5 max-w-md">
-              Serveren svarede uden øvelser. Prøv at hente listen igen.
-            </p>
-            <button type="button" className="btn-outline mt-5" onClick={() => void hentManifest()}>
-              Hent igen
-            </button>
-          </div>
+          <EmptyState
+            title="Ingen træningsformer er slået til"
+            desc="Serveren svarede uden øvelser. Det er en opsætning, ikke en fejl i din browser — prøv igen, eller sig til i salgsledelsen."
+            action={
+              <button type="button" className="btn-outline" onClick={() => void hentManifest()}>
+                <Icon.Repeat width={15} height={15} />
+                Hent listen igen
+              </button>
+            }
+          />
         )}
 
         {!modesFejl && synligeModes.length > 0 && (
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {synligeModes.map((m) => (
               <OevelseKort key={m.id} mode={m} onStart={() => start(m.id)} />
             ))}
@@ -308,30 +313,30 @@ function AnbefalingKort({
     <button
       type="button"
       onClick={onStart}
-      className="tile group border-brand-900 bg-brand-950/30 hover:border-brand-600"
+      className="tile group gap-0 border-brand-900 bg-brand-950/25 hover:border-brand-600 hover:bg-brand-950/40"
     >
       <div className="flex items-start gap-3">
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-brand-800 bg-brand-950 text-brand-400">
-          <I width={17} height={17} />
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-brand-800 bg-brand-950 text-brand-400">
+          <I width={18} height={18} />
         </span>
         <div className="min-w-0 flex-1">
           <h3 className="title-md truncate">{mode?.title ?? paentModeNavn(rec.modeId)}</h3>
-          {mode && <p className="mt-0.5 text-xs text-ink-mute">{formatMinuteRange(mode.minutes)}</p>}
+          {mode && <p className="mt-1 text-xs text-ink-mute">{formatMinuteRange(mode.minutes)}</p>}
         </div>
       </div>
 
-      <p className="body mt-1">{rec.why}</p>
+      <p className="body mt-3.5">{rec.why}</p>
 
-      <div className="panel-inset mt-1 px-3 py-2.5">
-        <div className="eyebrow mb-1">Coachen presser på</div>
+      <div className="panel-inset mt-3.5 px-3.5 py-3">
+        <div className="eyebrow mb-1.5">Coachen presser på</div>
         <p className="text-sm leading-relaxed text-ink">{rec.focus}</p>
       </div>
 
       {rec.scenarioHint && (
-        <p className="text-xs leading-relaxed text-ink-mute">{truncate(rec.scenarioHint, 120)}</p>
+        <p className="mt-3 text-xs leading-relaxed text-ink-mute">{truncate(rec.scenarioHint, 120)}</p>
       )}
 
-      <div className="mt-auto flex items-center gap-2 pt-2">
+      <div className="mt-auto flex items-center gap-2 pt-5">
         <ModpartMaerke mode={mode} />
         <span className="ml-auto inline-flex items-center gap-1.5 text-sm font-semibold text-brand-400">
           Start
@@ -345,31 +350,26 @@ function AnbefalingKort({
 function OevelseKort({ mode, onStart }: { mode: TrainingMode; onStart: () => void }) {
   const I = ikonFor(mode.icon, mode.id);
   return (
-    <button type="button" onClick={onStart} className="tile group h-full">
+    <button type="button" onClick={onStart} className="tile group h-full gap-0">
       <div className="flex items-start gap-3">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-base-line2 bg-base-panel2 text-ink-soft transition-colors group-hover:border-brand-700 group-hover:text-brand-400">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-base-line2 bg-base-panel2 text-ink-mute transition-colors group-hover:border-brand-700 group-hover:text-brand-400">
           <I width={18} height={18} />
         </span>
         <div className="min-w-0 flex-1">
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xs font-semibold tabular-nums text-ink-faint">
-              {String(mode.order ?? 0).padStart(2, "0")}
-            </span>
-            <h3 className="title-md truncate">{mode.title}</h3>
-          </div>
-          <p className="mt-0.5 truncate text-xs text-ink-mute">{mode.tagline}</p>
+          <h3 className="title-md truncate">{mode.title}</h3>
+          <p className="mt-1 truncate text-xs text-ink-mute">{mode.tagline}</p>
         </div>
       </div>
 
-      <p className="body-mute line-clamp-2">{truncate(mode.description, 130)}</p>
+      <p className="body-mute mt-3.5 line-clamp-2">{truncate(mode.description, 130)}</p>
 
-      <div className="mt-auto flex flex-wrap items-center gap-2 pt-2">
+      <div className="mt-auto flex flex-wrap items-center gap-2 pt-5">
         <ModpartMaerke mode={mode} />
         <span className="text-xs text-ink-mute">{formatMinuteRange(mode.minutes)}</span>
         <Icon.Arrow
           width={16}
           height={16}
-          className="ml-auto text-brand-500 opacity-0 transition-opacity group-hover:opacity-100"
+          className="ml-auto shrink-0 text-ink-faint transition-colors group-hover:text-brand-400"
         />
       </div>
     </button>
@@ -378,21 +378,23 @@ function OevelseKort({ mode, onStart }: { mode: TrainingMode; onStart: () => voi
 
 function OevelseSkelet() {
   return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" role="status" aria-label="Henter træningsformer">
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" role="status" aria-label="Henter træningsformer">
       {Array.from({ length: 6 }).map((_, i) => (
         <div key={i} className="panel p-5" aria-hidden="true">
           <div className="flex items-start gap-3">
-            <div className="h-10 w-10 animate-pulse rounded-xl bg-base-panel2" />
-            <div className="flex-1 space-y-2 pt-1">
-              <div className="h-3.5 w-2/3 animate-pulse rounded bg-base-panel2" />
-              <div className="h-2.5 w-1/3 animate-pulse rounded bg-base-panel2" />
+            <Skel w={40} h={40} className="rounded-xl" />
+            <div className="flex-1 space-y-2 pt-1.5">
+              <Skel w="66%" h={12} />
+              <Skel w="38%" h={9} />
             </div>
           </div>
           <div className="mt-4 space-y-2">
-            <div className="h-2.5 w-full animate-pulse rounded bg-base-panel2" />
-            <div className="h-2.5 w-4/5 animate-pulse rounded bg-base-panel2" />
+            <Skel w="100%" h={9} />
+            <Skel w="78%" h={9} />
           </div>
-          <div className="mt-5 h-5 w-24 animate-pulse rounded-full bg-base-panel2" />
+          <div className="mt-6">
+            <Skel w={104} h={22} className="rounded-full" />
+          </div>
         </div>
       ))}
     </div>

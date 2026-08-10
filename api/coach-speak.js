@@ -16,7 +16,7 @@
 //      COACH_TTS_MODEL (valgfri, default gpt-4o-mini-tts).
 // =============================================================================
 
-import { authorize, rateLimit, corsOrigin, speak } from "./_coach.mjs";
+import { authorize, coachRateLimit, corsOrigin, speak } from "./_coach.mjs";
 
 export const config = {
   maxDuration: 60,
@@ -65,7 +65,7 @@ export default async function handler(req, res) {
   if (!auth.ok) return res.status(auth.status).json({ error: auth.reason });
 
   // Egen spand: oplæsning er billigt og hyppigt og må ikke æde samtalekvoten.
-  const rl = rateLimit(`coach-speak:${auth.email || "anonymous"}`);
+  const rl = coachRateLimit("speak", auth.email);
   if (!rl.ok) return res.status(rl.status).json({ error: rl.reason });
 
   const text = typeof body?.text === "string" ? body.text.trim() : "";

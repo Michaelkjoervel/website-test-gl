@@ -196,6 +196,53 @@ export const PRINCIPLES = [
     keywords: ["send noget", "mail", "materiale", "brochure"],
   },
   {
+    id: "p2-fysisk-canvas",
+    chapter: 2,
+    category: "metode",
+    title: "Fysisk canvas – og kør aldrig langt kun for ét møde",
+    statement:
+      "Fysisk canvas er meget undervurderet, fordi næsten ingen gør det længere. Når du alligevel er ude i et område til et møde, så besøg nogle af de omkringliggende virksomheder. Kør aldrig langt kun for ét møde.",
+    rationale:
+      "Kørselstiden er allerede betalt, når først du er i området. Et møde alene i Sønderjylland er dyrt; tre besøg samme dag er billigt. Og døren, ingen andre banker på, er den, der står mest på klem.",
+    inPractice: [
+      "Spørg på kundemødet, om de kender nogen Facility Managers i området eller hos nabovirksomhederne — og brug det som indgang.",
+      "Åbning 1: “Jeg har lige været til møde med Jørgen i virksomhed xx lidt nede af gaden. Han mente, at det ville være relevant at tale med jer, nu jeg var i området.”",
+      "Åbning 2: “Jeg er faktisk lige ovre hos [virksomhed], hvor vi hjælper dem med deres belysning og energioptimering. Og nu hvor jeg alligevel er i området, tænkte jeg bare lige at høre, hvem der typisk har ansvar for drift eller facility hos jer?”",
+      "Kør igennem et industriområde og skriv adresser ned. Se på bygninger med stor tagflade i Google Maps. Spørg dine venner, hvor de arbejder.",
+    ],
+    antiPatterns: [
+      "Sælgeren kører to timer hver vej til ét møde og hjem igen uden at banke på en eneste anden dør.",
+      "Sælgeren planlægger dagen efter kalenderen i stedet for efter geografien.",
+      "Sælgeren venter på, at emnerne kommer ind af sig selv.",
+    ],
+    modes: ["telefon", "forberedelse", "fri-coaching", "manualeksamen"],
+    keywords: ["fysisk canvas", "opsøgende", "område", "kørsel", "industriområde", "besøg", "adresser"],
+  },
+  {
+    id: "p2-netvaerk",
+    chapter: 2,
+    category: "kundetilgang",
+    title: "Brug netværket aktivt – ikke tilfældigt",
+    statement:
+      "Netværk er et af de stærkeste salgsredskaber. Men de fleste bruger det alt for tilfældigt. Netværket består også af dine nuværende kunder, dine emner og alle vores samarbejdspartnere.",
+    rationale:
+      "En introduktion fra en, kunden allerede stoler på, springer hele tillidsfasen over. Den koster ét spørgsmål på et møde, du alligevel holder — men den bliver aldrig stillet, hvis den ikke er planlagt.",
+    inPractice: [
+      "Spørg på kundemøder — hver gang, ikke når det lige falder for: det er der, netværket ligger.",
+    ],
+    questions: [
+      "Hvem kender I ellers, der kunne have samme udfordring?",
+      "Ser du andre virksomheder i jeres branche med samme problematik?",
+      "Vi vil gerne arbejde med flere virksomheder som jer. Hvis du kender nogen, hvor det kunne give mening, må du meget gerne introducere os.",
+    ],
+    antiPatterns: [
+      "Sælgeren forlader et godt møde uden at have bedt om én eneste henvisning.",
+      "Sælgeren bruger kun netværket, når pipelinen er tom.",
+    ],
+    modes: ["salgsmoede", "naeste-skridt", "debriefing", "fri-coaching", "manualeksamen"],
+    keywords: ["netværk", "henvisning", "reference", "introduktion", "samarbejdspartnere", "leads"],
+  },
+  {
     id: "p2-installatoer-som-kilde",
     chapter: 2,
     category: "kundetilgang",
@@ -599,6 +646,44 @@ export const PRINCIPLES = [
     keywords: ["for dyrt", "billigere", "sammenligne", "nej", "Kina", "35 år"],
   },
 
+  {
+    id: "p8-nej-er-hvor-salget-begynder",
+    chapter: 8,
+    category: "adfaerd",
+    title: "Salget begynder først, når man har fået et nej",
+    statement:
+      "Husk: salget begynder først rigtigt, når man har fået et nej. Ved vi ikke, hvad kunden siger nej til, har vi ikke fundet grænsen. Hellere gå efter et nej end at bruge alt for meget tid på et håb, der ikke er der.",
+    rationale:
+      "Et høfligt ja uden indhold er dyrere end et nej. Nej'et fortæller, hvor grænsen går — og først dér ved sælgeren, hvad han reelt forhandler om. Uden et nej arbejder han i blinde på en sag, der måske aldrig fandtes.",
+    inPractice: [
+      "At kunden italesætter prisen eller siger nej, er et købssignal: nu ved vi, hvad der betyder noget, og nu kan vi styre samtalen.",
+      "Gå udfordringerne i møde og tag styringen — også når svaret risikerer at blive nej.",
+      "Man må gerne være lidt fræk. Mister man kunden ved at spørge, var de nok allerede mistet alligevel.",
+      "Når nej'et falder: “Det giver mening. Hvad ligger bag?” — og bliv i svaret.",
+    ],
+    questions: [
+      "Hvad er det, der holder jer tilbage?",
+      "Hvad skal der til, før I siger ja?",
+      "Hvad ligger bag?",
+    ],
+    antiPatterns: [
+      "Sælgeren undgår de spørgsmål, der kan udløse et nej, og holder sagen kunstigt i live.",
+      "Sælgeren tolker et høfligt “vi vender tilbage” som et ja, der bare mangler tid.",
+      "Sælgeren behandler nej'et som samtalens slutning i stedet for som dens begyndelse.",
+    ],
+    modes: [
+      "indvendinger",
+      "forhandling",
+      "kvalificering",
+      "tilbudsopfoelgning",
+      "naeste-skridt",
+      "fri-coaching",
+      "lynild",
+      "manualeksamen",
+    ],
+    keywords: ["nej", "grænse", "håb", "modstand", "mod", "afklaring", "købssignal"],
+  },
+
   /* ---- 9. Delaccept ---- */
   {
     id: "p9-delaccept",
@@ -761,8 +846,9 @@ export const PRINCIPLES = [
     statement:
       "Bliver vi koblet af dialogen med slutbrugeren, bliver løsningen ringere — bl.a. fordi der kommer fokus på de forkerte ting. Gør alt for at holde fast i slutbrugeren, ellers mister vi styringen.",
     rationale:
-      "Elektrikeren optimerer installation, egen avance og enkel udførelse — ikke nødvendigvis drift, totaløkonomi og slutbrugeroplevelse.",
+      "Elektrikeren optimerer installation, egen avance og enkel udførelse — ikke nødvendigvis drift, totaløkonomi og slutbrugeroplevelse. Men han er ofte tæt på kunden og kan køre os af banen. Derfor er han en vigtig samarbejdspartner, vi skal tage styringen over for — ikke en modstander, vi ignorerer.",
     inPractice: [
+      "Tag styringen over for BÅDE slutbruger og elektriker. Find ud af, hvad der driver elektrikeren, og find den rigtige gulerod til, at han går med os.",
       "“Det gør vi også gerne. Men for at sikre at løsningen matcher jeres drift og hverdag, er det vigtigt at vi også får jeres perspektiv med.”",
       "“Selvfølgelig vil jeg rigtig gerne i dialog med både din rådgiver og din elektriker. Men jeg slipper ikke dialogen direkte med dig, for jeg har et ansvar for, at det samlede resultat lever op til det, green light lover DIG.”",
       "Det stærke kort: “Skubber du mig over på rådgiveren, så fratager du mig muligheden for at få dig tæt med på rejsen og få afdækket dine behov — så melder jeg hellere fra på opgaven, da jeg så ikke kan finde den rigtige løsning til dig.” Det virker, fordi du tager noget fra folk. Gør man det, vil de bare have det igen.",
@@ -772,6 +858,7 @@ export const PRINCIPLES = [
     antiPatterns: [
       "Sælgeren accepterer at “køre det gennem rådgiveren” uden modstand.",
       "Sælgeren afleverer sin viden til rådgiveren i stedet for til slutbrugeren.",
+      "Sælgeren behandler elektrikeren som en modstander og finder aldrig ud af, hvad der driver ham.",
     ],
     modes: ["indvendinger", "kvalificering", "fri-coaching", "kunderollespil", "manualeksamen"],
     keywords: ["rådgiver", "elektriker", "indkøb", "slutbruger", "styring", "mellemled", "treparts"],

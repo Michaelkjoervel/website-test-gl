@@ -85,11 +85,12 @@ const config: Config = {
         mono: ["ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
       },
       fontSize: {
-        "2xs": ["10px", { lineHeight: "14px", letterSpacing: "0.06em" }],
+        "2xs": ["11px", { lineHeight: "15px", letterSpacing: "0.05em" }],
       },
       boxShadow: {
-        panel: "0 1px 0 rgba(255,255,255,0.03) inset, 0 12px 32px rgba(0,0,0,0.45)",
-        lift: "0 18px 48px rgba(0,0,0,0.55)",
+        // Ét diskret niveau. Skygger må adskille flader, ikke iscenesætte dem.
+        panel: "0 1px 0 rgba(255,255,255,0.025) inset",
+        lift: "0 12px 32px rgba(0,0,0,0.45)",
         glow: "0 0 0 1px rgba(159,195,74,0.35), 0 0 32px rgba(159,195,74,0.18)",
         glowClient: "0 0 0 1px rgba(111,168,255,0.35), 0 0 32px rgba(111,168,255,0.18)",
       },

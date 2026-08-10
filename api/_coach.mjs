@@ -46,6 +46,89 @@ const OPENAI_SPEECH_URL = "https://api.openai.com/v1/audio/speech";
 /** Maks. tekst vi nogensinde sender retur fra en dokumentudtrækning. */
 export const MAX_DOCUMENT_CHARS = 120_000;
 
+// ---------------------------------------------------------------------------
+// 0. Forbrugsbremse for salgscoachen
+// ---------------------------------------------------------------------------
+// HVORFOR EN EGEN: _core.mjs' rateLimit er bygget til visualiseringen — ét
+// tungt billedkald ad gangen, 20 i timen pr. bruger og 300 om dagen SAMLET for
+// hele værktøjskassen. En samtale er noget helt andet: 20-40 korte replikker på
+// en halv time. Brugte coachen den fælles spand, ville to rollespil både løbe
+// tør midt i øvelsen OG spise hele dagens kvote for visualiseringen.
+//
+// Derfor har coachen sine egne spande. Loftet er IKKE fjernet — det er delt op,
+// så et dyrt kald og en billig replik ikke tæller det samme sted, og så et
+// løbsk script i coachen ikke kan lukke et andet værktøj ned.
+//
+// SVAGHED, SAGT HØJT: tællingen ligger i hukommelsen på den enkelte serverless-
+// instans. Vercel kører flere instanser samtidig, så det reelle loft er
+// (grænse × antal varme instanser). Det er en bremse mod uheld og løbske
+// scripts — ikke et hårdt økonomisk loft. Skal loftet være hårdt på tværs af
+// instanser, kræver det et delt lager (Upstash/KV eller en tæller i Supabase).
+//
+// Env-overrides pr. handling: COACH_LIMIT_SAMTALE, COACH_LIMIT_SESSION, …
+// samt COACH_LIMIT_GLOBAL_PER_DAY for dagsloftet.
+
+/** Kald pr. bruger pr. time. Tallene følger, hvad handlingen koster. */
+const COACH_DEFAULT_LIMITS = {
+  samtale: 150, // korte replikker på den hurtige model — mange pr. øvelse
+  speak: 150, // oplæsning, billig
+  scenarie: 30, // grundig model, ét kald pr. øvelse
+  analyse: 30, // grundig model på en hel udskrift
+  profil: 20,
+  team: 20,
+  materiale: 15, // dyrest pr. kald: hele dokumentet gennem modellen
+  session: 20, // realtime-stemme er det dyreste pr. MINUT — hold den lav
+};
+
+/** Samlet loft pr. døgn for HELE coachen (alle brugere, denne instans). */
+const COACH_GLOBAL_PER_DAY = Math.max(1, Number(process.env.COACH_LIMIT_GLOBAL_PER_DAY) || 800);
+
+const COACH_HOUR = 60 * 60 * 1000;
+const COACH_DAY = 24 * COACH_HOUR;
+const coachPerUser = new Map(); // "handling:bruger" -> [tidsstempler]
+let coachGlobal = []; // [tidsstempler]
+
+function coachLimitFor(action) {
+  const env = Number(process.env[`COACH_LIMIT_${String(action).toUpperCase()}`]);
+  if (Number.isFinite(env) && env > 0) return Math.floor(env);
+  return COACH_DEFAULT_LIMITS[action] ?? 30;
+}
+
+/**
+ * Tæl ét coach-kald. Egen spand pr. handling PR. BRUGER, plus ét fælles
+ * dagsloft for coachen.
+ * @returns {{ ok: true } | { ok: false, status: number, reason: string }}
+ */
+export function coachRateLimit(action, user) {
+  const now = Date.now();
+
+  coachGlobal = coachGlobal.filter((t) => now - t < COACH_DAY);
+  if (coachGlobal.length >= COACH_GLOBAL_PER_DAY) {
+    return {
+      ok: false,
+      status: 429,
+      reason:
+        "Salgscoachens samlede grænse for i dag er nået. Prøv igen i morgen, eller kontakt administratoren.",
+    };
+  }
+
+  const limit = coachLimitFor(action);
+  const key = `${action}:${String(user || "anonymous").toLowerCase()}`;
+  const mine = (coachPerUser.get(key) || []).filter((t) => now - t < COACH_HOUR);
+  if (mine.length >= limit) {
+    return {
+      ok: false,
+      status: 429,
+      reason: `Grænsen på ${limit} kald i timen for "${action}" er nået. Vent lidt, og prøv igen.`,
+    };
+  }
+
+  mine.push(now);
+  coachPerUser.set(key, mine);
+  coachGlobal.push(now);
+  return { ok: true };
+}
+
 export function coachModel(effort) {
   const fast = process.env.COACH_FAST_MODEL || "gpt-5-mini";
   const deep = process.env.COACH_MODEL || "gpt-5";
@@ -239,15 +322,42 @@ function unb64url(str) {
 }
 
 /**
+ * Levetid på en forsegling. En øvelse varer minutter, ikke dage — men debriefen
+ * kan sagtens ligge et par timer efter, så vi er rundhåndede. Efter udløb åbnes
+ * blobben ikke længere, og øvelsen kører videre uden skjulte fakta.
+ */
+const SEAL_TTL_MS = Math.max(1, Number(process.env.COACH_SEAL_TTL_HOURS) || 12) * 60 * 60 * 1000;
+
+/** Hvem blobben er udstedt til. Tom/ukendt bruger samles under ét navn. */
+function audienceOf(value) {
+  return String(value || "anonymous").trim().toLowerCase() || "anonymous";
+}
+
+/**
  * Forsegl et objekt til en kompakt streng: "v1.<iv>.<tag>.<ct>" (base64url).
+ *
+ * Konvolutten indeholder ud over selve indholdet også:
+ *   aud – den bruger blobben er udstedt til, så én sælgers blob ikke kan bruges
+ *         af en anden (og ikke kan handles på gangen).
+ *   exp – udløbstidspunkt, så en blob ikke lever evigt.
+ * Begge dele er dækket af GCM-tagget og kan derfor ikke ændres af klienten.
+ *
+ * @param {any} obj
+ * @param {{ audience?: string }} [opts]
  * @returns {string|null} null hvis der ikke er noget at forsegle.
  */
-export function sealHidden(obj) {
+export function sealHidden(obj, opts = {}) {
   if (obj === undefined || obj === null) return null;
   try {
+    const envelope = {
+      v: 1,
+      aud: audienceOf(opts.audience),
+      exp: Date.now() + SEAL_TTL_MS,
+      data: obj,
+    };
     const iv = randomBytes(12);
     const cipher = createCipheriv("aes-256-gcm", sealKey(), iv);
-    const ct = Buffer.concat([cipher.update(JSON.stringify(obj), "utf8"), cipher.final()]);
+    const ct = Buffer.concat([cipher.update(JSON.stringify(envelope), "utf8"), cipher.final()]);
     return `v1.${b64url(iv)}.${b64url(cipher.getAuthTag())}.${b64url(ct)}`;
   } catch {
     return null;
@@ -255,21 +365,34 @@ export function sealHidden(obj) {
 }
 
 /**
- * Åbn en forseglet blob igen. Returnerer null ved manipulation, forkert nøgle
- * eller vrøvl — kaster ALDRIG, så en gammel/ugyldig blob aldrig vælter en øvelse.
+ * Åbn en forseglet blob igen. Returnerer null ved manipulation, forkert nøgle,
+ * udløb, forkert modtager eller vrøvl — kaster ALDRIG, så en gammel eller
+ * ugyldig blob aldrig vælter en øvelse (den kører bare uden skjulte fakta).
+ *
+ * @param {string} blob
+ * @param {{ audience?: string }} [opts] audience sat = blobben SKAL være
+ *        udstedt til netop den bruger. Uden feltet tjekkes modtageren ikke
+ *        (bruges af selvtesten og af kald uden brugerkontekst).
  */
-export function openHidden(blob) {
+export function openHidden(blob, opts = {}) {
   if (!blob || typeof blob !== "string") return null;
   const parts = blob.split(".");
   if (parts.length !== 4 || parts[0] !== "v1") return null;
+  let envelope;
   try {
     const decipher = createDecipheriv("aes-256-gcm", sealKey(), unb64url(parts[1]));
     decipher.setAuthTag(unb64url(parts[2]));
     const pt = Buffer.concat([decipher.update(unb64url(parts[3])), decipher.final()]).toString("utf8");
-    return JSON.parse(pt);
+    envelope = JSON.parse(pt);
   } catch {
     return null;
   }
+  // Konvolutten er selv autentificeret af GCM-tagget; kan den ikke læses som
+  // en konvolut, er blobben ikke vores.
+  if (!envelope || typeof envelope !== "object" || envelope.v !== 1) return null;
+  if (!Number.isFinite(envelope.exp) || Date.now() > envelope.exp) return null;
+  if (opts.audience !== undefined && envelope.aud !== audienceOf(opts.audience)) return null;
+  return envelope.data ?? null;
 }
 
 // ---------------------------------------------------------------------------
@@ -291,7 +414,19 @@ export function normalizeVoice(voice, fallback = "cedar") {
   return REALTIME_VOICES.includes(v) ? v : fallback;
 }
 
-function realtimeBody({ instructions, voice, language, eagerness, withTranscription }) {
+/**
+ * Levetid på den kortlivede nøgle browseren får. Den skal kun bruges ÉN gang,
+ * med det samme, til at rejse WebRTC-forbindelsen — så den behøver ikke leve
+ * længe. Uden feltet bruger OpenAI sin egen (længere) standard; vi sætter den
+ * bevidst kort, så en nøgle der bliver liggende i en logfil eller en netværks-
+ * fane er værdiløs få minutter efter.
+ */
+const REALTIME_SECRET_TTL = Math.min(
+  7200,
+  Math.max(60, Number(process.env.COACH_REALTIME_TTL_SECONDS) || 120),
+);
+
+function realtimeBody({ instructions, voice, language, eagerness, withTranscription, ttl }) {
   const audioInput = {
     format: { type: "audio/pcm", rate: 24000 },
     turn_detection: {
@@ -307,7 +442,7 @@ function realtimeBody({ instructions, voice, language, eagerness, withTranscript
       language: language === "en" ? "en" : "da",
     };
   }
-  return {
+  const body = {
     session: {
       type: "realtime",
       model: process.env.COACH_REALTIME_MODEL || "gpt-realtime",
@@ -319,6 +454,10 @@ function realtimeBody({ instructions, voice, language, eagerness, withTranscript
       },
     },
   };
+  // Kun med når vi beder om det: afviser en konto/model feltet, prøver vi igen
+  // uden det, så stemmen aldrig falder ud alene på grund af en udløbsindstilling.
+  if (ttl) body.expires_after = { anchor: "created_at", seconds: ttl };
+  return body;
 }
 
 async function postJson(url, body, apiKey, extraHeaders = {}) {
@@ -361,20 +500,30 @@ export async function mintRealtimeSession({ instructions, voice, language, eager
   const v = normalizeVoice(voice);
   const model = process.env.COACH_REALTIME_MODEL || "gpt-realtime";
 
-  // --- 1. GA-endpointet, fuld konfiguration --------------------------------
-  let r = await postJson(
-    OPENAI_REALTIME_SECRETS_URL,
-    realtimeBody({ instructions, voice: v, language, eagerness, withTranscription: true }),
-    apiKey,
-  );
+  // GA-endpointet forsøges i faldende ambitionsniveau. Rækkefølgen er valgt, så
+  // vi altid ender med den mest restriktive variant, der faktisk virker:
+  //   1. alt: kort levetid + transskription
+  //   2. uden transskription (typisk årsag til 400 på nogle konti)
+  //   3. uden kort levetid (hvis netop DET felt afvises) — så falder vi tilbage
+  //      til OpenAIs standardlevetid frem for at miste stemmen helt
+  const variants = [
+    { withTranscription: true, ttl: REALTIME_SECRET_TTL },
+    { withTranscription: false, ttl: REALTIME_SECRET_TTL },
+    { withTranscription: true, ttl: 0 },
+    { withTranscription: false, ttl: 0 },
+  ];
 
-  // --- 2. Samme endpoint uden transskription (typisk årsag til 400) --------
-  if (!r.ok && r.status >= 400 && r.status < 500) {
+  let r = { ok: false, status: 502, error: "Realtime blev ikke forsøgt." };
+  for (const variant of variants) {
     r = await postJson(
       OPENAI_REALTIME_SECRETS_URL,
-      realtimeBody({ instructions, voice: v, language, eagerness, withTranscription: false }),
+      realtimeBody({ instructions, voice: v, language, eagerness, ...variant }),
       apiKey,
     );
+    if (r.ok) break;
+    // Kun klientfejl er værd at prøve igen på med en anden form; 5xx og
+    // netværksfejl betyder, at OpenAI er nede — så nytter en ny variant intet.
+    if (!(r.status >= 400 && r.status < 500)) break;
   }
 
   if (r.ok) {
@@ -590,20 +739,51 @@ function readZipEntries(buf) {
   return entries.size ? entries : null;
 }
 
-function readZipFile(buf, entry) {
+// ZIP-BOMBE: en .docx på 300 KB kan pakke ud til flere GB. Uden loft trak den
+// funktionen op på ~700 MB RSS (målt) og videre til OOM — én uploadet fil kunne
+// altså vælte serverfunktionen. Vi sætter derfor et hårdt loft BÅDE pr. del og
+// samlet for hele filen. inflateRawSync kaster, når loftet nås; det fanges
+// nedenfor, og delen springes bare over.
+const ZIP_MAX_PART_BYTES = 24 * 1024 * 1024; // én XML-del (et slide, et ark …)
+const ZIP_MAX_TOTAL_BYTES = 64 * 1024 * 1024; // hele dokumentet under ét
+
+/**
+ * Pak én fil ud af arkivet. `budget` er et delt regnskab over, hvor mange bytes
+ * vi allerede har pakket ud af DENNE fil — så mange små bomber ikke kan gøre
+ * det, én stor ikke må.
+ */
+function readZipFile(buf, entry, budget) {
   if (!entry || entry.local + 30 > buf.length) return null;
   if (buf.readUInt32LE(entry.local) !== 0x04034b50) return null;
   const nameLen = buf.readUInt16LE(entry.local + 26);
   const extraLen = buf.readUInt16LE(entry.local + 28);
   const start = entry.local + 30 + nameLen + extraLen;
   const raw = buf.subarray(start, start + entry.compSize);
+
+  const left = budget ? Math.max(0, ZIP_MAX_TOTAL_BYTES - budget.used) : ZIP_MAX_TOTAL_BYTES;
+  const cap = Math.min(ZIP_MAX_PART_BYTES, left);
+  if (cap <= 0) return null;
+
   try {
-    if (entry.method === 0) return raw.toString("utf8");
-    if (entry.method === 8) return inflateRawSync(raw).toString("utf8");
+    let out = null;
+    if (entry.method === 0) {
+      if (raw.length > cap) return null;
+      out = raw;
+    } else if (entry.method === 8) {
+      out = inflateRawSync(raw, { maxOutputLength: cap });
+    }
+    if (!out) return null;
+    if (budget) budget.used += out.length;
+    return out.toString("utf8");
   } catch {
+    // For stor, ødelagt eller ukendt metode — delen springes over.
     return null;
   }
-  return null;
+}
+
+/** Nyt udpakningsregnskab for én uploadet fil. */
+function newZipBudget() {
+  return { used: 0 };
 }
 
 /* ------------------------------------------------------------ XML → tekst -- */
@@ -657,21 +837,24 @@ function numberedParts(entries, re) {
 
 function pptxToText(buf, entries) {
   const slides = numberedParts(entries, /^ppt\/slides\/slide(\d+)\.xml$/);
+  const budget = newZipBudget();
   const out = [];
   for (const s of slides) {
-    const xml = readZipFile(buf, entries.get(s.name));
+    const xml = readZipFile(buf, entries.get(s.name), budget);
     if (xml === null) continue;
     const body = xmlToText(xml);
     // Talernoter hører med — de rummer ofte sælgerens egentlige argumentation.
     const notesName = `ppt/notesSlides/notesSlide${s.no}.xml`;
-    const notes = entries.has(notesName) ? xmlToText(readZipFile(buf, entries.get(notesName)) || "") : "";
+    const notes = entries.has(notesName)
+      ? xmlToText(readZipFile(buf, entries.get(notesName), budget) || "")
+      : "";
     out.push([`— slide ${s.no} —`, body, notes ? `[noter] ${notes}` : ""].filter(Boolean).join("\n"));
   }
   return { text: out.join("\n\n"), pages: slides.length };
 }
 
 function docxToText(buf, entries) {
-  const xml = readZipFile(buf, entries.get("word/document.xml"));
+  const xml = readZipFile(buf, entries.get("word/document.xml"), newZipBudget());
   if (xml === null) return { text: "", pages: null };
   // Sidetal kan kun estimeres ud fra eksplicitte sideskift.
   const breaks = (xml.match(/<w:br\b[^>]*w:type="page"/g) || []).length;
@@ -715,13 +898,14 @@ function sheetToText(xml, shared) {
 }
 
 function xlsxToText(buf, entries) {
-  const shared = sharedStringsOf(readZipFile(buf, entries.get("xl/sharedStrings.xml")));
-  const workbook = readZipFile(buf, entries.get("xl/workbook.xml")) || "";
+  const budget = newZipBudget();
+  const shared = sharedStringsOf(readZipFile(buf, entries.get("xl/sharedStrings.xml"), budget));
+  const workbook = readZipFile(buf, entries.get("xl/workbook.xml"), budget) || "";
   const names = [...workbook.matchAll(/<sheet\b[^>]*\bname="([^"]*)"/g)].map((m) => decodeXmlEntities(m[1]));
   const sheets = numberedParts(entries, /^xl\/worksheets\/sheet(\d+)\.xml$/);
   const out = [];
   for (const s of sheets) {
-    const xml = readZipFile(buf, entries.get(s.name));
+    const xml = readZipFile(buf, entries.get(s.name), budget);
     if (xml === null) continue;
     const label = names[s.no - 1] || `ark ${s.no}`;
     const body = sheetToText(xml, shared);

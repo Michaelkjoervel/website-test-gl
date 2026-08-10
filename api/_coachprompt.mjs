@@ -1187,6 +1187,8 @@ const TEXT_RULES = `# DETTE ER SKREVET DIALOG
 const ROLEPLAY_RULES = `# NÅR DU SPILLER KUNDE
 Du ER personen. Første person, personens ord, personens dagsorden, personens tålmodighed. Du kender kun det, personen kan kende.
 
+FØRST ET VIGTIGT FORBEHOLD OM ALT DET OVENFOR: afsnittene om løse svar, alarmord, fakta/antagelse/videnshul og om aldrig at lade sælgeren slippe udenom er SALGSDIREKTØRENS arbejde. De er din radar — de er ikke replikker, du siger som kunde. En rigtig kunde spørger ikke “hvad sagde kunden helt præcist?” eller “hvordan ved du det?”. Du registrerer stille, hvor sælgeren er vag, og du bruger det på to måder: du giver ham mindre, og du gemmer observationen til feedbacken bagefter. Bliver du i tvivl, om en replik hører til kunden eller til direktøren, hører den til direktøren — og så siger du den ikke nu.
+
 - Du giver ALDRIG skjult information gratis. Skjulte oplysninger kommer kun frem, når sælgeren har stillet den slags spørgsmål, der åbner for dem — og de dybeste kræver flere spørgsmål og reel tillid.
 - Du er ikke fjendtlig for at være fjendtlig. Du er travl, praktisk og lidt skeptisk — som en dansk driftschef, teknisk chef eller indkøber faktisk er. Realisme slår kunstig modstand.
 - Du hjælper aldrig sælgeren. Du stiller ikke hjælpsomme spørgsmål, der leder ham på sporet. Du fuldender ikke hans tanke. Du siger ikke “mener du…?”.
@@ -1397,6 +1399,8 @@ RISIKO — det der mest sandsynligt slår sagen ihjel.
 STYRKE — det der reelt taler for.
 NÆSTE INFORMATION — de tre ting han skal have fat i først, og hvem han skal spørge.
 
+Det er øvelsens ENE tilladte lange tur — men den leveres ikke som en oplæsning. Tag ét afsnit ad gangen, og lad sælgeren bekræfte eller korrigere, før du går videre til det næste. Hører han sig selv sige “ja, det ved jeg faktisk ikke”, har opsamlingen gjort sit arbejde.
+
 Og til allersidst, i stedet for en dom: HVAD SKAL VÆRE SANDT, for at det her bliver en god sag? Fx “Det bliver en god sag, hvis det viser sig, at driftschefen kan frigive midler under to hundrede tusinde selv, og hvis nedbruddene koster dem produktionstid.”
 Du siger ALDRIG “det er en god sag” eller “den dropper vi”. Du siger, hvad der skal være sandt, og hvordan han finder ud af det.`,
 
@@ -1476,7 +1480,7 @@ Du giver kun noget, hvis sælgeren gør ét af følgende:
 - bringer ny værdi ind: en ny beregning ud fra din faktiske driftstid, en risikoanalyse, en prøveopsætning, en relevant case, et driftsperspektiv,
 - stiller et indholdsspørgsmål: “Hvad tænker du om løsningen?”, “Hvad taler for — og hvad taler imod?”, “Hvad mangler for at kunne tage næste skridt?”,
 - eller tager den direkte: “Må jeg stille et lidt direkte spørgsmål? Hvad holder jer egentlig tilbage lige nu?”
-Kommer det direkte spørgsmål roligt og ærligt, fortæller du den rigtige grund.
+Kommer det direkte spørgsmål roligt og ærligt, giver du ham et rigtigt svar — men kun det yderste lag af det. Hele sandheden (hvem der reelt har taget over, hvad der er lovet en anden, hvad du selv er flov over) følger stadig dybdereglerne under den skjulte information: den kræver, at han bliver i emnet gennem flere spørgsmål og ikke straks begynder at forsvare sit tilbud. Ét godt spørgsmål åbner døren. Det lukker ikke sagen op.
 
 DEN SKJULTE ÅRSAG (vælg én, hvis scenariet ikke har givet dig en)
 Indkøb har taget over. En rådgiver eller elektriker har fået sagen. Projektet er rykket ned på prioriteringslisten. Et billigere tilbud er kommet ind. En intern beslutningstager, sælgeren aldrig har mødt, er skeptisk. Budgettet er flyttet til næste år.
@@ -1629,7 +1633,15 @@ function renderHidden(hidden) {
     .join("\n");
 }
 
-function scenarioBlock(scenario, hidden, mode) {
+/**
+ * `coachMode`, `language` og øvelsens id SKAL sendes med herind. Persona-filen
+ * bygger sin egen coach-tilstands- og sprogblok og sætter et dybdeloft pr.
+ * øvelse (et koldt opkald må ikke kunne åbne kundens inderste lag). Uden dem
+ * faldt personaen tilbage på "realistisk" og på kunderollespillets ramme —
+ * altså en instruktion om ALDRIG at bryde karakteren, midt i en prompt der
+ * ovenfor bad om hybrid-indbrud. To modsatrettede ordrer i samme prompt.
+ */
+function scenarioBlock(scenario, hidden, mode, { coachMode, language } = {}) {
   if (!scenario && !hidden) return "";
   const parts = [];
 
@@ -1668,8 +1680,9 @@ function scenarioBlock(scenario, hidden, mode) {
         () =>
           renderPersonaInstructions(scenario.persona, {
             difficulty: cfg.difficulty || "haard",
-            coachMode: scenario.coachMode,
-            language: scenario.language,
+            coachMode,
+            language: isEn(language) ? "en" : "da",
+            modeId: mode.id,
           }),
         "",
       );
@@ -1741,6 +1754,54 @@ function knowledgeBlock({ keywords = [], industry = "" } = {}) {
   );
 }
 
+/**
+ * Ekstern teori ind i prompten — men kun som noget, der skal siges HØJT.
+ *
+ * Uden denne blok stod EXTERNAL_FRAMEWORKS ubrugt i filen, og coachen måtte
+ * støtte sig til sin egen generiske erindring om Challenger, SPIN og MEDDICC.
+ * Det er præcis dér, en ekstern model kan glide ind i stedet for manualen,
+ * uden at sælgeren opdager det. Det vigtigste, vi giver modellen, er derfor
+ * ikke sammenfaldene — det er `divergesFromManual`: de steder hvor teorien og
+ * green light peger hvert sit sted hen.
+ */
+function frameworkBlock(keywords = [], { full = true } = {}) {
+  const hay = ` ${(keywords || []).map((k) => String(k || "").toLowerCase()).join(" ")} `;
+  const scored = EXTERNAL_FRAMEWORKS.map((f) => {
+    let s = 0;
+    for (const k of f.keywords || []) if (k.length > 3 && hay.includes(k.toLowerCase())) s += 1;
+    return { f, s };
+  })
+    .filter((x) => x.s > 0)
+    .sort((a, b) => b.s - a.s)
+    .slice(0, 3)
+    .map((x) => x.f);
+
+  const head = [
+    "# EKSTERN SALGSTEORI — HVOR DEN IKKE ER ENIG MED OS",
+    `Rammer du kender og må bruge: ${EXTERNAL_FRAMEWORKS.map((f) => f.name).join(" · ")}.`,
+    "Ingen af dem er green lights metode. Bruger du en af dem, siger du dens navn højt og siger, at den kommer udefra — og du bruger den aldrig til stiltiende at erstatte manualen.",
+  ].join("\n");
+
+  // Spiller du kunde, får du kun navnene og forbuddet. Detaljerne er
+  // salgsdirektørens materiale og hører til i indbruddet og i feedbacken —
+  // ikke i munden på en driftschef.
+  if (!full || !scored.length) return head;
+
+  const body = scored
+    .map((f) =>
+      [
+        `## ${f.name} (${f.origin})`,
+        f.summary,
+        `Enig med manualen: ${(f.supportsManual || []).join(" · ")}`,
+        `UENIG MED MANUALEN — sig det højt, hvis det bliver relevant: ${(f.divergesFromManual || []).join(" · ")}`,
+        `Brug den kun når: ${(f.useWhen || []).join(" · ")}`,
+      ].join("\n"),
+    )
+    .join("\n\n");
+
+  return joinBlocks(head, body, "Hos os følger vi manualen. Sælgeren skal kende forskellen — ikke overtage den.");
+}
+
 /* ===========================================================================
  * 11 · PROMPT-BYGGERE
  * =========================================================================*/
@@ -1783,8 +1844,9 @@ export function buildSystemInstructions({
     channelBlock(purpose, mode),
     cm.instruction,
     modeBlock(mode, { intake, documentText }),
-    scenarioBlock(scenario, hidden, mode),
+    scenarioBlock(scenario, hidden, mode, { coachMode: cm.id, language }),
     manualBlock(mode, keywords, { full: mode.id === "manualeksamen" }),
+    frameworkBlock(keywords, { full: mode.counterpart !== "kunde" }),
     knowledgeBlock({ keywords, industry: cfg.industry || "" }),
     titles.length
       ? `# RELEVANTE VIDENSEMNER I DENNE SAMTALE\n${bullets(titles)}\nBrug dem kun, hvis sælgeren eller kunden bringer emnet op.`
@@ -1816,6 +1878,7 @@ Den samlede karakter er ét af manualens fem ord: FREMRAGENDE, STÆRK, ACCEPTABE
 
 DU SKAL ALTID DÆKKE, I DENNE RÆKKEFØLGE
 1. DET DU GJORDE GODT — kun det, der faktisk var godt, og altid med hvorfor det virkede.
+   Rækkefølgen er et krav. Indholdet er det ikke: var der intet, der var godt, lader du listen stå TOM. En tom liste er et lovligt og ærligt svar, og den siger mere end fem opfundne roser. Du forfremmer aldrig et blot acceptabelt træk til noget godt, fordi feltet skal fyldes — “han stillede da spørgsmål”, “han var høflig”, “han fik da booket mødet” hører ikke hjemme her. Det samme gælder omvendt: var samtalen stærk, opfinder du ikke svagheder for at virke krævende.
 2. DET DER HOLDT DIG TILBAGE — den adfærd, der kostede noget i samtalen.
 3. DET DU MISSEDE — de åbninger, kunden gav, som du gik forbi.
 4. HVAD JEG VILLE HAVE GJORT ANDERLEDES — konkret, i første person, med den sætning jeg selv ville have sagt.
@@ -1929,12 +1992,13 @@ Bedøm kun dem, der faktisk var i spil.`,
     qualification,
     FEEDBACK_MANUAL,
     FEEDBACK_METRICS,
-    scenarioBlock(scenario, hidden, mode),
+    scenarioBlock(scenario, hidden, mode, { coachMode: cm.id, language }),
     hidden
       ? `# BRUG DEN SKJULTE INFORMATION I ANALYSEN
 Nu må den gerne bruges. Skriv konkret, hvad sælgeren ALDRIG fik fat i, og hvilket spørgsmål der ville have åbnet det. Det er ofte den mest værdifulde del af feedbacken.`
       : "",
     manualBlock(mode, keywords),
+    frameworkBlock(keywords),
     intake ? `# SÆLGERENS EGET UDGANGSPUNKT\n${clip(intake, 3000)}` : "",
     documentText ? `# MATERIALET DER BLEV BRUGT\n${clip(documentText, 6000)}` : "",
     sellerBlock(sellerContext),
@@ -1949,7 +2013,13 @@ Overskriften skal kunne stå alene. Fokuspunkterne til næste gang skal være s�
 /* ----------------------------------------------------------------- Scenarie */
 
 /** Instruktion til at generere et scenarie (bruges med SCENARIO_SCHEMA). */
-export function buildScenarioInstructions({ modeId, config = {}, sellerContext, language = "da" } = {}) {
+export function buildScenarioInstructions({
+  modeId,
+  config = {},
+  sellerContext,
+  language = "da",
+  persona = null,
+} = {}) {
   const mode = getMode(modeId);
   const keywords = harvestKeywords(
     mode.manualRefs,
@@ -1965,11 +2035,25 @@ export function buildScenarioInstructions({ modeId, config = {}, sellerContext, 
     .map(([k, v]) => `- ${k}: ${v}`)
     .join("\n");
 
+  /*
+   * Persona-biblioteket er håndskrevet og kalibreret: skjult information ligger
+   * i lag, og stemmeføringen er skrevet til at kunne tales. Får modellen den
+   * som udgangspunkt, arver scenariet den kalibrering i stedet for at finde på
+   * en ny kunde fra bunden hver gang.
+   */
+  const personaSeed = persona
+    ? `# UDGANGSPUNKT FRA PERSONABIBLIOTEKET
+Byg videre på denne person frem for at opfinde en ny. Behold rolle, temperament og stemmeføring; tilpas virksomhed, tal og den skjulte information til scenariet, og uddyb hvor der mangler noget.
+
+${clip(JSON.stringify(persona, null, 2), 6000)}`
+    : "";
+
   return joinBlocks(
     `# OPGAVEN
 Du er salgsdirektør i green light a/s og bygger et træningsscenarie til øvelsen “${mode.title}” (${mode.tagline}).
 Du svarer udelukkende med JSON efter det udleverede skema. Ingen tekst udenom.`,
     languageBlock(language),
+    personaSeed,
     `# HVAD ET GODT SCENARIE ER
 - Dansk B2B-belysning, direkte til slutbrugeren. Rigtige danske virksomhedstyper: produktion, lager og logistik, fødevare, metal, plast, autoværksted, kommunale haller og institutioner, kontordomiciler, detail, landbrug.
 - Virksomheden skal være genkendelig for en green light-sælger: mange kvadratmeter under tag, ældre installation, driftstimer, vedligehold, energiforbrug, arbejdsmiljø, måske ESG.
@@ -2364,7 +2448,7 @@ export const FEEDBACK_SCHEMA = schemaDoc(
   OBJ({
     overall: ENUM(RATINGS, "Karakteren er sekundær — forklaringen er pointen."),
     headline: S("Én skarp sætning — det første sælgeren læser."),
-    didWell: SLIST("Det du gjorde godt. Kun det der faktisk var godt, altid med hvorfor det virkede."),
+    didWell: SLIST("Det du gjorde godt. Kun det der faktisk var godt, altid med hvorfor det virkede. Tom liste er tilladt — og korrekt, hvis intet fortjente ros."),
     heldBack: SLIST("Det der holdt dig tilbage."),
     missed: SLIST("Det du missede — de åbninger kunden gav, som du gik forbi."),
     iWouldHaveDone: SLIST("Hvad jeg ville have gjort anderledes, i første person, med den sætning jeg selv ville have sagt."),

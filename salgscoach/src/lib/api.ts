@@ -543,25 +543,45 @@ function normaliseManifest(payload: Record<string, unknown>): CoachManifest {
   };
 }
 
-function readManifestCache(): CoachManifest | null {
+/**
+ * Manifestet ligger i localStorage — ikke sessionStorage. Det er listen over
+ * øvelser: uden den er forsiden tom, og så kan sælgeren ikke træne. Den skal
+ * derfor overleve en ny fane, en genindlæsning og en tur i toget uden net.
+ *
+ * `allowStale` bruges når serveren ikke kan nås: hellere gårsdagens liste end
+ * ingen liste.
+ */
+function readManifestCache(opts: { allowStale?: boolean } = {}): CoachManifest | null {
+  for (const store of [safeStorage("local"), safeStorage("session")]) {
+    try {
+      const raw = store?.getItem(MANIFEST_KEY);
+      if (!raw) continue;
+      const parsed: unknown = JSON.parse(raw);
+      if (!isRecord(parsed)) continue;
+      const savedAt = typeof parsed.savedAt === "number" ? parsed.savedAt : 0;
+      if (!opts.allowStale && Date.now() - savedAt > MANIFEST_TTL_MS) continue;
+      if (isRecord(parsed.manifest)) return parsed.manifest as unknown as CoachManifest;
+    } catch {
+      /* næste lager */
+    }
+  }
+  return null;
+}
+
+function safeStorage(kind: "local" | "session"): Storage | null {
   try {
-    const raw = sessionStorage.getItem(MANIFEST_KEY);
-    if (!raw) return null;
-    const parsed: unknown = JSON.parse(raw);
-    if (!isRecord(parsed)) return null;
-    const savedAt = typeof parsed.savedAt === "number" ? parsed.savedAt : 0;
-    if (Date.now() - savedAt > MANIFEST_TTL_MS) return null;
-    return isRecord(parsed.manifest) ? (parsed.manifest as unknown as CoachManifest) : null;
+    return kind === "local" ? localStorage : sessionStorage;
   } catch {
+    // Privat tilstand og skærpede cookie-indstillinger kan kaste ved opslag.
     return null;
   }
 }
 
 function writeManifestCache(manifest: CoachManifest): void {
   try {
-    sessionStorage.setItem(MANIFEST_KEY, JSON.stringify({ savedAt: Date.now(), manifest }));
+    safeStorage("local")?.setItem(MANIFEST_KEY, JSON.stringify({ savedAt: Date.now(), manifest }));
   } catch {
-    // Fuldt sessionStorage er ikke en fejl — hukommelsescachen bærer den.
+    // Fuldt lager er ikke en fejl — hukommelsescachen bærer den.
   }
 }
 
@@ -569,10 +589,12 @@ function writeManifestCache(manifest: CoachManifest): void {
 export function clearManifestCache(): void {
   manifestMemory = null;
   manifestInflight = null;
-  try {
-    sessionStorage.removeItem(MANIFEST_KEY);
-  } catch {
-    /* ligegyldigt */
+  for (const store of [safeStorage("local"), safeStorage("session")]) {
+    try {
+      store?.removeItem(MANIFEST_KEY);
+    } catch {
+      /* ligegyldigt */
+    }
   }
 }
 
@@ -592,15 +614,27 @@ export async function getManifest(opts: { force?: boolean; signal?: AbortSignal 
   }
 
   const run = (async () => {
-    const payload = await request<Record<string, unknown>>(
-      "/coach",
-      { action: "manifest" satisfies CoachApiAction },
-      { timeoutMs: TIMEOUT.normal, label: "Hentning af manualen", signal: opts.signal },
-    );
-    const manifest = normaliseManifest(payload);
-    manifestMemory = manifest;
-    writeManifestCache(manifest);
-    return manifest;
+    try {
+      const payload = await request<Record<string, unknown>>(
+        "/coach",
+        { action: "manifest" satisfies CoachApiAction },
+        { timeoutMs: TIMEOUT.normal, label: "Hentning af manualen", signal: opts.signal },
+      );
+      const manifest = normaliseManifest(payload);
+      manifestMemory = manifest;
+      writeManifestCache(manifest);
+      return manifest;
+    } catch (e) {
+      // Serveren kan ikke nås. Har vi en ældre liste over øvelser, bruger vi
+      // den: en sælger med dårligt net skal stadig kunne komme i gang.
+      if (e instanceof ApiError && e.aborted) throw e;
+      const stale = readManifestCache({ allowStale: true });
+      if (stale && (stale.modes?.length ?? 0) > 0) {
+        manifestMemory = stale;
+        return stale;
+      }
+      throw e;
+    }
   })();
 
   manifestInflight = run;

@@ -25,7 +25,15 @@ import {
 import type { Rating, SkillArea, TrainingModeId, TrainingSession } from "../lib/types";
 
 import { Icon } from "../ui/icons";
-import { EmptyState, ErrorNote, Panel, RatingPill, Spinner, useToast } from "../ui/primitives";
+import {
+  EmptyState,
+  ErrorNote,
+  LoadingBlock,
+  PageHeader,
+  RatingPill,
+  Spinner,
+  useToast,
+} from "../ui/primitives";
 import { MODE_LABELS, buildRetrySession, modeLabel } from "./Debrief";
 
 type ModeFilter = TrainingModeId | "alle";
@@ -126,26 +134,26 @@ export function History() {
   /* ------------------------------------------------------------------ Render */
 
   return (
-    <div className="animate-fade-up space-y-5">
-      <header>
-        <div className="eyebrow">Din træning</div>
-        <h1 className="title-xl mt-1.5">Historik</h1>
-        <p className="body mt-2 max-w-2xl">
-          Alle dine øvelser, nyeste først. Kun dine egne — ingen andre kan se dem her.
-        </p>
-      </header>
+    <div className="animate-fade-up">
+      <PageHeader
+        eyebrow="Din træning"
+        title="Historik"
+        desc="Alle dine øvelser, nyeste først. Kun dine egne — ingen andre kan se dem her."
+      />
 
+      <div className="space-y-5">
       {loading ? (
-        <div className="flex min-h-[40vh] items-center justify-center">
-          <Spinner size={24} />
-        </div>
+        <LoadingBlock label="Henter din historik" rows={4} />
       ) : error ? (
-        <ErrorNote onRetry={() => void load()}>{error}</ErrorNote>
+        <ErrorNote title="Historikken kunne ikke hentes" onRetry={() => void load()}>
+          Dine øvelser er ikke slettet — de kunne bare ikke hentes lige nu.
+          <span className="mt-3 block text-xs text-danger-300/70">{error}</span>
+        </ErrorNote>
       ) : !sessions.length ? (
         <EmptyState
-          icon={<Icon.History width={26} height={26} />}
+          icon={<Icon.History width={22} height={22} />}
           title="Du har ingen øvelser endnu"
-          desc="Historikken bliver først interessant, når du har kørt et par samtaler. Vælg en træningsform og tag den første."
+          desc="Historikken samler dine samtaler og salgsdirektørens vurdering af dem. Den fyldes, når du har kørt den første."
           action={
             <Link to="/" className="btn-primary">
               <Icon.Mic width={16} height={16} />
@@ -229,24 +237,28 @@ export function History() {
               ))}
             </ul>
           ) : (
-            <Panel className="text-center">
-              <p className="body">Ingen øvelser matcher det, du søger efter.</p>
-              {filtersActive && (
-                <button
-                  className="btn-outline btn-sm mt-4"
-                  onClick={() => {
-                    setMode("alle");
-                    setRating("alle");
-                    setQuery("");
-                  }}
-                >
-                  Ryd filtre
-                </button>
-              )}
-            </Panel>
+            <EmptyState
+              title="Ingen øvelser matcher"
+              desc="Prøv en anden søgning, eller ryd filtrene."
+              action={
+                filtersActive ? (
+                  <button
+                    className="btn-outline btn-sm"
+                    onClick={() => {
+                      setMode("alle");
+                      setRating("alle");
+                      setQuery("");
+                    }}
+                  >
+                    Ryd filtre
+                  </button>
+                ) : undefined
+              }
+            />
           )}
         </>
       )}
+      </div>
     </div>
   );
 }

@@ -29,7 +29,7 @@
 
 import {
   authorize,
-  rateLimit,
+  coachRateLimit,
   corsOrigin,
   callModel,
   sealHidden,
@@ -144,11 +144,22 @@ function renderTranscript(transcript) {
     .join("\n");
 }
 
+/**
+ * Maks. antal replikker vi sender med. Uden loft kunne en klient sende hele
+ * request-kroppen fuld af replikker og dermed betale-per-token sig gennem
+ * loftet i ét enkelt kald. En rollespilsøvelse er sjældent over 60 replikker;
+ * bliver den længere, er det de SENESTE, modellen skal bruge.
+ */
+const MAX_MESSAGES = 80;
+
 /** Samtalens historik → Responses-input. */
 function renderMessages(messages) {
   if (!Array.isArray(messages)) return [];
-  return messages
-    .filter((m) => m && (typeof m.content === "string" || typeof m.text === "string"))
+  const usable = messages.filter(
+    (m) => m && (typeof m.content === "string" || typeof m.text === "string"),
+  );
+  return usable
+    .slice(-MAX_MESSAGES)
     .map((m) => ({ role: m.role, content: trim(m.content ?? m.text, 8000) }));
 }
 
@@ -182,7 +193,7 @@ async function doManifest() {
   };
 }
 
-async function doScenarie(body, apiKey) {
+async function doScenarie(body, apiKey, ctx = {}) {
   const modeId = String(body?.modeId || "").trim();
   if (!modeId) return { status: 400, payload: { error: "'modeId' er påkrævet for at generere et scenarie." } };
 
@@ -240,12 +251,16 @@ async function doScenarie(body, apiKey) {
   }
 
   // Alt sælgeren IKKE må se forsegles. Klienten sender blobben retur ved hver
-  // replik og ved analysen — men kan ikke læse den.
-  const hiddenBlob = sealHidden({
-    persona: scenario.persona || persona || null,
-    hiddenBrief: scenario.hiddenBrief || "",
-    hiddenFacts: scenario.persona?.hidden || persona?.hidden || [],
-  });
+  // replik og ved analysen — men kan ikke læse den. Forseglingen bindes til
+  // den bruger, der bad om scenariet, og udløber af sig selv.
+  const hiddenBlob = sealHidden(
+    {
+      persona: scenario.persona || persona || null,
+      hiddenBrief: scenario.hiddenBrief || "",
+      hiddenFacts: scenario.persona?.hidden || persona?.hidden || [],
+    },
+    { audience: ctx.user },
+  );
 
   let view;
   try {
@@ -263,7 +278,7 @@ async function doScenarie(body, apiKey) {
   return { status: 200, payload: { scenario: view, hiddenBlob } };
 }
 
-async function doSamtale(body, apiKey) {
+async function doSamtale(body, apiKey, ctx = {}) {
   const modeId = String(body?.modeId || "").trim();
   if (!modeId) return { status: 400, payload: { error: "'modeId' er påkrævet." } };
 
@@ -280,7 +295,9 @@ async function doSamtale(body, apiKey) {
     coachMode: body?.coachMode || mode?.defaultCoachMode || "realistisk",
     language: lang(body),
     scenario: body?.scenario || null,
-    hidden: openHidden(body?.hiddenBlob), // åbnes KUN her på serveren
+    // Åbnes KUN her på serveren — og kun hvis blobben er udstedt til netop
+    // denne bruger og ikke er udløbet.
+    hidden: openHidden(body?.hiddenBlob, { audience: ctx.user }),
     sellerContext: boundContext(body?.sellerContext),
     intake: trim(body?.intake, 6000),
     documentText: trim(body?.documentText, 40_000),
@@ -297,7 +314,7 @@ async function doSamtale(body, apiKey) {
   return { status: 200, payload: { reply: String(r.data || "").trim(), speaker } };
 }
 
-async function doAnalyse(body, apiKey) {
+async function doAnalyse(body, apiKey, ctx = {}) {
   // Klienten sender samtalen som "messages" (samme felt som i en samtale).
   // Vi tager imod begge navne, så en omdøbning ét sted ikke koster feedbacken.
   const transcript =
@@ -314,7 +331,7 @@ async function doAnalyse(body, apiKey) {
     coachMode: body?.coachMode || mode?.defaultCoachMode || "coach",
     language: lang(body),
     scenario: body?.scenario || null,
-    hidden: openHidden(body?.hiddenBlob),
+    hidden: openHidden(body?.hiddenBlob, { audience: ctx.user }),
     sellerContext: boundContext(body?.sellerContext),
     intake: trim(body?.intake, 6000),
     documentText: trim(body?.documentText, 40_000),
@@ -462,7 +479,9 @@ async function doTeam(body, apiKey) {
 const ALIASES = { manual: "manifest", status: "manifest" };
 
 // Egen rate-limit-spand pr. action: en tung materialeanalyse må ikke bruge
-// sælgerens kvote til selve samtalen.
+// sælgerens kvote til selve samtalen. Spandene er coachens EGNE (se
+// coachRateLimit i _coach.mjs) — en samtale på 30 replikker må ikke kunne
+// lukke visualiseringsværktøjet ned for resten af dagen.
 const ACTIONS = {
   manifest: { run: () => doManifest(), free: true },
   scenarie: { run: doScenarie },
@@ -512,7 +531,7 @@ export default async function handler(req, res) {
   // Manifestet koster ingen AI-forbrug og hentes ved hver appstart — det ville
   // være meningsløst at bremse det. Alt andet tæller på sin egen spand.
   if (!spec.free) {
-    const rl = rateLimit(`coach-${action}:${auth.email || "anonymous"}`);
+    const rl = coachRateLimit(action, auth.email);
     if (!rl.ok) return res.status(rl.status).json({ error: rl.reason });
   }
 
@@ -522,7 +541,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { status, payload } = await spec.run(body, apiKey);
+    // Brugeren følger med, så forseglingen kan bindes til netop denne konto.
+    const { status, payload } = await spec.run(body, apiKey, { user: auth.email });
     return res.status(status).json(payload);
   } catch (e) {
     // Aldrig en rå stack ud til sælgeren — og aldrig prompten i loggen.

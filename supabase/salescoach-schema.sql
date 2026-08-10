@@ -27,6 +27,14 @@
 --   kunne coache — men aldrig læse andres kundemateriale, og aldrig skrive i
 --   andres rækker.
 --
+-- Og ét forbehold, der er værd at kende: "authenticated" i Supabase betyder kun
+-- "logget ind i projektet" — ikke "ansat hos green light". Er selvbetjent
+-- oprettelse slået til under Authentication → Providers, kan hvem som helst
+-- blive authenticated. Derfor er de to FÆLLES tabeller (coach_manual med den
+-- uploadede salgsmanual, og holdlisten coach_users) yderligere bundet til en
+-- green light-mail via coach_is_staff() nedenfor. Slå gerne selvbetjent
+-- oprettelse fra alligevel — det her er sele oven på livremmen.
+--
 -- Bemærk: rettigheder på tabelniveau (grant select/insert/…) kommer automatisk
 -- fra Supabases default privileges i schema public — præcis som for de
 -- eksisterende viz_*-tabeller. Beskyttelsen sker i Row Level Security nedenfor.
@@ -185,6 +193,91 @@ grant execute on function public.coach_is_manager() to service_role;
 
 
 -- =============================================================================
+-- 4b) coach_is_staff() — "er den her konto overhovedet en green light-konto?"
+-- -----------------------------------------------------------------------------
+-- HVORFOR DEN FINDES:
+-- "authenticated" betyder KUN, at nogen er logget ind i Supabase-projektet — ikke
+-- at de arbejder hos green light. Er selvbetjent oprettelse (sign-up) slået til
+-- i Authentication → Providers, kan en hvilken som helst person på internettet
+-- oprette en konto og dermed blive "authenticated". Uden dette filter ville de
+-- kunne læse coach_manual — altså hele den uploadede salgsmanual, som er green
+-- lights vigtigste interne ejendom — og holdlisten med alle mailadresser.
+--
+-- Filteret svarer til ALLOWED_EMAIL_DOMAIN på API-siden, bare i databasen.
+--
+-- SÅDAN ÆNDRER I DOMÆNET (fx hvis en ekstern konsulent skal med):
+--   alter database postgres set app.coach_email_domains = 'green-light.dk,partner.dk';
+-- Er indstillingen ikke sat, bruges green-light.dk. Sammenligningen er et rent
+-- suffiks-tjek (ikke LIKE), så tegn som _ og % i et domæne ikke bliver jokere.
+--
+-- FEJLTILSTAND, SAGT HØJT: en konto uden green light-mail mister adgang til den
+-- uploadede manual (appen falder tilbage til serverens indbyggede manual) og til
+-- holdlisten (men ser altid sin egen række). Ingen data går tabt.
+-- =============================================================================
+
+create or replace function public.coach_is_staff()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from unnest(
+           string_to_array(
+             lower(coalesce(nullif(current_setting('app.coach_email_domains', true), ''),
+                            'green-light.dk')),
+             ','
+           )
+         ) as d(domain)
+    where btrim(d.domain) <> ''
+      and right(lower(coalesce(auth.jwt() ->> 'email', '')),
+                length(btrim(d.domain)) + 1) = '@' || btrim(d.domain)
+  );
+$$;
+
+comment on function public.coach_is_staff() is
+  'True hvis den indloggede kontos e-mail hører til et af green lights domæner (app.coach_email_domains, default green-light.dk).';
+
+revoke all on function public.coach_is_staff() from public;
+grant execute on function public.coach_is_staff() to authenticated;
+grant execute on function public.coach_is_staff() to service_role;
+
+
+-- =============================================================================
+-- 4c) coach_my_initials() — kalderens EGNE initialer, slået op i coach_users
+-- -----------------------------------------------------------------------------
+-- seller_initials er en kopi, appen selv skriver, og som ledelsesoverblikket
+-- slår op på. Uden et tjek kunne en sælger gemme en session mærket med en
+-- KOLLEGAS initialer — RLS så kun på seller_id — og dermed lægge en opdigtet
+-- træningssession ind i en andens historik, som lederen ville se den. Det
+-- undergraver hele pointen med værktøjet, så initialerne bindes til registret.
+--
+-- Har man endnu ingen række i coach_users (helt ny konto, før lederen har
+-- oprettet en), returnerer funktionen null, og politikkerne lader initialerne
+-- passere. Ellers kunne en ny sælger ikke gemme sin allerførste session.
+-- =============================================================================
+
+create or replace function public.coach_my_initials()
+returns text
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select u.initials from public.coach_users u where u.id = auth.uid();
+$$;
+
+comment on function public.coach_my_initials() is
+  'Den indloggede brugers initialer fra coach_users, eller null hvis rækken ikke findes endnu.';
+
+revoke all on function public.coach_my_initials() from public;
+grant execute on function public.coach_my_initials() to authenticated;
+grant execute on function public.coach_my_initials() to service_role;
+
+
+-- =============================================================================
 -- 5) Row Level Security slås til på alle fem tabeller
 -- -----------------------------------------------------------------------------
 -- Uden dette ville anon-nøglen (som ligger offentligt i JS-bundlen) kunne læse
@@ -220,18 +313,29 @@ drop policy if exists "self or manager insert coach users" on public.coach_users
 drop policy if exists "self or manager update coach users" on public.coach_users;
 drop policy if exists "manager delete coach users" on public.coach_users;
 
+-- Holdlisten (navne og mails) er kun for green light-konti. Sin EGEN række ser
+-- man altid — ellers ville en konto uden for domænet ikke kunne slå sin egen
+-- identitet op, og appen ville stå uden sælger.
 create policy "team select coach users" on public.coach_users
   for select to authenticated
-  using (true);
+  using (
+    (select public.coach_is_staff())
+    or id = (select auth.uid())
+  );
 
 -- En ny sælger må oprette sin EGEN række ved første login (så holdet ikke går i
--- stå, hvis lederen ikke er ved tasterne) — men kun med rollen 'saelger'.
--- Alle andre rækker kræver leder.
+-- stå, hvis lederen ikke er ved tasterne) — men kun med rollen 'saelger', og kun
+-- hvis kontoen er en green light-konto. Uden dét krav kunne en selvoprettet
+-- fremmed konto skrive sig ind på holdlisten. Alle andre rækker kræver leder.
 create policy "self or manager insert coach users" on public.coach_users
   for insert to authenticated
   with check (
     (select public.coach_is_manager())
-    or (id = (select auth.uid()) and role = 'saelger')
+    or (
+      id = (select auth.uid())
+      and role = 'saelger'
+      and (select public.coach_is_staff())
+    )
   );
 
 -- USING bestemmer HVILKE rækker man må røre, WITH CHECK hvordan de må se ud
@@ -276,14 +380,31 @@ create policy "own or manager select sessions" on public.coach_sessions
     or (select public.coach_is_manager())
   );
 
+-- seller_initials skal svare til ens egne initialer i coach_users (se
+-- coach_my_initials ovenfor), så ingen kan lægge en session ind i en kollegas
+-- navn. Har man endnu ingen række i registret, slipper initialerne igennem.
 create policy "own insert sessions" on public.coach_sessions
   for insert to authenticated
-  with check (seller_id = (select auth.uid()));
+  with check (
+    seller_id = (select auth.uid())
+    and (
+      seller_initials is null
+      or (select public.coach_my_initials()) is null
+      or upper(seller_initials) = upper((select public.coach_my_initials()))
+    )
+  );
 
 create policy "own update sessions" on public.coach_sessions
   for update to authenticated
   using (seller_id = (select auth.uid()))
-  with check (seller_id = (select auth.uid()));
+  with check (
+    seller_id = (select auth.uid())
+    and (
+      seller_initials is null
+      or (select public.coach_my_initials()) is null
+      or upper(seller_initials) = upper((select public.coach_my_initials()))
+    )
+  );
 
 create policy "own delete sessions" on public.coach_sessions
   for delete to authenticated
@@ -307,14 +428,31 @@ create policy "own or manager select profiles" on public.coach_profiles
     or (select public.coach_is_manager())
   );
 
+-- Samme binding af initialer som på sessioner: initials er unique, så uden
+-- tjekket kunne en sælger lægge beslag på en kollegas initialer og dermed
+-- overtage den profil, ledelsesoverblikket slår op.
 create policy "own insert profiles" on public.coach_profiles
   for insert to authenticated
-  with check (seller_id = (select auth.uid()));
+  with check (
+    seller_id = (select auth.uid())
+    and (
+      initials is null
+      or (select public.coach_my_initials()) is null
+      or upper(initials) = upper((select public.coach_my_initials()))
+    )
+  );
 
 create policy "own update profiles" on public.coach_profiles
   for update to authenticated
   using (seller_id = (select auth.uid()))
-  with check (seller_id = (select auth.uid()));
+  with check (
+    seller_id = (select auth.uid())
+    and (
+      initials is null
+      or (select public.coach_my_initials()) is null
+      or upper(initials) = upper((select public.coach_my_initials()))
+    )
+  );
 
 create policy "own delete profiles" on public.coach_profiles
   for delete to authenticated
@@ -361,9 +499,14 @@ create policy "own delete documents" on public.coach_documents
 
 
 -- --------------------------------------------------------------- coach_manual
--- Manualen er fælles viden: alle skal kunne læse den, for coachen bruger den i
--- hver eneste session. Kun en leder må lægge en ny version op eller fjerne en
--- gammel — manualen er ledelsens dokument.
+-- Manualen er fælles viden PÅ HOLDET: alle green light-konti skal kunne læse
+-- den, for coachen bruger den i hver eneste session. Kun en leder må lægge en
+-- ny version op eller fjerne en gammel — manualen er ledelsens dokument.
+--
+-- MEN: den uploadede salgsmanual er green lights vigtigste interne ejendom, og
+-- "authenticated" er ikke det samme som "ansat" (se coach_is_staff ovenfor).
+-- Derfor er læsning bundet til en green light-mail — ikke bare til at være
+-- logget ind i Supabase-projektet.
 drop policy if exists "team select manual" on public.coach_manual;
 drop policy if exists "manager insert manual" on public.coach_manual;
 drop policy if exists "manager update manual" on public.coach_manual;
@@ -371,7 +514,7 @@ drop policy if exists "manager delete manual" on public.coach_manual;
 
 create policy "team select manual" on public.coach_manual
   for select to authenticated
-  using (true);
+  using ((select public.coach_is_staff()));
 
 create policy "manager insert manual" on public.coach_manual
   for insert to authenticated
@@ -476,6 +619,21 @@ create policy "manager delete manual" on public.coach_manual
 --
 --      select count(*) from public.coach_sessions;   -- alle
 --      select count(*) from public.coach_documents;  -- kun egne
+--
+-- f) Er jeg genkendt som green light-medarbejder? (kør via appen/REST som
+--    indlogget bruger — i SQL Editoren er der ingen JWT, så svaret er false)
+--
+--      select public.coach_is_staff(), public.coach_my_initials();
+--
+--    Svarer den false for en rigtig medarbejder, står mailen på et andet
+--    domæne. Tilføj det med:
+--      alter database postgres set app.coach_email_domains = 'green-light.dk,andet.dk';
+--    (og genstart forbindelsen, så indstillingen slår igennem).
+--
+-- g) Kan en sælger mærke en session med en kollegas initialer? Skal FEJLE:
+--
+--      insert into public.coach_sessions (id, seller_initials, data)
+--      values ('proev-1', 'XXX', '{}');     -- XXX = en kollegas initialer
 -- =============================================================================
 
 select

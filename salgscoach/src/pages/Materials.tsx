@@ -31,8 +31,10 @@ import {
   Bar,
   EmptyState,
   ErrorNote,
+  LoadingBlock,
   Modal,
   Notice,
+  PageHeader,
   Panel,
   RatingPill,
   SectionHeader,
@@ -501,21 +503,25 @@ export function Materials() {
   const busy = phase === "arbejder";
 
   return (
-    <div className="space-y-6 animate-fade-up">
-      <SectionHeader
+    <div className="animate-fade-up">
+      <PageHeader
         eyebrow="Salgsmateriale"
         title="Dit eget materiale"
-        desc="Upload det materiale kunden reelt får: tilbuddet, præsentationen, beregningen, business casen. Salgsdirektøren læser det igennem og vurderer det som en kunde ville — og bagefter øver du præsentationen af det højt."
+        desc="Upload det materiale kunden reelt får: tilbuddet, præsentationen, beregningen. Salgsdirektøren læser det igennem og vurderer det, som en kunde ville."
       />
 
-      {/* ------------------------------------------------------------ Upload */}
-      <Panel as="section">
+      <div className="space-y-10 md:space-y-14">
+
+      {/* ------------------------------------------------------------ Upload
+          Feltet står selv på siden, når det er tomt. Et stiplet felt inde i et
+          kort inde i en side er tre rammer om den samme ene handling. */}
+      <section>
         <h2 className="sr-only">Upload materiale</h2>
 
         {busy && file ? (
           <AnalysisProgress fileName={file.name} running />
         ) : phase === "valgt" && file ? (
-          <div className="space-y-4">
+          <div className="panel space-y-4 p-5 md:p-6">
             <div className="flex items-start gap-3 rounded-xl border border-base-line bg-base-panel2 px-4 py-3">
               <Icon.Doc className="mt-0.5 shrink-0 text-brand-400" width={20} height={20} />
               <div className="min-w-0 flex-1">
@@ -569,50 +575,53 @@ export function Materials() {
               accept={ACCEPTED_EXTENSIONS}
               maxBytes={MAX_UPLOAD_BYTES}
               busy={busy}
-              hint="Upload ét materiale ad gangen. Du bliver spurgt om kundekonteksten, inden analysen går i gang."
+              hint="Ét materiale ad gangen. Du bliver spurgt om kundekonteksten, inden analysen går i gang. Selve filen gemmes aldrig — kun den udtrukne tekst og analysen, og kun du kan se dem."
             />
-            <Notice>
-              Kun du kan se dine materialer. Selve filen bliver aldrig gemt — kun den tekst der
-              udtrækkes, og salgsdirektørens analyse.
-            </Notice>
-            {uploadError && <ErrorNote>{uploadError}</ErrorNote>}
+            {uploadError && <ErrorNote title="Materialet blev ikke uploadet">{uploadError}</ErrorNote>}
           </div>
         )}
-      </Panel>
+      </section>
 
       {/* ------------------------------------------------------------ Listen */}
-      <section className="space-y-3">
-        <h2 className="title-lg">
-          Dine materialer
-          {docs && docs.length > 0 && (
-            <span className="ml-2 text-sm font-normal text-ink-mute">
-              {plural(docs.length, "materiale", "materialer")}
-            </span>
-          )}
-        </h2>
+      <section>
+        <SectionHeader
+          eyebrow="Arkiv"
+          title="Dine materialer"
+          desc="Analyserede materialer bliver liggende, så du kan tage præsentationen igen inden mødet."
+          right={
+            docs && docs.length > 0 ? (
+              <span className="text-sm text-ink-mute">
+                {plural(docs.length, "materiale", "materialer")}
+              </span>
+            ) : undefined
+          }
+        />
 
-        {loadError && <ErrorNote onRetry={() => void load()}>{loadError}</ErrorNote>}
+        {loadError && (
+          <div className="mb-4">
+            <ErrorNote title="Materialerne kunne ikke hentes" onRetry={() => void load()}>
+              <span className="text-xs text-danger-300/70">{loadError}</span>
+            </ErrorNote>
+          </div>
+        )}
 
         {docs === null ? (
-          <div className="flex items-center gap-3 px-1 py-6 text-sm text-ink-mute">
-            <Spinner /> Henter dine materialer …
-          </div>
+          <LoadingBlock label="Henter dine materialer" rows={2} />
         ) : docs.length === 0 ? (
           <EmptyState
-            icon={<Icon.Doc width={30} height={30} />}
+            icon={<Icon.Doc width={22} height={22} />}
             title="Du har ikke uploadet noget materiale endnu"
-            desc="Salgsdirektøren læser dit rigtige materiale linje for linje: hvem det taler til, hvad kunden vil spørge om, hvor argumentationen ikke holder — og hvordan afsnittene skal skrives om."
-            action={
-              <ul className="mx-auto max-w-md space-y-2 text-left">
+            desc="Salgsdirektøren læser materialet linje for linje: hvem det taler til, hvad kunden vil spørge om, og hvor argumentationen ikke holder."
+            aside={
+              <ul className="space-y-2 border-l border-base-line pl-4">
                 {[
                   "Et tilbud du er ved at sende, eller lige har sendt",
                   "En præsentation du skal holde for en kunde",
                   "En energiberegning eller et driftsregnestykke",
                   "En business case der skal godkendes internt hos kunden",
                 ].map((t) => (
-                  <li key={t} className="flex gap-2.5 text-sm text-ink-soft">
-                    <span className="mt-[9px] h-1 w-1 shrink-0 rounded-full bg-brand-600" />
-                    <span>{t}</span>
+                  <li key={t} className="text-sm leading-relaxed text-ink-soft">
+                    {t}
                   </li>
                 ))}
               </ul>
@@ -633,6 +642,7 @@ export function Materials() {
           </ul>
         )}
       </section>
+      </div>
 
       {/* ---------------------------------------------------------- Sletning */}
       <Modal

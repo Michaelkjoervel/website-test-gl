@@ -19,7 +19,16 @@ import { Link, useLocation } from "react-router-dom";
 import { api } from "../lib/api";
 import type { ManualChecklistRef, ManualManifest, ManualPrincipleRef } from "../lib/api";
 import { plural } from "../lib/format";
-import { ErrorNote, Notice, Panel, SectionHeader, Spinner } from "../ui/primitives";
+import {
+  ErrorNote,
+  LoadingBlock,
+  Notice,
+  PageHeader,
+  PageState,
+  Panel,
+  SectionHeader,
+  Skel,
+} from "../ui/primitives";
 import { Icon } from "../ui/icons";
 import type { TrainingModeId } from "../lib/types";
 
@@ -197,8 +206,17 @@ export function ManualLibrary() {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-3 py-20 text-ink-mute">
-        <Spinner /> Henter manualens indeks…
+      <div role="status" aria-label="Henter manualens indeks">
+        <div className="page-head" aria-hidden="true">
+          <Skel w={186} h={11} />
+          <div className="mt-3">
+            <Skel w="38%" h={32} />
+          </div>
+          <div className="mt-4">
+            <Skel w="56%" h={11} />
+          </div>
+        </div>
+        <LoadingBlock label="Henter manualens indeks" rows={4} />
       </div>
     );
   }
@@ -207,43 +225,50 @@ export function ManualLibrary() {
   // vise en tom manual, der ligner en manual uden indhold.
   if (!manual) {
     return (
-      <div className="space-y-6 pb-8">
-        <header>
-          <div className="eyebrow">green light · intern metodik</div>
-          <h1 className="title-xl mt-1.5">Salgsmanualen</h1>
-        </header>
-        {error ? (
-          <ErrorNote onRetry={() => setAttempt((n) => n + 1)}>
-            {error} Indekset er ikke indlæst.
-          </ErrorNote>
-        ) : (
-          <Notice>
-            Manualens indeks er tomt lige nu. Selve manualteksten ligger på green lights server —
-            den vises aldrig her — men kapitler og principtitler burde være tilgængelige. Prøv igen
-            om lidt.
-          </Notice>
-        )}
-      </div>
+      <PageState
+        eyebrow="green light · intern metodik"
+        title={error ? "Manualen kunne ikke hentes" : "Manualens indeks er tomt"}
+        desc={
+          error
+            ? "Selve manualteksten ligger på green lights server og vises aldrig i browseren — men kapitler og principtitler skulle kunne hentes. De kan ikke lige nu."
+            : "Serveren svarede uden kapitler og principper. Det er en opsætning, ikke en fejl i din browser."
+        }
+        detail={error ?? undefined}
+        tone={error ? "danger" : "neutral"}
+        actions={
+          <>
+            <button type="button" className="btn-primary" onClick={() => setAttempt((n) => n + 1)}>
+              <Icon.Repeat width={16} height={16} />
+              Hent indekset igen
+            </button>
+            <Link to="/" className="btn-outline">
+              Til træningen
+            </Link>
+          </>
+        }
+      />
     );
   }
 
   return (
-    <div className="space-y-8 pb-8">
+    <div className="pb-8">
       {/* ------------------------------------------------------- Overskrift */}
-      <header>
-        <div className="eyebrow">green light · intern metodik</div>
-        <h1 className="title-xl mt-1.5">Salgsmanualen</h1>
-        <p className="body mt-2 max-w-2xl">
-          {meta?.subtitle ?? "B2B belysningsløsninger direkte til slutbrugeren"}
-          {meta?.version ? ` · ${meta.version}` : ""} ·{" "}
-          {plural(meta?.chapters ?? chapters.length, "kapitel", "kapitler")} ·{" "}
-          {plural(principles.length, "princip", "principper")}
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="green light · intern metodik"
+        title="Salgsmanualen"
+        desc={`${meta?.subtitle ?? "B2B belysningsløsninger direkte til slutbrugeren"}${
+          meta?.version ? ` · ${meta.version}` : ""
+        } · ${plural(meta?.chapters ?? chapters.length, "kapitel", "kapitler")} · ${plural(
+          principles.length,
+          "princip",
+          "principper",
+        )}`}
+      />
 
+      <div className="space-y-8">
       {error && (
-        <ErrorNote onRetry={() => setAttempt((n) => n + 1)}>
-          {error} Indekset er ikke indlæst.
+        <ErrorNote title="Indekset er ikke helt indlæst" onRetry={() => setAttempt((n) => n + 1)}>
+          <span className="text-xs text-danger-300/70">{error}</span>
         </ErrorNote>
       )}
 
@@ -466,6 +491,7 @@ export function ManualLibrary() {
           {checklists.length === 0 && <Notice>Der er ingen checklister i indekset lige nu.</Notice>}
         </section>
       )}
+      </div>
     </div>
   );
 }

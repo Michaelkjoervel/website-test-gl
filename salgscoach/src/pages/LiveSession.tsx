@@ -37,7 +37,7 @@ import {
   type StageSpeaker,
 } from "../ui/VoiceStage";
 import { Icon } from "../ui/icons";
-import { Avatar, CoachText, Modal, Panel, Spinner } from "../ui/primitives";
+import { Avatar, CoachText, Modal, Panel, Skel, Spinner, StepWait } from "../ui/primitives";
 
 import type {
   CoachMode,
@@ -201,7 +201,7 @@ export function LiveSession() {
         if (cancelled) return;
         if (!found) {
           setLoadError(
-            "Øvelsen kunne ikke findes. Den er måske slettet, eller også hører den til en anden konto.",
+            "Der ligger ingen øvelse på det link. Den kan være afsluttet, slettet, eller høre til en anden konto. Dine egne øvelser står i historikken.",
           );
           setPhase("briefing");
           return;
@@ -260,6 +260,30 @@ export function LiveSession() {
       if (runningRef.current) void voiceRef.current.end();
     };
   }, []);
+
+  /*
+   * Løbende sikring af samtalen. Uden den lever referatet kun i hukommelsen,
+   * indtil øvelsen afsluttes — et lukket faneblad, en flad telefon eller et
+   * browserkrak, og alt det sagte er væk. Vi gemmer derfor stille et par
+   * sekunder efter hver ny replik. Den endelige version skrives stadig af
+   * finish(), så det her aldrig kan komme til at overhale afslutningen.
+   */
+  useEffect(() => {
+    if (phase !== "samtale" || endingRef.current || transcript.length === 0) return;
+    const timer = window.setTimeout(() => {
+      const s = sessionRef.current;
+      if (!s || endingRef.current) return;
+      void saveSession({
+        ...s,
+        status: "aktiv",
+        transcript,
+        durationSec: elapsedOf(startedAtRef.current, voiceRef.current.elapsedSec),
+      }).catch(() => {
+        /* et mislykket mellemgem må aldrig forstyrre samtalen */
+      });
+    }, 4000);
+    return () => window.clearTimeout(timer);
+  }, [transcript, phase]);
 
   /* Uret under analysen — kun mens vi venter, og kun ét sekund ad gangen. */
   useEffect(() => {
@@ -509,10 +533,35 @@ export function LiveSession() {
 
   if (phase === "indlaeser") {
     return (
-      <div className="grid h-[100dvh] place-items-center bg-base">
-        <div className="flex items-center gap-3 text-sm text-ink-mute">
-          <Spinner size={18} />
-          Henter øvelsen…
+      <div className="flex h-[100dvh] flex-col bg-base" role="status" aria-label="Henter øvelsen">
+        <div className="safe-t border-b border-base-line">
+          <div className="mx-auto flex w-full max-w-3xl items-center gap-3 px-5 py-4">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-brand-800 bg-brand-950 text-sm font-bold text-brand-400">
+              gl
+            </span>
+            <span className="text-sm font-bold tracking-tight">
+              green light <span className="text-brand-400">Salgscoach</span>
+            </span>
+            <span className="ml-auto flex items-center gap-2.5 text-xs text-ink-mute">
+              <Spinner size={14} />
+              Henter øvelsen
+            </span>
+          </div>
+        </div>
+        <div className="mx-auto w-full max-w-3xl flex-1 px-5 py-10" aria-hidden="true">
+          <Skel w={96} h={11} />
+          <div className="mt-3">
+            <Skel w="62%" h={30} />
+          </div>
+          <div className="mt-4 space-y-2">
+            <Skel w="88%" h={11} />
+            <Skel w="54%" h={11} />
+          </div>
+          <div className="panel mt-8 space-y-3 p-5">
+            <Skel w={112} h={10} />
+            <Skel w="70%" h={14} />
+            <Skel w="94%" h={10} />
+          </div>
         </div>
       </div>
     );
@@ -522,8 +571,12 @@ export function LiveSession() {
     return (
       <FullScreenMessage
         title="Øvelsen kunne ikke åbnes"
-        body={loadError ?? "Øvelsen findes ikke."}
-        primary={{ label: "Tilbage til forsiden", onClick: () => navigate("/", { replace: true }) }}
+        body={
+          loadError ??
+          "Der ligger ingen øvelse på det link. Den kan være afsluttet, slettet, eller høre til en anden konto."
+        }
+        primary={{ label: "Vælg en øvelse", onClick: () => navigate("/", { replace: true }) }}
+        secondary={{ label: "Se din historik", onClick: () => navigate("/historik", { replace: true }) }}
       />
     );
   }
@@ -563,6 +616,8 @@ export function LiveSession() {
             loadError={loadError}
             starting={voice.starting}
             onStart={() => void handleStart()}
+            savedLines={session.transcript.filter((u) => u.role !== "system" && u.text.trim()).length}
+            onFeedbackOnSaved={() => navigate(`/debriefing/${session.id}`)}
           />
         )}
 
@@ -1109,6 +1164,8 @@ function Briefing({
   loadError,
   starting,
   onStart,
+  savedLines,
+  onFeedbackOnSaved,
 }: {
   session: TrainingSession;
   coachLed: boolean;
@@ -1118,6 +1175,9 @@ function Briefing({
   loadError: string | null;
   starting: boolean;
   onStart: () => void;
+  /** Replikker fra en afbrudt samtale, der allerede ligger gemt. */
+  savedLines: number;
+  onFeedbackOnSaved: () => void;
 }) {
   const scenario = session.scenario;
   const persona = scenario?.persona;
@@ -1151,11 +1211,29 @@ function Briefing({
         </div>
       )}
 
+      {/* En afbrudt samtale er stadig en samtale. Den skal kunne bruges. */}
+      {savedLines > 0 && (
+        <div className="mt-5 rounded-xl border border-warn-600/40 bg-warn-900/40 px-4 py-3.5">
+          <div className="flex items-start gap-3">
+            <Icon.Warn className="mt-0.5 shrink-0 text-warn-500" width={17} height={17} />
+            <p className="text-sm leading-relaxed text-warn-200">
+              Øvelsen blev afbrudt undervejs. Der ligger {savedLines} gemte replikker. Starter du
+              forfra, bliver de erstattet af den nye samtale.
+            </p>
+          </div>
+          <button type="button" className="btn-outline btn-sm mt-3" onClick={onFeedbackOnSaved}>
+            <Icon.Check width={15} height={15} />
+            Få feedback på det, der allerede er sagt
+          </button>
+        </div>
+      )}
+
       {persona && (
         <Panel className="mt-6">
           <div className="eyebrow">Du skal tale med</div>
           <div className="mt-2.5 flex items-start gap-3">
-            <Avatar initials={nameInitials(persona.name)} size={42} tone={1} />
+            {/* Blå = rollespilskunden. Det er hele pointen med farven her. */}
+            <Avatar initials={nameInitials(persona.name)} size={42} tone="client" />
             <div className="min-w-0">
               <div className="title-md">{persona.name}</div>
               <div className="body-mute">{counterpartSub}</div>
@@ -1260,17 +1338,19 @@ function Analysing({
   onSkip: () => void;
 }) {
   return (
-    <div className="mx-auto flex min-h-full w-full max-w-xl flex-col justify-center px-5 py-10">
+    <div className="mx-auto flex min-h-full w-full max-w-2xl flex-col justify-center px-5 py-10">
       {error ? (
-        <>
-          <div className="eyebrow">Analysen</div>
-          <h2 className="title-lg mt-2">Feedbacken kunne ikke laves</h2>
-          <p className="body mt-3">{error}</p>
-          <p className="body-mute mt-2">
+        <div>
+          <div className="eyebrow">Vurdering</div>
+          <h2 className="title-xl mt-2">Feedbacken kunne ikke laves</h2>
+          <p className="body mt-3.5 max-w-[54ch]">
             Samtalen er gemt. Du mister ingenting ved at prøve igen — eller ved at gå videre og
             hente feedbacken senere.
           </p>
-          <div className="mt-6 flex flex-col gap-2 sm:flex-row">
+          <p className="mt-4 rounded-xl border border-danger-600/35 bg-danger-900/30 px-4 py-3 text-xs leading-relaxed text-danger-300/90">
+            {error}
+          </p>
+          <div className="mt-7 flex flex-col gap-2.5 sm:flex-row">
             <button className="btn-primary" onClick={onRetry}>
               <Icon.Repeat width={17} height={17} />
               Prøv analysen igen
@@ -1279,54 +1359,16 @@ function Analysing({
               Gå til debriefingen
             </button>
           </div>
-        </>
+        </div>
       ) : (
-        <>
-          <div className="eyebrow">Feedback</div>
-          <h2 className="title-lg mt-2">Salgsdirektøren gennemgår samtalen…</h2>
-          <p className="body mt-3">
-            {lines} replikker · {formatClock(durationSec)} samtale. Det tager typisk 10-40 sekunder,
-            fordi han læser hele samtalen igennem frem for at skimme den.
-          </p>
-
-          <ol className="mt-7 space-y-3">
-            {ANALYSE_STEPS.map((step, i) => {
-              const next = ANALYSE_STEPS[i + 1];
-              const done = next ? seconds >= next.at : false;
-              const active = seconds >= step.at && !done;
-              return (
-                <li key={step.text} className="flex items-center gap-3">
-                  <span
-                    className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border ${
-                      done
-                        ? "border-brand-700 bg-brand-950 text-brand-300"
-                        : active
-                          ? "border-brand-600 bg-brand-950 text-brand-300"
-                          : "border-base-line bg-base-panel text-ink-faint"
-                    }`}
-                  >
-                    {done ? (
-                      <Icon.Check width={13} height={13} />
-                    ) : active ? (
-                      <Spinner size={12} />
-                    ) : (
-                      <span className="h-1 w-1 rounded-full bg-current" />
-                    )}
-                  </span>
-                  <span
-                    className={`text-sm ${done || active ? "text-ink-soft" : "text-ink-faint"}`}
-                  >
-                    {step.text}
-                  </span>
-                </li>
-              );
-            })}
-          </ol>
-
-          <p className="mt-7 text-xs text-ink-mute">
-            Du kan roligt blive på siden. Samtalen er allerede gemt.
-          </p>
-        </>
+        <StepWait
+          eyebrow="Vurdering"
+          title="Salgsdirektøren gennemgår samtalen"
+          desc={`${lines} replikker · ${formatClock(durationSec)} samtale. Hele samtalen bliver læst igennem frem for skimmet, så det tager typisk 10-40 sekunder.`}
+          steps={ANALYSE_STEPS}
+          seconds={seconds}
+          note="Du kan blive på siden. Samtalen er allerede gemt."
+        />
       )}
     </div>
   );
@@ -1398,13 +1440,20 @@ function VoiceFailure({
 
 /* ============================================================ Hele skærmen */
 
+/**
+ * Samtaleskærmen har ingen app-skal. Når den ikke kan vise en samtale, må
+ * beskeden derfor selv bære identiteten — ellers ligner en tom sort skærm med
+ * to linjer tekst en fejl i udrulningen frem for en tilstand i værktøjet.
+ */
 function FullScreenMessage({
+  eyebrow = "Øvelse",
   title,
   body,
   primary,
   secondary,
   inline,
 }: {
+  eyebrow?: string;
   title: string;
   body: string;
   primary: { label: string; onClick: () => void };
@@ -1412,10 +1461,11 @@ function FullScreenMessage({
   inline?: boolean;
 }) {
   const content = (
-    <div className="w-full max-w-md">
-      <h2 className="title-lg">{title}</h2>
-      <p className="body mt-3">{body}</p>
-      <div className="mt-6 flex flex-col gap-2 sm:flex-row">
+    <div className="w-full max-w-[54ch]">
+      <div className="eyebrow">{eyebrow}</div>
+      <h2 className="title-xl mt-2">{title}</h2>
+      <p className="body mt-3.5">{body}</p>
+      <div className="mt-7 flex flex-col gap-2.5 sm:flex-row">
         <button className="btn-primary" onClick={primary.onClick}>
           {primary.label}
         </button>
@@ -1427,8 +1477,22 @@ function FullScreenMessage({
       </div>
     </div>
   );
-  if (inline) return <div className="grid min-h-full place-items-center px-5 py-10">{content}</div>;
-  return <div className="grid h-[100dvh] place-items-center bg-base px-5">{content}</div>;
+  if (inline) return <div className="mx-auto grid min-h-full max-w-3xl place-items-center px-5 py-10">{content}</div>;
+  return (
+    <div className="flex h-[100dvh] flex-col bg-base">
+      <div className="safe-t border-b border-base-line">
+        <div className="mx-auto flex w-full max-w-3xl items-center gap-3 px-5 py-4">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-brand-800 bg-brand-950 text-sm font-bold text-brand-400">
+            gl
+          </span>
+          <span className="text-sm font-bold tracking-tight">
+            green light <span className="text-brand-400">Salgscoach</span>
+          </span>
+        </div>
+      </div>
+      <div className="mx-auto flex w-full max-w-3xl flex-1 items-start px-5 pb-10 pt-[14vh]">{content}</div>
+    </div>
+  );
 }
 
 /* ================================================================ Hjælpere */

@@ -162,10 +162,17 @@ export function useVoiceSession(): VoiceSessionApi {
    * Modpartens svar, når vi ikke kører realtime. Bruges både af
    * reservestemmen og af den rene tekst-tilstand — samme vej ind til serveren,
    * så samtalen opfører sig ens uanset motor.
+   *
+   * `recorded` fortæller om replikken allerede står i referatet. Er den ikke
+   * skrevet ind (fx en anmodning om coaching), sendes den med til modellen
+   * uden at havne i udskriften — ellers ville coachen bagefter analysere
+   * sælgeren på ord, han aldrig har sagt.
    */
   const textRespond = useCallback(
-    async (p: StartParams, sellerText: string) => {
-      push("saelger", sellerText);
+    async (p: StartParams, sellerText: string, opts: { recorded?: boolean } = {}) => {
+      const history = opts.recorded
+        ? lines.current
+        : [...lines.current, { role: "saelger" as const, text: sellerText }];
       const res = await api.converse({
         modeId: p.modeId,
         coachMode: p.coachMode,
@@ -175,12 +182,24 @@ export function useVoiceSession(): VoiceSessionApi {
         intake: p.intake,
         documentText: p.documentText,
         sellerContext: p.sellerContext,
-        messages: lines.current,
+        messages: history,
       });
       return res.reply;
     },
-    [push],
+    [],
   );
+
+  /** Skift øvelsen over på skrift. Sidste udvej — men altid bedre end at dø. */
+  const fallBackToText = useCallback((notice: string) => {
+    bv.current?.stop();
+    bv.current = null;
+    textOnly.current = true;
+    setEngine("tekst");
+    setEngineNotice(notice);
+    setError(null);
+    setErrorKind(null);
+    setState("lytter");
+  }, []);
 
   const startBrowserVoice = useCallback(
     async (p: StartParams, notice: string | null) => {
@@ -191,11 +210,10 @@ export function useVoiceSession(): VoiceSessionApi {
         textOnly.current = true;
         setEngine("tekst");
         setEngineNotice(
-          p.prefer === "tekst"
-            ? "Du kører øvelsen på skrift. Skriv dine replikker, som du ville sige dem."
-            : notice
-              ? `${notice} Browseren kan heller ikke talegenkendelse, så øvelsen kører på skrift.`
-              : "Øvelsen kører på skrift, fordi browseren ikke understøtter talegenkendelse.",
+          notice ??
+            (p.prefer === "tekst"
+              ? "Du kører øvelsen på skrift. Skriv dine replikker, som du ville sige dem."
+              : "Øvelsen kører på skrift, fordi browseren ikke understøtter talegenkendelse."),
         );
         setState("lytter");
         return;
@@ -209,10 +227,20 @@ export function useVoiceSession(): VoiceSessionApi {
             if (final) push(speaker === "saelger" ? "saelger" : counterpartRole(p.modeId), text);
             else setLive({ speaker, text });
           },
-          onError: (m) => fail(classify(m), m),
+          onError: (m) => {
+            const kind = classify(m);
+            // Er mikrofonen eller talegenkendelsen ude af spil, er der ingen
+            // vej tilbage til lyd i denne øvelse. Så flytter vi samtalen over
+            // på skrift frem for at lade orben stå og sige "Lytter".
+            if (bv.current && (kind === "mikrofon-afvist" || kind === "ingen-mikrofon" || bv.current.currentState === "fejl")) {
+              fallBackToText(`${m} Øvelsen fortsætter på skrift — skriv dine replikker herunder.`);
+              return;
+            }
+            fail(kind, m);
+          },
         },
-        respond: async (sellerText) => {
-          const reply = await textRespond(p, sellerText);
+        respond: async (sellerText, opts) => {
+          const reply = await textRespond(p, sellerText, { recorded: opts.recorded });
           let audio: string | undefined;
           try {
             const spoken = await api.speak({ text: reply, voice: p.voice || "cedar" });
@@ -228,8 +256,27 @@ export function useVoiceSession(): VoiceSessionApi {
       setEngineNotice(notice);
       await session.start();
     },
-    [push, textRespond, fail, classify],
+    [push, textRespond, fail, classify, fallBackToText],
   );
+
+  /**
+   * Smid en død realtime-forbindelse væk. Uden det her ville hooken tro, at
+   * den stadig kørte realtime: alt sælgeren skrev og alle knapper ville gå til
+   * en lukket datakanal, og INTET ville ske — uden en eneste fejlbesked.
+   */
+  const discardRealtime = useCallback(async (reason: string) => {
+    const dead = rt.current;
+    rt.current = null;
+    if (!dead) return;
+    // Et bevidst fald tilbage er ikke et forbindelsestab; luk stille.
+    const wasEnding = endingRef.current;
+    endingRef.current = true;
+    try {
+      await dead.close(reason);
+    } finally {
+      endingRef.current = wasEnding;
+    }
+  }, []);
 
   const start = useCallback(
     async (p: StartParams, opts: { keepTranscript?: boolean } = {}) => {
@@ -316,9 +363,22 @@ export function useVoiceSession(): VoiceSessionApi {
           setStarting(false);
           return;
         } catch (e) {
+          // Forbindelsen nåede måske at blive halvt oprettet. Den skal væk,
+          // før vi falder tilbage — ellers går sælgerens replikker til en
+          // lukket kanal, hvor der aldrig kommer et svar.
+          await discardRealtime("Stemmeforbindelsen kunne ikke etableres.");
+
+          const message = (e as Error).message || "Realtime-stemmen kunne ikke starte.";
+          const kind = classify(message);
+          const micProblem = kind === "mikrofon-afvist" || kind === "ingen-mikrofon";
+
+          // Er det mikrofonen den er gal med, hjælper reservestemmen ikke —
+          // den skal bruge præcis den samme mikrofon. Så på skrift med det samme.
           await startBrowserVoice(
-            p,
-            `${(e as Error).message || "Realtime-stemmen kunne ikke starte."} Vi kører videre på reservestemmen.`,
+            micProblem ? { ...p, prefer: "tekst" } : p,
+            micProblem
+              ? `${message} Øvelsen kører videre på skrift, så du kan træne nu.`
+              : `${message} Vi kører videre på reservestemmen.`,
           );
           setStarting(false);
           return;
@@ -328,7 +388,7 @@ export function useVoiceSession(): VoiceSessionApi {
       await startBrowserVoice(p, wantsRealtime ? "Browseren understøtter ikke realtime-stemme." : null);
       setStarting(false);
     },
-    [push, startBrowserVoice],
+    [push, startBrowserVoice, discardRealtime, classify],
   );
 
   const end = useCallback(async () => {
@@ -371,6 +431,7 @@ export function useVoiceSession(): VoiceSessionApi {
   const toggleMute = useCallback(() => {
     setMuted((m) => {
       rt.current?.setMuted(!m);
+      bv.current?.setMuted(!m);
       return !m;
     });
   }, []);
@@ -389,7 +450,9 @@ export function useVoiceSession(): VoiceSessionApi {
       return;
     }
     if (bv.current) {
-      void bv.current.say(msg);
+      // record: false — instruktionen er ikke noget sælgeren har sagt, og må
+      // aldrig stå i referatet, som coachen bagefter bedømmer ham på.
+      void bv.current.say(msg, { record: false });
       return;
     }
     // Ren tekst-tilstand: send beskeden gennem samme vej som skrevne replikker.
@@ -397,7 +460,7 @@ export function useVoiceSession(): VoiceSessionApi {
     if (!p || textBusy.current) return;
     textBusy.current = true;
     setState("taenker");
-    void textRespond(p, msg)
+    void textRespond(p, msg, { recorded: false })
       .then((reply) => {
         push(counterpartRole(p.modeId), reply);
         setState("lytter");
@@ -429,8 +492,9 @@ export function useVoiceSession(): VoiceSessionApi {
       const p = params.current;
       if (!p || textBusy.current) return;
       textBusy.current = true;
+      push("saelger", clean);
       setState("taenker");
-      void textRespond(p, clean)
+      void textRespond(p, clean, { recorded: true })
         .then((reply) => {
           push(counterpartRole(p.modeId), reply);
           setState("lytter");

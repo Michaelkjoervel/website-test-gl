@@ -27,7 +27,7 @@
 
 import {
   authorize,
-  rateLimit,
+  coachRateLimit,
   corsOrigin,
   openHidden,
   mintRealtimeSession,
@@ -105,8 +105,9 @@ export default async function handler(req, res) {
   const auth = await authorize(token);
   if (!auth.ok) return res.status(auth.status).json({ error: auth.reason });
 
-  // Egen spand: stemmesessioner tæller ikke mod tekst-/analysekvoten.
-  const rl = rateLimit(`coach-session:${auth.email || "anonymous"}`);
+  // Egen spand: stemmesessioner tæller ikke mod tekst-/analysekvoten — og de
+  // holdes bevidst lavt, fordi realtime-lyd er det dyreste, coachen kan lave.
+  const rl = coachRateLimit("session", auth.email);
   if (!rl.ok) return res.status(rl.status).json({ error: rl.reason });
 
   const modeId = String(body?.modeId || "").trim();
@@ -127,7 +128,9 @@ export default async function handler(req, res) {
       coachMode: body?.coachMode || mode?.defaultCoachMode || "realistisk",
       language,
       scenario: body?.scenario || null,
-      hidden: openHidden(body?.hiddenBlob), // åbnes KUN her — aldrig i browseren
+      // Åbnes KUN her — aldrig i browseren. Og kun hvis forseglingen er udstedt
+      // til netop denne bruger og ikke er udløbet.
+      hidden: openHidden(body?.hiddenBlob, { audience: auth.email }),
       sellerContext: boundContext(body?.sellerContext),
       intake: trim(body?.intake, 6000),
       documentText: trim(body?.documentText, 40_000),

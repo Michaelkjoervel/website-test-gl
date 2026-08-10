@@ -27,7 +27,20 @@ import { listAllSessions, listProfiles, summariseSessionsForProfile } from "../l
 import { listSellers } from "../lib/sellers";
 import * as fmt from "../lib/format";
 
-import { Avatar, Bar, EmptyState, ErrorNote, Notice, Panel, SectionHeader, Spinner } from "../ui/primitives";
+import {
+  Avatar,
+  Bar,
+  EmptyState,
+  ErrorNote,
+  LoadingBlock,
+  Notice,
+  PageHeader,
+  PageState,
+  Panel,
+  SectionHeader,
+  Skel,
+  Spinner,
+} from "../ui/primitives";
 import { Icon } from "../ui/icons";
 import type {
   PatternTrend,
@@ -135,41 +148,37 @@ export function ManagerDashboard() {
 
 function AuthPending() {
   return (
-    <div className="flex items-center gap-3 py-16 text-sm text-ink-mute">
-      <Spinner /> Henter din adgang
+    <div role="status" aria-label="Henter din adgang">
+      <div className="page-head" aria-hidden="true">
+        <Skel w={120} h={11} />
+        <div className="mt-3">
+          <Skel w="34%" h={32} />
+        </div>
+      </div>
+      <LoadingBlock label="Henter din adgang" rows={3} />
     </div>
   );
 }
 
 export function NoManagerAccess() {
   return (
-    <div className="mx-auto max-w-xl py-10">
-      <Panel as="section">
-        <div className="flex items-start gap-4">
-          <span className="mt-0.5 shrink-0 text-ink-mute">
-            <Icon.Shield width={22} height={22} />
-          </span>
-          <div>
-            <h1 className="title-lg">Du har ikke adgang til ledelsesoverblikket</h1>
-            <p className="body mt-2">
-              Ledelsesoverblikket er forbeholdt salgsledelsen. Din konto er registreret som sælger, og
-              derfor vises hverken holdets sessioner, udviklingsprofiler eller noter her.
-            </p>
-            <p className="body-mute mt-3">
-              Din egen udvikling finder du under Min udvikling. Mener du at det er en fejl, skal din
-              rolle rettes i brugeropsætningen.
-            </p>
-            <div className="mt-5 flex flex-wrap gap-2">
-              <Link className="btn-primary btn-sm" to="/udvikling">
-                Gå til Min udvikling
-              </Link>
-              <Link className="btn-outline btn-sm" to="/">
-                Til forsiden
-              </Link>
-            </div>
-          </div>
-        </div>
-      </Panel>
+    <div>
+      <PageState
+        eyebrow="Salgsledelse"
+        title="Du har ikke adgang til ledelsesoverblikket"
+        desc="Ledelsesoverblikket er forbeholdt salgsledelsen. Din konto er registreret som sælger, og derfor vises hverken holdets sessioner, udviklingsprofiler eller noter her."
+        detail="Din egen udvikling finder du under Min udvikling. Er rollen forkert, skal den rettes i brugeropsætningen."
+        actions={
+          <>
+            <Link to="/udvikling" className="btn-primary">
+              Gå til Min udvikling
+            </Link>
+            <Link to="/" className="btn-outline">
+              Til forsiden
+            </Link>
+          </>
+        }
+      />
     </div>
   );
 }
@@ -410,14 +419,12 @@ function DashboardInner() {
   return (
     <div className="space-y-6">
       {/* ------------------------------------------------------------ Hoved */}
-      <header className="space-y-4">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
-            <div className="eyebrow mb-1.5">Salgsledelse</div>
-            <h1 className="title-xl">Ledelsesoverblik</h1>
-          </div>
-
-          <div className="flex flex-col items-start gap-2 sm:items-end">
+      <PageHeader
+        eyebrow="Salgsledelse"
+        title="Ledelsesoverblik"
+        desc="Et coachingværktøj, ikke et måleværktøj. Overblikket svarer på hvad holdet skal træne — ikke hvem der er bedst. Der er hverken score, rangliste eller sammenligning af personer, og sælgerne ved at værktøjet findes."
+        right={
+          <div className="flex flex-col items-start gap-2 md:items-end">
             <button
               type="button"
               className="btn-outline btn-sm"
@@ -431,24 +438,22 @@ function DashboardInner() {
               {cached ? `Overblik genereret ${fmt.formatWhen(cached.builtAt)}` : "Overblikket er ikke genereret endnu"}
             </span>
           </div>
-        </div>
+        }
+      />
 
-        {/* Formålet skrevet ud. Sælgerne ved at værktøjet findes — så skal der
-            heller ikke være tvivl om hvad det bliver brugt til. */}
-        <p className="body max-w-3xl border-l-2 border-brand-800 pl-4">
-          Det her er et coachingværktøj, ikke et måleværktøj. Overblikket skal svare på hvad vi skal
-          træne — ikke hvem der er bedst. Der er hverken score, rangliste eller sammenligning af
-          personer, og sælgerne ved at værktøjet findes.
-        </p>
-      </header>
-
-      {loadError && <ErrorNote onRetry={() => void loadBase()}>{loadError}</ErrorNote>}
-      {buildError && <ErrorNote onRetry={() => void build()}>{buildError}</ErrorNote>}
+      {loadError && (
+        <ErrorNote title="Holdets data kunne ikke hentes" onRetry={() => void loadBase()}>
+          <span className="text-xs text-danger-300/70">{loadError}</span>
+        </ErrorNote>
+      )}
+      {buildError && (
+        <ErrorNote title="Overblikket kunne ikke genereres" onRetry={() => void build()}>
+          <span className="text-xs text-danger-300/70">{buildError}</span>
+        </ErrorNote>
+      )}
 
       {loading ? (
-        <div className="flex items-center gap-3 py-16 text-sm text-ink-mute">
-          <Spinner /> Henter holdets sessioner og udviklingsprofiler
-        </div>
+        <LoadingBlock label="Henter holdets sessioner og udviklingsprofiler" rows={4} />
       ) : (
         <>
           {stale && (

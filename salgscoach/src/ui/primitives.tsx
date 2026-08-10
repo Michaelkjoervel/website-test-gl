@@ -53,14 +53,53 @@ export function SectionHeader({
   right?: ReactNode;
 }) {
   return (
-    <div className="mb-4 flex items-start justify-between gap-4">
+    <div className="mb-5 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
       <div className="min-w-0">
-        {eyebrow && <div className="eyebrow mb-1.5">{eyebrow}</div>}
+        {eyebrow && <div className="eyebrow mb-2">{eyebrow}</div>}
         <h2 className="title-lg">{title}</h2>
-        {desc && <p className="body mt-1.5 max-w-2xl">{desc}</p>}
+        {desc && <p className="body mt-2 max-w-[62ch]">{desc}</p>}
       </div>
       {right && <div className="shrink-0">{right}</div>}
     </div>
+  );
+}
+
+/**
+ * Sidehovedet. Alle sider begynder ens: kategori, navn, én linje der siger
+ * hvad siden er til for. Ikke to linjer markedsføring.
+ */
+export function PageHeader({
+  eyebrow,
+  title,
+  desc,
+  right,
+  meta,
+  back,
+}: {
+  eyebrow?: string;
+  title: string;
+  desc?: ReactNode;
+  /** Handlinger. Flugter med overskriften, ikke med brødteksten. */
+  right?: ReactNode;
+  /** Statuslinje under hovedet: tal, tidspunkter, forbehold. */
+  meta?: ReactNode;
+  back?: ReactNode;
+}) {
+  return (
+    <header className="page-head">
+      {back && <div className="mb-5">{back}</div>}
+      <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-4">
+        <div className="min-w-0">
+          {eyebrow && <div className="eyebrow">{eyebrow}</div>}
+          <h1 className="title-xl mt-2">{title}</h1>
+          {desc && <p className="body mt-2.5 max-w-[62ch]">{desc}</p>}
+        </div>
+        {right && <div className="shrink-0 md:pt-1">{right}</div>}
+      </div>
+      {meta && (
+        <div className="mt-5 border-t border-base-line pt-3 text-sm text-ink-mute">{meta}</div>
+      )}
+    </header>
   );
 }
 
@@ -90,30 +129,35 @@ export function RatingPill({ rating, size = "md" }: { rating: Rating; size?: "sm
 
 /* ---------------------------------------------------------------- Avatar */
 
-const AVATAR_TONES = [
-  "bg-brand-900 text-brand-200 border-brand-700",
-  "bg-client-900 text-client-300 border-client-600/50",
-  "bg-warn-900 text-warn-300 border-warn-600/50",
-  "bg-base-panel2 text-ink-soft border-base-line2",
-];
+/**
+ * Farve betyder noget i dette system: grøn er green light og salgsdirektøren,
+ * blå er rollespilskunden. Derfor får sælgere IKKE en tilfældig kulør efter
+ * deres initialer — det ville gøre farven til pynt. Kun kunderollen (tone
+ * "client") og coachen (tone "brand") må hente en farve, og kun når rollen
+ * faktisk er den.
+ */
+const AVATAR_TONES = {
+  neutral: "bg-base-panel2 text-ink-soft border-base-line2",
+  brand: "bg-brand-950 text-brand-300 border-brand-800",
+  client: "bg-client-900 text-client-300 border-client-600/50",
+} as const;
+
+export type AvatarTone = keyof typeof AVATAR_TONES;
 
 export function Avatar({
   initials,
   size = 36,
-  tone,
+  tone = "neutral",
 }: {
   initials: string;
   size?: number;
-  tone?: number;
+  tone?: AvatarTone;
 }) {
-  const idx =
-    typeof tone === "number"
-      ? tone % AVATAR_TONES.length
-      : [...initials].reduce((a, c) => a + c.charCodeAt(0), 0) % AVATAR_TONES.length;
   return (
     <span
-      className={`inline-grid shrink-0 place-items-center rounded-xl border font-bold ${AVATAR_TONES[idx]}`}
+      className={`inline-grid shrink-0 place-items-center rounded-xl border font-bold tracking-tight ${AVATAR_TONES[tone]}`}
       style={{ width: size, height: size, fontSize: Math.round(size * 0.36) }}
+      aria-hidden="true"
     >
       {initials.slice(0, 3).toUpperCase()}
     </span>
@@ -133,38 +177,232 @@ export function Spinner({ size = 16 }: { size?: number }) {
   );
 }
 
+/** Én grå bjælke. Bygger de skeletter siderne venter i. */
+export function Skel({ w = "100%", h = 12, className = "" }: { w?: string | number; h?: number; className?: string }) {
+  return <div className={`skel ${className}`} style={{ width: w, height: h }} aria-hidden="true" />;
+}
+
+/**
+ * Ventetid med form. Bruges hvor der hentes en liste: samme kant, samme
+ * radius og samme rytme som det indhold der lander bagefter, så siden ikke
+ * hopper — og så det aldrig ligner at noget er gået i stå.
+ */
+export function LoadingBlock({ label, rows = 3 }: { label: string; rows?: number }) {
+  return (
+    <div className="space-y-2.5" role="status" aria-label={label}>
+      {Array.from({ length: rows }).map((_, i) => (
+        <div key={i} className="panel-quiet p-4 md:p-5" aria-hidden="true">
+          <div className="flex items-center gap-3">
+            <Skel w={38} h={38} className="rounded-xl" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <Skel w={`${58 - i * 8}%`} h={11} />
+              <Skel w={`${34 - i * 4}%`} h={9} />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Den tomme tilstand er en tilstand — ikke et hul.
+ * Venstrestillet, fast flade, tydelig kant: ingen stiplede rammer (de læses
+ * som "her mangler noget der ikke er bygget endnu") og ingen centreret
+ * midterklump med ujævn højrekant.
+ */
 export function EmptyState({
   title,
   desc,
   action,
+  aside,
   icon,
 }: {
   title: string;
   desc?: string;
   action?: ReactNode;
+  /** Ekstra indhold under teksten — fx en liste med eksempler. */
+  aside?: ReactNode;
   icon?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-base-line px-6 py-14 text-center">
-      {icon && <div className="mb-3 text-ink-faint">{icon}</div>}
-      <div className="title-md">{title}</div>
-      {desc && <p className="body-mute mt-1.5 max-w-md">{desc}</p>}
-      {action && <div className="mt-5">{action}</div>}
+    <div className="panel-quiet border-l-2 border-l-base-line2 p-5 md:p-6">
+      <div className="flex gap-4">
+        {icon && (
+          <span className="mt-0.5 hidden h-10 w-10 shrink-0 place-items-center rounded-xl border border-base-line bg-base-panel text-ink-mute sm:grid">
+            {icon}
+          </span>
+        )}
+        <div className="min-w-0 flex-1">
+          <h3 className="title-md">{title}</h3>
+          {desc && <p className="body-mute mt-2 max-w-[62ch]">{desc}</p>}
+          {aside && <div className="mt-4">{aside}</div>}
+          {action && <div className="mt-5 flex flex-wrap gap-2">{action}</div>}
+        </div>
+      </div>
     </div>
   );
 }
 
-export function ErrorNote({ children, onRetry }: { children: ReactNode; onRetry?: () => void }) {
+/**
+ * Fejl skal se ud som en beslutning, ikke som et uheld. Overskrift der siger
+ * hvad der ikke lykkedes, den tekniske årsag nedtonet under, og handlingen
+ * på egen linje så den ikke klemmes ud i højre kant på en telefon.
+ */
+export function ErrorNote({
+  children,
+  onRetry,
+  title,
+  retryLabel = "Prøv igen",
+}: {
+  children: ReactNode;
+  onRetry?: () => void;
+  title?: string;
+  retryLabel?: string;
+}) {
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-danger-600/40 bg-danger-900/50 px-4 py-3 text-sm text-danger-300">
-      <Icon.Warn className="mt-0.5 shrink-0" width={17} height={17} />
-      <div className="flex-1">{children}</div>
-      {onRetry && (
-        <button className="btn btn-sm bg-danger-900 text-danger-300 hover:bg-danger-900/70" onClick={onRetry}>
-          Prøv igen
-        </button>
-      )}
+    <div
+      role="alert"
+      className="rounded-2xl border border-danger-600/35 bg-danger-900/35 p-4 md:p-5"
+    >
+      <div className="flex gap-3.5">
+        <Icon.Warn className="mt-0.5 shrink-0 text-danger-300" width={18} height={18} />
+        <div className="min-w-0 flex-1">
+          {title && <h3 className="title-md text-danger-300">{title}</h3>}
+          <div className={`max-w-[62ch] text-sm leading-relaxed text-danger-300/90 ${title ? "mt-1.5" : ""}`}>
+            {children}
+          </div>
+          {onRetry && (
+            <button
+              className="btn-outline btn-sm mt-4 border-danger-600/50 bg-transparent text-danger-300 hover:border-danger-600 hover:text-danger-300"
+              onClick={onRetry}
+            >
+              <Icon.Repeat width={14} height={14} />
+              {retryLabel}
+            </button>
+          )}
+        </div>
+      </div>
     </div>
+  );
+}
+
+/**
+ * Hele siden kunne ikke vises: ukendt id, manglende adgang, tomt svar.
+ * Den skal stadig ligne en side — med hoved, ét klart udsagn og en vej videre
+ * — frem for en løs boks midt i et sort felt.
+ */
+export function PageState({
+  eyebrow,
+  title,
+  desc,
+  detail,
+  actions,
+  tone = "neutral",
+}: {
+  eyebrow?: string;
+  title: string;
+  desc?: ReactNode;
+  /** Teknisk årsag. Vises nedtonet, adskilt fra forklaringen. */
+  detail?: string;
+  actions?: ReactNode;
+  tone?: "neutral" | "danger";
+}) {
+  return (
+    <section className="max-w-[62ch]">
+      <div className="eyebrow">{eyebrow ?? "Salgscoach"}</div>
+      <h1 className="title-xl mt-2">{title}</h1>
+      {desc && <p className="body mt-3">{desc}</p>}
+      {detail && (
+        <p
+          className={`mt-4 rounded-xl border px-4 py-3 text-xs leading-relaxed ${
+            tone === "danger"
+              ? "border-danger-600/35 bg-danger-900/30 text-danger-300/90"
+              : "border-base-line bg-base-panel text-ink-mute"
+          }`}
+        >
+          {detail}
+        </p>
+      )}
+      {actions && <div className="mt-6 flex flex-wrap gap-2.5">{actions}</div>}
+    </section>
+  );
+}
+
+/**
+ * Lange ventetider (10-40 sekunder) må ikke være en spinner. Her står der
+ * hvad salgsdirektøren rent faktisk gør, i den rækkefølge det sker, med et
+ * ur der bevæger sig — så ventetiden kan aflæses frem for gættes.
+ */
+export function StepWait({
+  eyebrow,
+  title,
+  desc,
+  steps,
+  seconds,
+  note,
+}: {
+  eyebrow?: string;
+  title: string;
+  desc?: ReactNode;
+  steps: readonly { at: number; text: string }[];
+  seconds: number;
+  note?: string;
+}) {
+  let activeIndex = 0;
+  for (let i = 0; i < steps.length; i++) if (seconds >= steps[i].at) activeIndex = i;
+
+  return (
+    <section className="panel p-5 md:p-6" aria-live="polite">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+        <div className="min-w-0">
+          {eyebrow && <div className="eyebrow">{eyebrow}</div>}
+          <h2 className="title-lg mt-2">{title}</h2>
+        </div>
+        <span className="text-sm tabular-nums text-ink-mute">{seconds} sek.</span>
+      </div>
+
+      {desc && <p className="body mt-2.5 max-w-[62ch]">{desc}</p>}
+
+      <ol className="mt-6 space-y-3.5">
+        {steps.map((step, i) => {
+          const done = i < activeIndex;
+          const active = i === activeIndex;
+          return (
+            <li key={step.text} className="flex items-start gap-3">
+              <span
+                className={`mt-px grid h-5 w-5 shrink-0 place-items-center rounded-full border ${
+                  done
+                    ? "border-brand-700 bg-brand-950 text-brand-400"
+                    : active
+                      ? "border-brand-600 bg-brand-950"
+                      : "border-base-line bg-base-panel text-ink-faint"
+                }`}
+              >
+                {done ? (
+                  <Icon.Check width={12} height={12} />
+                ) : active ? (
+                  <Spinner size={11} />
+                ) : (
+                  <span className="h-1 w-1 rounded-full bg-current" />
+                )}
+              </span>
+              <span
+                className={`text-sm leading-snug ${
+                  active ? "font-semibold text-ink" : done ? "text-ink-soft" : "text-ink-faint"
+                }`}
+              >
+                {step.text}
+                {done && <span className="sr-only"> — færdig</span>}
+                {active && <span className="sr-only"> — i gang</span>}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+
+      {note && <p className="mt-6 border-t border-base-line pt-4 text-xs text-ink-mute">{note}</p>}
+    </section>
   );
 }
 
