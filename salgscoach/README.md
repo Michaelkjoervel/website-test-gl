@@ -113,6 +113,19 @@ idempotent og rører **ikke** de eksisterende tabeller. Nederst i filen ligger
 en klar-til-brug skabelon, der opretter JAS, ALH, KMA, HRN og MKJ — og giver
 MKJ rollen `leder`.
 
+> **Tjek dette før idriftsættelse:** slå selvbetjent oprettelse fra under
+> Supabase → Authentication → Providers. "Authenticated" betyder *logget ind i
+> projektet* — ikke *ansat i green light*. Er oprettelse åben, kan en
+> udefrakommende konto blive `authenticated`. Skemaet dækker af for det via
+> `coach_is_staff()` (adgang bundet til green light-domænet), men det er en
+> ekstra sikring — ikke en erstatning for indstillingen.
+
+Domænet kan justeres uden kodeændring:
+
+```sql
+alter database postgres set app.coach_email_domains = 'green-light.dk';
+```
+
 ---
 
 ## Adgang og fortrolighed

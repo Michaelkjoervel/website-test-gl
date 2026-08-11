@@ -154,14 +154,27 @@ export async function dataMode(): Promise<DataMode> {
 }
 
 /**
- * Hvilken sælger må dette kald røre? Uden argument: én selv. Med et fremmed
- * id: kun hvis man er leder — ellers en klar dansk afvisning.
+ * Hvilken sælger må dette kald røre? Uden argument: én selv.
+ *
+ * `managerMayReach` styrer, om en leder må slå op på en anden sælger. Den er
+ * true for sessioner og profiler (coaching) og FALSE for materiale: uploadet
+ * kundemateriale er privat for sælgeren — også over for ledelsen. Databasen
+ * håndhæver det samme, men klienten skal ikke love noget andet end databasen
+ * gør; ellers ender vi med en knap, der giver en uforståelig fejl.
  */
-async function resolveTarget(sellerId?: string): Promise<{ me: Identity; target: string }> {
+async function resolveTarget(
+  sellerId?: string,
+  { managerMayReach = true }: { managerMayReach?: boolean } = {},
+): Promise<{ me: Identity; target: string }> {
   const me = await currentIdentity();
   const wanted = (sellerId ?? "").trim();
   if (!wanted || wanted === me.id || (me.initials && wanted === me.initials)) {
     return { me, target: me.id };
+  }
+  if (!managerMayReach) {
+    throw accessError(
+      "Uploadet salgsmateriale er privat for den enkelte sælger og kan ikke ses af andre — heller ikke af salgsledelsen.",
+    );
   }
   if (!me.isManager) {
     throw accessError("Du kan kun se dine egne sessioner og materialer.");
@@ -190,11 +203,20 @@ async function requireManager(): Promise<Identity> {
   return me;
 }
 
-/** Ejerskabstjek på en hentet post. */
-function assertCanRead(ownerId: string, me: Identity, what: string): void {
+/**
+ * Ejerskabstjek på en hentet post. `managerMayRead` er false for materiale —
+ * se resolveTarget: kundemateriale er privat for sælgeren, også over for
+ * ledelsen, og klienten skal sige det samme som databasen.
+ */
+function assertCanRead(
+  ownerId: string,
+  me: Identity,
+  what: string,
+  { managerMayRead = true }: { managerMayRead?: boolean } = {},
+): void {
   if (ownerId === me.id) return;
   if (me.initials && ownerId === me.initials) return;
-  if (me.isManager) return;
+  if (managerMayRead && me.isManager) return;
   throw accessError(`${what} tilhører en anden sælger.`);
 }
 
@@ -531,7 +553,7 @@ function pruneDocuments(list: SalesDocument[]): SalesDocument[] {
 }
 
 export async function listDocuments(sellerId?: string): Promise<SalesDocument[]> {
-  const { target } = await resolveTarget(sellerId);
+  const { target } = await resolveTarget(sellerId, { managerMayReach: false });
 
   if (!(await sharedActive())) {
     return readLocal<SalesDocument>(LOCAL_DOCUMENTS_KEY)
@@ -555,7 +577,7 @@ export async function getDocument(id: string): Promise<SalesDocument | undefined
   if (!(await sharedActive())) {
     const found = readLocal<SalesDocument>(LOCAL_DOCUMENTS_KEY).find((d) => d.id === id);
     if (!found) return undefined;
-    assertCanRead(found.sellerId, me, "Materialet");
+    assertCanRead(found.sellerId, me, "Materialet", { managerMayRead: false });
     return found;
   }
 
@@ -568,7 +590,7 @@ export async function getDocument(id: string): Promise<SalesDocument | undefined
   if (!data) return undefined;
 
   const row = data as DocumentRow;
-  assertCanRead(row.seller_id, me, "Materialet");
+  assertCanRead(row.seller_id, me, "Materialet", { managerMayRead: false });
   return row.data;
 }
 
@@ -661,8 +683,16 @@ export function summariseSessionsForProfile(
 }
 
 /** Ryd alt lokalt (fx ved log ud på en delt maskine). Rører aldrig skyen. */
+/**
+ * Ledelsens egne lokale spor. De ligger uden for datalaget (siderne skriver
+ * dem selv), men de skal ryddes samme sted som alt andet: et teamoverblik og
+ * en note om en navngiven kollega må ikke blive liggende i browseren på en
+ * delt maskine, efter lederen er logget ud.
+ */
+const LOCAL_MANAGER_KEYS = ["gl.coach.teamoverblik.v1", "gl.coach.ledernote.v1"];
+
 export function clearLocalData(): void {
-  for (const key of [LOCAL_SESSIONS_KEY, LOCAL_PROFILES_KEY, LOCAL_DOCUMENTS_KEY]) {
+  for (const key of [LOCAL_SESSIONS_KEY, LOCAL_PROFILES_KEY, LOCAL_DOCUMENTS_KEY, ...LOCAL_MANAGER_KEYS]) {
     try {
       localStorage.removeItem(key);
     } catch {

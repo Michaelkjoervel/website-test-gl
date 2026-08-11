@@ -928,7 +928,7 @@ const Controls = memo(function Controls({
   const hasMic = engine !== "tekst";
 
   return (
-    <div className="safe-b shrink-0 border-t border-base-line bg-base/85 px-3 pb-3 pt-3 backdrop-blur md:px-5">
+    <div className="pad-b-safe shrink-0 border-t border-base-line bg-base/85 px-3 pt-3 backdrop-blur md:px-5">
       <div className="mx-auto w-full max-w-3xl">
         {textOpen && <TextBar onSend={onSendText} disabled={dead} />}
 
@@ -1141,7 +1141,7 @@ const TranscriptSheet = memo(function TranscriptSheet({
             </button>
           )}
         </div>
-        <div className="safe-b flex-1 overflow-hidden px-4 py-4">
+        <div className="pad-b-safe flex-1 overflow-hidden px-4 pt-4">
           {lines.length === 0 ? (
             <p className="body-mute">Der er ikke sagt noget endnu.</p>
           ) : (

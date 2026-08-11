@@ -632,7 +632,7 @@ export function MaterialDetail() {
       </section>
 
       {/* ------------------------------------------------- Primær handling */}
-      <div className="sticky bottom-0 z-20 -mx-4 border-t border-base-line bg-base/90 px-4 py-3 backdrop-blur safe-b md:-mx-8 md:px-8">
+      <div className="pad-b-safe sticky bottom-0 z-20 -mx-5 border-t border-base-line bg-base/90 px-5 pt-3 backdrop-blur md:-mx-10 md:px-10">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <button
             type="button"

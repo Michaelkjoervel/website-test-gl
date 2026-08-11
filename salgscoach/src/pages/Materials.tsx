@@ -51,12 +51,15 @@ import type {
 /* --------------------------------------------------------------- Regler */
 
 /**
- * Grænsen følger den, api-laget selv håndhæver på vejen til serveren
- * (MAX_FILE_BYTES i lib/api). Sælgeren skal få beskeden med det samme frem for
- * efter at have ventet på en upload der alligevel bliver afvist. Er materialet
- * større, er det næsten altid en scannet PDF — og den kan alligevel ikke læses.
+ * Grænsen følger den, api-laget håndhæver (MAX_FILE_BYTES i lib/api), og den
+ * er sat af platformen: Vercel afviser en body over ca. 4,5 MB, og base64
+ * lægger ~33 % oven i filen. Vi lover derfor 3 MB — et tal der rent faktisk
+ * holder — frem for et pænere tal der ville fejle efter uploaden.
+ *
+ * Er materialet større, er det næsten altid en scannet PDF uden tekstlag, og
+ * den ville alligevel ikke kunne læses.
  */
-export const MAX_UPLOAD_BYTES = 12 * 1024 * 1024;
+export const MAX_UPLOAD_BYTES = 3 * 1024 * 1024;
 
 /** Bevidst uden gamle binære Office-formater; dropzonen forklarer hvorfor. */
 export const ACCEPTED_EXTENSIONS = [".pdf", ".pptx", ".docx", ".xlsx", ".txt", ".csv", ".md"];

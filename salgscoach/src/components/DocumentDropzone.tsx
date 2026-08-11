@@ -230,8 +230,8 @@ export function DocumentDropzone({
         }}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
-        className={`flex w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed
-          px-6 py-10 text-center transition-colors duration-150
+        className={`flex w-full flex-col items-center justify-center gap-3 rounded-2xl border border-dashed
+          px-6 py-9 text-center transition-colors duration-150
           focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2
           focus-visible:ring-offset-base
           ${
@@ -270,7 +270,7 @@ export function DocumentDropzone({
       </button>
 
       {hint && (
-        <p id={hintId} className="mt-2.5 text-xs leading-relaxed text-ink-mute">
+        <p id={hintId} className="mt-3 max-w-[68ch] text-xs leading-relaxed text-ink-mute">
           {hint}
         </p>
       )}

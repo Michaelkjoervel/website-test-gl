@@ -763,8 +763,16 @@ export async function buildProfile(
 
 /* -------------------------------------------------------------- Materiale */
 
-/** Maks. størrelse vi sender som dataUrl (base64 fylder ~33 % ekstra). */
-const MAX_FILE_BYTES = 12 * 1024 * 1024;
+/**
+ * Maks. filstørrelse.
+ *
+ * Tallet er ikke valgt frit: Vercel afviser en request-body over ca. 4,5 MB,
+ * og en fil sendt som base64-dataURL fylder ~33 % mere end filen selv. En
+ * "tilladt" fil på 12 MB ville altså blive afvist af platformen med en 413,
+ * længe efter sælgeren havde ventet på uploaden. Så hellere sige sandheden
+ * med det samme og afvise den her.
+ */
+const MAX_FILE_BYTES = 3 * 1024 * 1024;
 
 /** File → data-URL. Bruges af materialeanalysen; kaster en dansk ApiError. */
 export function fileToDataUrl(file: File): Promise<string> {

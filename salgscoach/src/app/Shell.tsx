@@ -77,7 +77,7 @@ export function Shell() {
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-[1080px] flex-1 px-5 py-8 safe-x md:px-10 md:py-12">
+        <main className="page-x mx-auto w-full max-w-[1080px] flex-1 py-8 md:py-12">
           <Outlet key={loc.pathname} />
         </main>
       </div>
@@ -195,7 +195,7 @@ function SellerFooter({
   onSignOut: () => void;
 }) {
   return (
-    <div className="safe-b border-t border-base-line px-3 py-3">
+    <div className="pad-b-safe border-t border-base-line px-3 pt-3">
       <div className="flex items-center gap-3 px-2 py-1">
         <Avatar initials={initials} size={34} />
         <div className="min-w-0 flex-1 leading-tight">

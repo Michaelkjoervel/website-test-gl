@@ -16,7 +16,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { useAuth } from "../lib/auth";
-import { getProfile, listAllSessions, listProfiles, saveProfile } from "../lib/store";
+import { getProfile, listAllSessions, listProfiles } from "../lib/store";
 import { listSellers } from "../lib/sellers";
 import * as fmt from "../lib/format";
 
@@ -288,23 +288,23 @@ function SellerInner({ initials }: { initials: string }) {
     setSaving(true);
     setSaveError(null);
     try {
-      if (profile) {
-        // Egen variabel frem for et objektliteral direkte i kaldet: managerNote
-        // er en tilføjelse oven på SellerProfile, ikke en del af datamodellen.
-        const next: ProfileWithNote = { ...profile, managerNote: text };
-        const saved = await saveProfile(next);
-        setProfile({ ...saved, managerNote: text });
-      }
+      // Noten skrives BEVIDST kun lokalt.
+      //
+      // Den oplagte løsning — at lægge den ind i sælgerens udviklingsprofil —
+      // afvises af adgangskontrollen, og det er med vilje: en leder må læse en
+      // sælgers profil, men ikke skrive i den. Skulle vi tillade det, ville
+      // sælgeren ikke længere kunne stole på, at profilen er coachens vurdering
+      // af ham og ikke hans chefs. Databasen skal ikke løsnes for at få denne
+      // knap til at virke.
+      //
+      // Konsekvensen, sagt højt i UI'et: noten følger maskinen, ikke kontoen.
       writeNote(initials, text);
       setSavedNote(text);
       setSavedAt(new Date().toISOString());
-      toast("Din note er gemt");
+      toast("Din note er gemt på denne maskine");
     } catch (e) {
-      // Teksten må aldrig gå tabt, selvom skrivningen til profilen fejler.
-      writeNote(initials, text);
-      setSavedNote(text);
       setSaveError(errorText(e));
-      toast("Noten kunne ikke gemmes på profilen", "fejl");
+      toast("Noten kunne ikke gemmes", "fejl");
     } finally {
       setSaving(false);
     }
@@ -579,8 +579,14 @@ function SellerInner({ initials }: { initials: string }) {
         <SectionHeader
           eyebrow="Din egen note"
           title="Det du vil coache på"
-          desc="Én til to sætninger til dig selv inden næste 1:1. Noten er ledelsens og indgår ikke i coachens vurdering af sælgeren."
+          desc="Én til to sætninger til dig selv inden næste 1:1. Noten er ledelsens og indgår ikke i coachens vurdering af sælgeren — og sælgeren kan ikke se den."
         />
+
+        <Notice>
+          Noten gemmes kun i denne browser. Den skrives bevidst ikke ind i
+          sælgerens udviklingsprofil: profilen skal blive ved med at være
+          coachens vurdering af sælgeren — ikke hans chefs.
+        </Notice>
 
         {saveError && <div className="mb-3"><ErrorNote>{saveError}</ErrorNote></div>}
 

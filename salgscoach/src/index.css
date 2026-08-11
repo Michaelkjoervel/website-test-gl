@@ -219,6 +219,23 @@
     mask-image: linear-gradient(to bottom, transparent, #000 18px, #000 calc(100% - 18px), transparent);
   }
 
+  /* ---------- Sidens margen ----------
+     Sikker zone LÆGGES TIL margenen; den må ikke erstatte den. En ren
+     env()-utility ville nulstille px-5 og skubbe teksten ud i kanten. */
+  .page-x {
+    padding-left: calc(1.25rem + env(safe-area-inset-left, 0px));
+    padding-right: calc(1.25rem + env(safe-area-inset-right, 0px));
+  }
+  @media (min-width: 768px) {
+    .page-x {
+      padding-left: calc(2.5rem + env(safe-area-inset-left, 0px));
+      padding-right: calc(2.5rem + env(safe-area-inset-right, 0px));
+    }
+  }
+  .pad-b-safe {
+    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+  }
+
   /* ---------- Skelet ----------
      Ventetid skal have form. En grå bjælke der ligner det indhold der kommer,
      siger mere end en spinner. */
@@ -236,15 +253,10 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
-  .safe-b {
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-  }
+  /* Kun til elementer der IKKE selv har padding i den retning. Skal margenen
+     lægges oven i en eksisterende, så brug .page-x / .pad-b-safe. */
   .safe-t {
     padding-top: env(safe-area-inset-top, 0px);
-  }
-  .safe-x {
-    padding-left: env(safe-area-inset-left, 0px);
-    padding-right: env(safe-area-inset-right, 0px);
   }
 }
 
