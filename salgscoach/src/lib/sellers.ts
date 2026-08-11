@@ -117,7 +117,10 @@ function sellerFromSeed(seed: SellerSeed, overrides: Partial<Seller> = {}): Sell
     initials: normInitials(seed.initials),
     name: overrides.name || seed.name || normInitials(seed.initials),
     email: overrides.email ?? seed.email,
-    role: overrides.role ?? seed.role ?? "saelger",
+    // Lederlisten (config.fallbackManagerEmails) gælder ALLE veje ind i
+    // registret — også seed'et og den lokale tilstand. rowToSeller anvender
+    // samme regel; glemmer én konstruktør den, står en leder som sælger.
+    role: overrides.role ?? seed.role ?? (isManagerEmail(seed.email) ? "leder" : "saelger"),
     title: overrides.title ?? seed.title,
     active: overrides.active ?? seed.active ?? true,
     createdAt: overrides.createdAt ?? nowIso(),
@@ -439,13 +442,14 @@ async function ensureUserRow(seller: Seller, existing: CoachUserRow | null): Pro
 export function makeLocalSeller(initials: string, name?: string): Seller {
   const key = normInitials(initials) || "GST";
   const seed = seedByInitials(key);
+  // Kendte initialer går gennem sellerFromSeed, så rollereglen kun findes ét
+  // sted. Ukendte initialer bliver en lokal gæst uden særlige rettigheder.
+  if (seed) return sellerFromSeed(seed, { id: key, name: name?.trim() || undefined });
   return {
     id: key,
     initials: key,
-    name: name?.trim() || seed?.name || key,
-    email: seed?.email,
-    role: seed?.role ?? "saelger",
-    title: seed?.title,
+    name: name?.trim() || key,
+    role: "saelger",
     active: true,
     createdAt: nowIso(),
   };
