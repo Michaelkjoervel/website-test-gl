@@ -363,9 +363,9 @@ export function MaterialDetail() {
             </p>
 
             {analysis.readsAsWrittenFor && (
-              <div className="rounded-xl border border-warn-600/40 bg-warn-900/40 p-4">
-                <div className="eyebrow text-warn-300">Sådan læses materialet, som det står nu</div>
-                <p className="mt-1.5 text-[15px] font-medium leading-relaxed text-warn-300">
+              <div className="rounded-xl border border-warn-300/80 bg-warn-50/80 p-4">
+                <div className="eyebrow text-warn-700">Sådan læses materialet, som det står nu</div>
+                <p className="mt-1.5 text-[15px] font-medium leading-relaxed text-warn-700">
                   {analysis.readsAsWrittenFor}
                 </p>
               </div>
@@ -532,7 +532,7 @@ export function MaterialDetail() {
 
           {/* ----------------------------------------------------- Næste skridt */}
           {(analysis.nextStep ?? []).length > 0 && (
-            <Panel as="section" className="border-brand-800 bg-brand-950/40">
+            <Panel as="section" className="border-brand-200 bg-brand-50/60">
               <h2 className="title-lg">Næste skridt</h2>
               <p className="body mt-1.5 max-w-2xl">
                 Gør det her, inden materialet går videre til kunden.
@@ -540,7 +540,7 @@ export function MaterialDetail() {
               <ol className="mt-4 space-y-3">
                 {(analysis.nextStep ?? []).map((step, i) => (
                   <li key={`${step}-${i}`} className="flex gap-3">
-                    <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-lg border border-brand-700 bg-brand-950 text-xs font-bold text-brand-300">
+                    <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-lg border border-brand-300 bg-brand-50 text-xs font-bold text-brand-700">
                       {i + 1}
                     </span>
                     <span className="text-[15px] leading-relaxed text-ink">{step}</span>
@@ -735,9 +735,9 @@ function FindingCard({ finding }: { finding: MaterialFinding }) {
       </p>
 
       {finding.soWhat && (
-        <div className="mt-3 rounded-lg border-l-2 border-brand-600 bg-brand-950/60 py-2.5 pl-3.5 pr-3">
-          <div className="eyebrow text-brand-400">Hvad det koster dig</div>
-          <p className="mt-1 text-sm leading-relaxed text-brand-100">{finding.soWhat}</p>
+        <div className="mt-3 rounded-lg border-l-2 border-brand-400 bg-brand-50/80 py-2.5 pl-3.5 pr-3">
+          <div className="eyebrow text-brand-700">Hvad det koster dig</div>
+          <p className="mt-1 text-sm leading-relaxed text-brand-900">{finding.soWhat}</p>
         </div>
       )}
     </div>
@@ -769,12 +769,12 @@ function RewriteCard({
         </div>
 
         {/* Efter */}
-        <div className="flex flex-col rounded-xl border border-brand-800 bg-brand-950/50 p-4">
+        <div className="flex flex-col rounded-xl border border-brand-200 bg-brand-50/70 p-4">
           <div className="mb-2 flex items-center justify-between gap-2">
-            <div className="eyebrow text-brand-400">Skriv det sådan i stedet</div>
+            <div className="eyebrow text-brand-700">Skriv det sådan i stedet</div>
             <button
               type="button"
-              className="btn-outline btn-sm border-brand-800 bg-transparent text-brand-300 hover:border-brand-600"
+              className="btn-outline btn-sm border-brand-200 bg-transparent text-brand-700 hover:border-brand-400"
               onClick={onCopy}
             >
               {copied ? <Icon.Check width={14} height={14} /> : <Icon.Doc width={14} height={14} />}
@@ -814,8 +814,8 @@ function ListPanel({
 }) {
   const markerCls =
     tone === "client"
-      ? "border-client-600/40 bg-client-900 text-client-300"
-      : "border-warn-600/40 bg-warn-900 text-warn-300";
+      ? "border-client-300/70 bg-client-50 text-client-700"
+      : "border-warn-300/80 bg-warn-50 text-warn-700";
 
   return (
     <Panel as="section" className="h-full">

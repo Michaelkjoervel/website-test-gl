@@ -548,7 +548,7 @@ export function TrainingSetup() {
         <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
           <div className="min-w-0 max-w-2xl">
             <div className="flex items-center gap-3">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-base-line2 bg-base-panel2 text-brand-400">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-base-line2 bg-base-panel2 text-brand-700">
                 <I width={19} height={19} />
               </span>
               <div className="min-w-0">
@@ -682,7 +682,7 @@ export function TrainingSetup() {
                 <span
                   className={`flex h-full flex-col gap-1.5 rounded-xl border p-4 transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-brand-400 ${
                     valgt
-                      ? "border-brand-600 bg-brand-950"
+                      ? "border-brand-400 bg-brand-50"
                       : "border-base-line bg-base/60 hover:border-base-line2"
                   }`}
                 >
@@ -886,7 +886,7 @@ function Valg({
 function Linje({ icon, children }: { icon: ReactNode; children: ReactNode }) {
   return (
     <li className="flex gap-3">
-      <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-base-line bg-base-panel text-brand-500">
+      <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-base-line bg-base-panel text-brand-600">
         {icon}
       </span>
       <span className="body pt-1">{children}</span>

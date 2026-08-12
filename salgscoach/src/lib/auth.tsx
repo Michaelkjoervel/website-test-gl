@@ -407,7 +407,7 @@ function Login() {
             {error && (
               <div
                 role="alert"
-                className="rounded-xl border border-danger-600/40 bg-danger-900 px-4 py-2.5 text-sm text-danger-300"
+                className="rounded-xl border border-danger-300/80 bg-danger-50 px-4 py-2.5 text-sm text-danger-700"
               >
                 {error}
               </div>
@@ -473,7 +473,7 @@ function LocalModeGate() {
                     key={s.id}
                     type="button"
                     onClick={() => choose(s)}
-                    className="panel-quiet flex items-center gap-3 p-3 text-left transition-colors hover:border-brand-700"
+                    className="panel-quiet flex items-center gap-3 p-3 text-left transition-colors hover:border-brand-300"
                   >
                     <span className={`${avatar.className} h-9 w-9`}>{avatar.initials}</span>
                     <span className="min-w-0">

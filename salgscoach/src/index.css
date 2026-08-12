@@ -11,9 +11,8 @@
   body {
     @apply bg-base text-ink font-sans antialiased;
     /* Én enkelt, meget lav grøn hældning. Farve må ikke bruges dekorativt:
-       grøn = green light / salgsdirektøren, blå = rollespilskunden. Derfor
-       ligger der ikke længere en blå glød i baggrunden. */
-    background-image: linear-gradient(180deg, rgba(159, 195, 74, 0.045) 0%, transparent 420px);
+       grøn = green light / salgsdirektøren, blå = rollespilskunden. */
+    background-image: linear-gradient(180deg, rgba(159, 195, 74, 0.10) 0%, transparent 420px);
     background-repeat: no-repeat;
     background-attachment: fixed;
     -webkit-tap-highlight-color: transparent;
@@ -23,20 +22,20 @@
   }
   * {
     scrollbar-width: thin;
-    scrollbar-color: #333b2f transparent;
+    scrollbar-color: #C9D3BB transparent;
   }
   *::-webkit-scrollbar {
     width: 10px;
     height: 10px;
   }
   *::-webkit-scrollbar-thumb {
-    background: #2b3328;
+    background: #C9D3BB;
     border-radius: 8px;
     border: 3px solid transparent;
     background-clip: content-box;
   }
   *::-webkit-scrollbar-thumb:hover {
-    background: #3d4738;
+    background: #AFBC9C;
     background-clip: content-box;
   }
   h1,
@@ -48,7 +47,7 @@
   /* Sidste udvej for tastaturet: alt der ikke selv tegner en fokusring, får
      denne. Komponenter med egen ring sætter focus:outline-none og vinder. */
   :focus-visible {
-    outline: 2px solid #a6c747;
+    outline: 2px solid #84A538;
     outline-offset: 2px;
   }
 }
@@ -130,13 +129,13 @@
     color: #0b1006;
   }
   .btn-outline {
-    @apply btn border border-base-line2 bg-base-panel text-ink-soft hover:border-brand-600 hover:text-ink;
+    @apply btn border border-base-line2 bg-base-panel text-ink-soft hover:border-brand-400 hover:text-ink;
   }
   .btn-ghost {
-    @apply btn bg-transparent text-ink-soft hover:bg-base-panel hover:text-ink;
+    @apply btn bg-transparent text-ink-soft hover:bg-base-panel2 hover:text-ink;
   }
   .btn-danger {
-    @apply btn border border-danger-600/60 bg-danger-900/50 text-danger-300 hover:bg-danger-900;
+    @apply btn border border-danger-600/60 bg-danger-50/80 text-danger-700 hover:bg-danger-50;
   }
   .btn-sm {
     @apply min-h-[36px] px-3 py-1.5 text-[13px];
@@ -175,16 +174,16 @@
            px-2.5 py-1 text-xs font-medium text-ink-soft;
   }
   .chip-brand {
-    @apply chip border-brand-800 bg-brand-950 text-brand-300;
+    @apply chip border-brand-200 bg-brand-50 text-brand-700;
   }
   .chip-client {
-    @apply chip border-client-600/40 bg-client-900 text-client-300;
+    @apply chip border-client-300/70 bg-client-50 text-client-700;
   }
   .chip-warn {
-    @apply chip border-warn-600/40 bg-warn-900 text-warn-300;
+    @apply chip border-warn-300/80 bg-warn-50 text-warn-700;
   }
   .chip-danger {
-    @apply chip border-danger-600/40 bg-danger-900 text-danger-300;
+    @apply chip border-danger-300/80 bg-danger-50 text-danger-700;
   }
   .chip-select {
     @apply chip min-h-[36px] cursor-pointer px-3 transition-colors hover:border-base-line2 hover:text-ink
@@ -192,7 +191,7 @@
            focus-visible:ring-offset-base;
   }
   .chip-select[data-on="true"] {
-    @apply border-brand-600 bg-brand-950 text-brand-200;
+    @apply border-brand-400 bg-brand-50 text-brand-800;
   }
 
   /* ---------- Kort som kan klikkes ----------
@@ -201,7 +200,7 @@
      Bemærk: "group" kan ikke @apply'es — sæt den direkte i markup. */
   .tile {
     @apply relative flex flex-col gap-2 rounded-2xl border border-base-line bg-base-panel p-5
-           text-left transition-colors duration-150 hover:border-brand-700 hover:bg-base-panel2
+           text-left transition-colors duration-150 hover:border-brand-300 hover:bg-base-panel2
            focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400
            focus-visible:ring-offset-2 focus-visible:ring-offset-base;
   }

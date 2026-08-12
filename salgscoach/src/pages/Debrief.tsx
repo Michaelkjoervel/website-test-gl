@@ -455,7 +455,7 @@ export function Debrief() {
         >
           Samtalen er gemt, og referatet forsvinder ikke. Det er kun salgsdirektørens gennemgang,
           der mangler.
-          <span className="mt-3 block text-xs text-danger-300/70">{analyseError}</span>
+          <span className="mt-3 block text-xs text-danger-700/80">{analyseError}</span>
         </ErrorNote>
       )}
 
@@ -542,7 +542,7 @@ export function Debrief() {
 
         {profileUpdated && (
           <p className="flex items-center gap-2 text-xs text-ink-mute">
-            <Icon.Check width={14} height={14} className="text-brand-500" />
+            <Icon.Check width={14} height={14} className="text-brand-600" />
             Din udviklingsprofil er opdateret.{" "}
             <Link to="/udvikling" className="underline decoration-base-line2 hover:text-ink">
               Se din udvikling
@@ -622,27 +622,27 @@ type BlockTone = "brand" | "warn" | "danger" | "client" | "focus";
 const BLOCK_TONES: Record<BlockTone, { rail: string; badge: string; dot: string }> = {
   brand: {
     rail: "border-l-brand-600",
-    badge: "border-brand-800 bg-brand-950 text-brand-300",
+    badge: "border-brand-200 bg-brand-50 text-brand-700",
     dot: "bg-brand-500",
   },
   warn: {
     rail: "border-l-warn-600",
-    badge: "border-warn-600/40 bg-warn-900 text-warn-300",
+    badge: "border-warn-300/80 bg-warn-50 text-warn-700",
     dot: "bg-warn-500",
   },
   danger: {
     rail: "border-l-danger-600",
-    badge: "border-danger-600/40 bg-danger-900 text-danger-300",
+    badge: "border-danger-300/80 bg-danger-50 text-danger-700",
     dot: "bg-danger-500",
   },
   client: {
     rail: "border-l-client-600",
-    badge: "border-client-600/40 bg-client-900 text-client-300",
-    dot: "bg-client-400",
+    badge: "border-client-300/70 bg-client-50 text-client-700",
+    dot: "bg-client-500",
   },
   focus: {
     rail: "border-l-brand-500",
-    badge: "border-brand-600 bg-brand-900 text-brand-200",
+    badge: "border-brand-400 bg-brand-100 text-brand-800",
     dot: "bg-brand-400",
   },
 };
@@ -666,7 +666,7 @@ function VerdictBlock({
   return (
     <Panel
       as="section"
-      className={`border-l-[3px] ${t.rail} ${emphasis ? "border-brand-800 bg-brand-950/40" : ""}`}
+      className={`border-l-[3px] ${t.rail} ${emphasis ? "border-brand-200 bg-brand-50/60" : ""}`}
     >
       <div className="flex items-center gap-3">
         <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-xl border ${t.badge}`}>
@@ -724,9 +724,9 @@ function FactCheckSection({
       />
 
       <div className="grid gap-4 md:grid-cols-2">
-        <div className="panel-quiet border-brand-800 p-4 md:p-5">
+        <div className="panel-quiet border-brand-200 p-4 md:p-5">
           <div className="flex items-center gap-2.5">
-            <Icon.Check width={17} height={17} className="text-brand-400" />
+            <Icon.Check width={17} height={17} className="text-brand-700" />
             <h3 className="title-md">Fakta du fik etableret</h3>
             <span className="ml-auto text-xs text-ink-mute">{facts.length}</span>
           </div>
@@ -746,9 +746,9 @@ function FactCheckSection({
           )}
         </div>
 
-        <div className="panel-quiet border-warn-600/40 p-4 md:p-5">
+        <div className="panel-quiet border-warn-300/80 p-4 md:p-5">
           <div className="flex items-center gap-2.5">
-            <Icon.Warn width={17} height={17} className="text-warn-500" />
+            <Icon.Warn width={17} height={17} className="text-warn-600" />
             <h3 className="title-md">Antagelser du bærer videre</h3>
             <span className="ml-auto text-xs text-ink-mute">{assumptions.length}</span>
           </div>
@@ -782,7 +782,7 @@ function FactCheckSection({
                 <div className="max-w-[70ch] text-[15px] font-semibold leading-snug text-ink">
                   {g.gap}
                 </div>
-                <div className="mt-2.5 border-l-2 border-brand-800 pl-3">
+                <div className="mt-2.5 border-l-2 border-brand-200 pl-3">
                   <div className="eyebrow mb-1">Sådan får du det</div>
                   <CoachText text={g.howToFind} className="max-w-[70ch]" />
                 </div>
@@ -896,10 +896,10 @@ function ExternalTheorySection({
   if (!list.length) return null;
 
   return (
-    <section className="rounded-2xl border border-dashed border-client-600/50 bg-client-900/25 p-5 md:p-6">
+    <section className="rounded-2xl border border-dashed border-client-300 bg-client-50/60 p-5 md:p-6">
       <div className="flex items-center gap-2.5">
-        <Icon.Book width={18} height={18} className="text-client-300" />
-        <h2 className="title-md text-client-200">Uden for salgsmanualen</h2>
+        <Icon.Book width={18} height={18} className="text-client-700" />
+        <h2 className="title-md text-client-800">Uden for salgsmanualen</h2>
       </div>
       <p className="body-mute mt-1.5 max-w-[70ch]">
         Det følgende er ekstern salgsteori og står ikke i green lights egen manual. Det siges højt,
@@ -908,10 +908,10 @@ function ExternalTheorySection({
 
       <ul className="mt-4 space-y-3">
         {list.map((x, i) => (
-          <li key={i} className="rounded-xl border border-client-600/30 bg-base-panel/70 p-4">
+          <li key={i} className="rounded-xl border border-client-200 bg-base-panel/70 p-4">
             <h3 className="title-md">{x.framework}</h3>
             <CoachText text={x.point} className="mt-2 max-w-[70ch]" />
-            <div className="mt-2.5 border-l-2 border-client-600/50 pl-3">
+            <div className="mt-2.5 border-l-2 border-client-300 pl-3">
               <div className="eyebrow mb-1">Derfor er det relevant her</div>
               <CoachText text={x.whyRelevant} className="max-w-[70ch]" />
             </div>
@@ -939,7 +939,7 @@ const QUALIFICATION_CELLS: {
     label: "KENDT",
     desc: "Bekræftet af kunden",
     icon: Icon.Check,
-    accent: "border-brand-800",
+    accent: "border-brand-200",
     dot: "bg-brand-500",
   },
   {
@@ -955,7 +955,7 @@ const QUALIFICATION_CELLS: {
     label: "ANTAGET",
     desc: "Tror — ved ikke",
     icon: Icon.Warn,
-    accent: "border-warn-600/40",
+    accent: "border-warn-300/80",
     dot: "bg-warn-500",
   },
   {
@@ -963,7 +963,7 @@ const QUALIFICATION_CELLS: {
     label: "RISIKO",
     desc: "Kan vælte sagen",
     icon: Icon.Shield,
-    accent: "border-danger-600/40",
+    accent: "border-danger-300/80",
     dot: "bg-danger-500",
   },
   {
@@ -971,7 +971,7 @@ const QUALIFICATION_CELLS: {
     label: "STYRKE",
     desc: "Det du står stærkt på",
     icon: Icon.Spark,
-    accent: "border-brand-800",
+    accent: "border-brand-200",
     dot: "bg-brand-400",
   },
   {
@@ -979,8 +979,8 @@ const QUALIFICATION_CELLS: {
     label: "NÆSTE INFORMATION",
     desc: "Det du skal have fat i nu",
     icon: Icon.Target,
-    accent: "border-client-600/40",
-    dot: "bg-client-400",
+    accent: "border-client-300/70",
+    dot: "bg-client-500",
   },
 ];
 
@@ -1030,7 +1030,7 @@ function QualificationSection({ map }: { map?: QualificationMap }) {
       </div>
 
       {mustBeTrue.length > 0 && (
-        <div className="mt-5 rounded-2xl border border-brand-800 bg-brand-950/40 p-5">
+        <div className="mt-5 rounded-2xl border border-brand-200 bg-brand-50/60 p-5">
           <h3 className="title-md">Det skal være sandt, før det er en god sag</h3>
           <p className="body-mute mt-1.5 max-w-[70ch]">
             Ikke en vurdering af om sagen er god eller dårlig — men de forudsætninger, du skal have
@@ -1039,7 +1039,7 @@ function QualificationSection({ map }: { map?: QualificationMap }) {
           <ul className="mt-4 max-w-[70ch] space-y-3">
             {mustBeTrue.map((m, i) => (
               <li key={i} className="flex gap-3">
-                <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-md border border-brand-800 bg-brand-950 text-2xs font-bold text-brand-300">
+                <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-md border border-brand-200 bg-brand-50 text-2xs font-bold text-brand-700">
                   {i + 1}
                 </span>
                 <CoachText text={m} className="min-w-0 flex-1" />

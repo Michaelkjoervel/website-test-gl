@@ -443,12 +443,12 @@ function DashboardInner() {
 
       {loadError && (
         <ErrorNote title="Holdets data kunne ikke hentes" onRetry={() => void loadBase()}>
-          <span className="text-xs text-danger-300/70">{loadError}</span>
+          <span className="text-xs text-danger-700/80">{loadError}</span>
         </ErrorNote>
       )}
       {buildError && (
         <ErrorNote title="Overblikket kunne ikke genereres" onRetry={() => void build()}>
-          <span className="text-xs text-danger-300/70">{buildError}</span>
+          <span className="text-xs text-danger-700/80">{buildError}</span>
         </ErrorNote>
       )}
 
@@ -568,7 +568,7 @@ function AffectedList({ initials, label = "Berører" }: { initials: readonly str
         <Link
           key={i}
           to={`/ledelse/${i.toUpperCase()}`}
-          className="inline-flex items-center gap-1.5 rounded-full border border-base-line bg-base-panel2 py-0.5 pl-0.5 pr-2.5 text-xs font-medium text-ink-soft transition-colors hover:border-brand-700 hover:text-ink"
+          className="inline-flex items-center gap-1.5 rounded-full border border-base-line bg-base-panel2 py-0.5 pl-0.5 pr-2.5 text-xs font-medium text-ink-soft transition-colors hover:border-brand-300 hover:text-ink"
         >
           <Avatar initials={i} size={20} />
           {i.toUpperCase()}
@@ -914,7 +914,7 @@ function RosterTab({ roster, hasOverview }: { roster: RosterRow[]; hasOverview: 
                       : `${fmt.plural(r.sessions, "session", "sessioner")} · senest ${fmt.formatDateCompact(r.lastSessionAt)}`}
                   </p>
                 </div>
-                <span className="mt-1 shrink-0 text-ink-faint transition-colors group-hover:text-brand-400">
+                <span className="mt-1 shrink-0 text-ink-faint transition-colors group-hover:text-brand-700">
                   <Icon.Arrow width={16} height={16} />
                 </span>
               </div>
@@ -1020,7 +1020,7 @@ function ManualTab({
         <ul className="space-y-3">
           {overview.manualDrift.map((d, i) => (
             <li key={`${d.principleId}-${i}`}>
-              <article className="rounded-2xl border border-warn-600/30 bg-warn-900/25 p-4 md:p-5">
+              <article className="rounded-2xl border border-warn-300/60 bg-warn-50/60 p-4 md:p-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <h3 className="title-md">{d.title}</h3>
@@ -1031,7 +1031,7 @@ function ManualTab({
                   <span className="chip-warn">Driver væk fra manualen</span>
                 </div>
                 <p className="body mt-3">{d.note}</p>
-                <div className="mt-3.5 border-t border-warn-600/20 pt-3">
+                <div className="mt-3.5 border-t border-warn-200 pt-3">
                   <AffectedList initials={d.affected} label="Ses hos" />
                 </div>
               </article>

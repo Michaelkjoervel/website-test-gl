@@ -3,16 +3,17 @@ import type { Config } from "tailwindcss";
 /**
  * Designsystem · green light Salgscoach
  * -----------------------------------------------------------------------------
- * Bevidst mørkt og "studie"-agtigt: værktøjet bruges i lange, koncentrerede
- * samtaler, og de visuelle stemme-tilstande (lytter / tænker / taler) skal
- * kunne aflæses på et splitsekund. green lights grønne er accenten — ikke
- * baggrunden — så farve altid betyder noget (hvem taler, hvor står du).
+ * Lyst og indbydende — samme visuelle identitet som green lights estimatværktøj:
+ * hvide flader, varm grønlig baggrund og green lights grønne som accent.
  *
- * Semantiske roller:
+ * Farve betyder stadig noget og bruges aldrig dekorativt:
  *   brand   – green light / Salgsdirektøren (coach)
  *   client  – rollespilskunden (så man aldrig er i tvivl om hvem der taler)
  *   warn    – opmærksomhed, antagelser, risiko
- *   danger  – hårde advarsler, tabt kvalificering
+ *   danger  – hårde advarsler, fejl
+ *
+ * Skalaerne er monotone (50 lysest → 950 mørkest). Flader bruger 50-200,
+ * tekst på flader bruger 600-900 — så kontrasten altid holder på lys bund.
  */
 const config: Config = {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
@@ -35,41 +36,57 @@ const config: Config = {
         },
         // Rollespilskunden — kølig, "en anden person i rummet".
         client: {
-          DEFAULT: "#6FA8FF",
-          200: "#C3DAFF",
-          300: "#9CC2FF",
-          400: "#6FA8FF",
+          DEFAULT: "#4C8FF5",
+          50: "#EEF5FF",
+          100: "#DCEAFE",
+          200: "#BFDAFC",
+          300: "#93BEF7",
+          400: "#6AA4F2",
           500: "#4C8FF5",
           600: "#3573D6",
-          900: "#122241",
+          700: "#2A5CAD",
+          800: "#1F4483",
+          900: "#16305C",
         },
         warn: {
-          DEFAULT: "#E8B04B",
-          300: "#F3D08C",
-          500: "#E8B04B",
-          600: "#C9902F",
-          900: "#3A2C0E",
+          DEFAULT: "#C9902F",
+          50: "#FBF4E3",
+          100: "#F6E8C6",
+          200: "#EFD79E",
+          300: "#E3BE69",
+          400: "#D6A643",
+          500: "#C9902F",
+          600: "#A97523",
+          700: "#855C1C",
+          800: "#644515",
+          900: "#45300F",
         },
         danger: {
-          DEFAULT: "#E5646B",
-          300: "#F0A0A4",
-          500: "#E5646B",
-          600: "#C74850",
-          900: "#3B1618",
+          DEFAULT: "#D6444D",
+          50: "#FCEDEE",
+          100: "#F8D9DB",
+          200: "#F2B9BD",
+          300: "#E98F96",
+          400: "#E0656F",
+          500: "#D6444D",
+          600: "#B93540",
+          700: "#942A33",
+          800: "#6F2027",
+          900: "#4A151A",
         },
         ink: {
-          DEFAULT: "#ECF1E8",
-          soft: "#AEB8A9",
-          mute: "#76806F",
-          faint: "#4C5449",
+          DEFAULT: "#17210F",
+          soft: "#3D4A33",
+          mute: "#6B7466",
+          faint: "#9AA292",
         },
         base: {
-          DEFAULT: "#080B08",
-          raise: "#0F130E",
-          panel: "#141912",
-          panel2: "#1A2018",
-          line: "#252C22",
-          line2: "#333B2F",
+          DEFAULT: "#F5F8EF",
+          raise: "#FAFCF6",
+          panel: "#FFFFFF",
+          panel2: "#EFF3E7",
+          line: "#E2E8D8",
+          line2: "#C9D3BB",
         },
       },
       fontFamily: {
@@ -89,10 +106,10 @@ const config: Config = {
       },
       boxShadow: {
         // Ét diskret niveau. Skygger må adskille flader, ikke iscenesætte dem.
-        panel: "0 1px 0 rgba(255,255,255,0.025) inset",
-        lift: "0 12px 32px rgba(0,0,0,0.45)",
-        glow: "0 0 0 1px rgba(159,195,74,0.35), 0 0 32px rgba(159,195,74,0.18)",
-        glowClient: "0 0 0 1px rgba(111,168,255,0.35), 0 0 32px rgba(111,168,255,0.18)",
+        panel: "0 1px 2px rgba(23,33,15,0.04), 0 8px 24px rgba(23,33,15,0.06)",
+        lift: "0 16px 40px rgba(23,33,15,0.14)",
+        glow: "0 0 0 1px rgba(159,195,74,0.5), 0 0 28px rgba(159,195,74,0.35)",
+        glowClient: "0 0 0 1px rgba(76,143,245,0.4), 0 0 28px rgba(76,143,245,0.25)",
       },
       borderRadius: {
         xl: "14px",
