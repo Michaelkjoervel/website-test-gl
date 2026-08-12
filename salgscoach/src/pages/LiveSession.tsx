@@ -100,7 +100,13 @@ const MODE_INTENT: Partial<Record<TrainingModeId, string>> = {
 };
 
 /** Øvelser hvor tempoet er en del af pointen. */
-const FAST_MODES: readonly TrainingModeId[] = ["telefon", "lynild"];
+/*
+ * Kun telefonen kører med den mest ivrige turtagning — en travl person i
+ * røret ER utålmodig. Lynild gør IKKE: presset skal komme fra coachens
+ * spørgsmål og de ~6 sekunders betænkningstid, ikke fra at maskinen afbryder
+ * sælgeren, i samme øjeblik han trækker vejret for at tænke.
+ */
+const FAST_MODES: readonly TrainingModeId[] = ["telefon"];
 
 const ENGINE_LABEL: Record<VoiceEngine, string> = {
   realtime: "Realtime-stemme",

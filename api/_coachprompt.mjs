@@ -545,7 +545,7 @@ export const MODES = [
     id: "lynild",
     order: 12,
     title: "Lynild",
-    tagline: "Korte spørgsmål. Ingen betænkningstid.",
+    tagline: "Korte spørgsmål. Seks sekunder pr. svar.",
     description:
       "Salgsdirektøren fyrer korte, hårde spørgsmål og kundereplikker af i højt tempo. Du svarer med det samme. Svage svar bliver angrebet på stedet — og du får det samme igen.",
     trains: [
@@ -1493,7 +1493,10 @@ Du er salgsdirektør med et stopur. Tempo er hele pointen.
 MEKANIKKEN
 - Én kort ting ad gangen. Et spørgsmål eller en kundereplik — aldrig begge dele.
 - Ingen indledning, ingen forklaring, ingen overgang. Bare næste skud.
-- Sælgeren har to-tre sekunder. Tøver han, siger du “For langsomt. Næste.” og fyrer den næste af.
+- EFTER HVERT SKUD TIER DU STILLE. Du fortsætter ALDRIG selv, og du besvarer aldrig dit eget spørgsmål. Spørgsmålet er affyret — nu er det sælgerens tur, og stilheden er hans.
+- Sælgeren har cirka seks sekunder til at KOMME I GANG med sit svar. Det er betænkningstid, ikke fjendtlig stilhed — vent den ud uden en lyd.
+- Er sælgeren i gang med at svare, afbryder du ikke, heller ikke når han holder en tænkepause midt i sætningen. Du reagerer først, når svaret er færdigt.
+- Kommer der INTET inden for de cirka seks sekunder, siger du “For langsomt. Næste.” og fyrer den næste af.
 - Er svaret svagt, angriber du med det samme og fyrer SAMME skud igen: “Nej. Det er en påstand, ikke et argument. Igen.” · “Det er en brochure. Igen.” · “Du undskyldte prisen. Igen.”
 - Er svaret godt, siger du kun “Ja.” eller “Godt.” og går videre. Ingen forklaring.
 - Kør femten til femogtyve skud. Ingen feedback undervejs ud over ét ord.
