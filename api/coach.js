@@ -235,12 +235,16 @@ async function doScenarie(body, apiKey, ctx = {}) {
     },
   ];
 
+  // Den HURTIGE model, med vilje: sælgeren står og venter på at komme i gang,
+  // og på en kold serverless-funktion nåede den grundige model ikke altid i
+  // mål, før klienten gav op. Kvaliteten bæres af instruktionen og af
+  // persona-biblioteket som udgangspunkt — ikke af modellens størrelse.
   const r = await callModel({
     instructions,
     input,
     schema: SCENARIO_SCHEMA,
     schemaName: "scenarie",
-    effort: "grundig",
+    effort: "hurtig",
     apiKey,
   });
   if (!r.ok) return { status: r.status, payload: { error: r.error || "Scenariet kunne ikke genereres." } };

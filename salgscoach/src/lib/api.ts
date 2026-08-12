@@ -660,7 +660,9 @@ export async function generateScenario(
       sellerContext: input.sellerContext,
       language: input.language ?? config.defaultLanguage,
     },
-    { timeoutMs: TIMEOUT.normal, label: "Scenariet", signal: opts.signal },
+    // long, ikke normal: første kald efter en pause rammer en kold serverless-
+    // funktion, og et afbrudt scenarie koster både ventetiden og et modelkald.
+    { timeoutMs: TIMEOUT.long, label: "Scenariet", signal: opts.signal },
   );
 
   return {
