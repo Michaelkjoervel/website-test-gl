@@ -257,7 +257,7 @@ export function Home() {
           >
             Listen over øvelser ligger på green lights server, og den svarer ikke lige nu. Alt
             andet i værktøjet virker — historik, udvikling og materiale ligger allerede her.
-            <span className="mt-3 block text-xs text-danger-300/70">{truncate(modesFejl, 160)}</span>
+            <span className="mt-3 block text-xs text-danger-700/80">{truncate(modesFejl, 160)}</span>
           </ErrorNote>
         )}
 
@@ -313,10 +313,10 @@ function AnbefalingKort({
     <button
       type="button"
       onClick={onStart}
-      className="tile group gap-0 border-brand-900 bg-brand-950/25 hover:border-brand-600 hover:bg-brand-950/40"
+      className="tile group gap-0 border-brand-200 bg-brand-50/50 hover:border-brand-400 hover:bg-brand-50/60"
     >
       <div className="flex items-start gap-3">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-brand-800 bg-brand-950 text-brand-400">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-brand-200 bg-brand-50 text-brand-700">
           <I width={18} height={18} />
         </span>
         <div className="min-w-0 flex-1">
@@ -338,7 +338,7 @@ function AnbefalingKort({
 
       <div className="mt-auto flex items-center gap-2 pt-5">
         <ModpartMaerke mode={mode} />
-        <span className="ml-auto inline-flex items-center gap-1.5 text-sm font-semibold text-brand-400">
+        <span className="ml-auto inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700">
           Start
           <Icon.Arrow width={15} height={15} />
         </span>
@@ -352,7 +352,7 @@ function OevelseKort({ mode, onStart }: { mode: TrainingMode; onStart: () => voi
   return (
     <button type="button" onClick={onStart} className="tile group h-full gap-0">
       <div className="flex items-start gap-3">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-base-line2 bg-base-panel2 text-ink-mute transition-colors group-hover:border-brand-700 group-hover:text-brand-400">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-base-line2 bg-base-panel2 text-ink-mute transition-colors group-hover:border-brand-300 group-hover:text-brand-700">
           <I width={18} height={18} />
         </span>
         <div className="min-w-0 flex-1">
@@ -369,7 +369,7 @@ function OevelseKort({ mode, onStart }: { mode: TrainingMode; onStart: () => voi
         <Icon.Arrow
           width={16}
           height={16}
-          className="ml-auto shrink-0 text-ink-faint transition-colors group-hover:text-brand-400"
+          className="ml-auto shrink-0 text-ink-faint transition-colors group-hover:text-brand-700"
         />
       </div>
     </button>

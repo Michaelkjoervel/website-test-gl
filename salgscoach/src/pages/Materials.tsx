@@ -300,7 +300,7 @@ export function AnalysisProgress({ fileName, running }: { fileName: string; runn
             <li key={step.text} className="flex items-start gap-3">
               <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center">
                 {done ? (
-                  <Icon.Check className="text-brand-400" width={15} height={15} />
+                  <Icon.Check className="text-brand-700" width={15} height={15} />
                 ) : active ? (
                   <Spinner size={14} />
                 ) : (
@@ -526,7 +526,7 @@ export function Materials() {
         ) : phase === "valgt" && file ? (
           <div className="panel space-y-4 p-5 md:p-6">
             <div className="flex items-start gap-3 rounded-xl border border-base-line bg-base-panel2 px-4 py-3">
-              <Icon.Doc className="mt-0.5 shrink-0 text-brand-400" width={20} height={20} />
+              <Icon.Doc className="mt-0.5 shrink-0 text-brand-700" width={20} height={20} />
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-semibold text-ink">{file.name}</div>
                 <div className="text-xs text-ink-mute">
@@ -603,7 +603,7 @@ export function Materials() {
         {loadError && (
           <div className="mb-4">
             <ErrorNote title="Materialerne kunne ikke hentes" onRetry={() => void load()}>
-              <span className="text-xs text-danger-300/70">{loadError}</span>
+              <span className="text-xs text-danger-700/80">{loadError}</span>
             </ErrorNote>
           </div>
         )}
@@ -705,7 +705,7 @@ function DocumentRow({
               <button
                 type="button"
                 onClick={onOpen}
-                className="rounded text-left hover:text-brand-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
+                className="rounded text-left hover:text-brand-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
               >
                 {doc.name}
               </button>
@@ -746,7 +746,7 @@ function DocumentRow({
           </button>
           <button
             type="button"
-            className="btn-ghost btn-sm text-ink-mute hover:text-danger-300"
+            className="btn-ghost btn-sm text-ink-mute hover:text-danger-700"
             onClick={onDelete}
             aria-label={`Slet ${doc.name}`}
           >

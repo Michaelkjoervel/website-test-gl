@@ -268,41 +268,41 @@ export interface RatingStyle {
  */
 export const RATING_STYLES: Record<Rating, RatingStyle> = {
   FREMRAGENDE: {
-    text: "text-brand-200",
-    bg: "bg-brand-900",
-    border: "border-brand-600",
+    text: "text-brand-800",
+    bg: "bg-brand-100",
+    border: "border-brand-400",
     chip: "chip-brand",
-    dot: "bg-brand-300",
+    dot: "bg-brand-500",
     bar: "bg-brand-400",
   },
   STÆRK: {
-    text: "text-brand-300",
-    bg: "bg-brand-950",
-    border: "border-brand-800",
+    text: "text-brand-700",
+    bg: "bg-brand-50",
+    border: "border-brand-200",
     chip: "chip-brand",
     dot: "bg-brand-400",
     bar: "bg-brand-500",
   },
   ACCEPTABEL: {
-    text: "text-client-300",
-    bg: "bg-client-900",
-    border: "border-client-600/40",
+    text: "text-client-700",
+    bg: "bg-client-50",
+    border: "border-client-300/70",
     chip: "chip-client",
-    dot: "bg-client-400",
+    dot: "bg-client-500",
     bar: "bg-client-500",
   },
   "SKAL FORBEDRES": {
-    text: "text-warn-300",
-    bg: "bg-warn-900",
-    border: "border-warn-600/40",
+    text: "text-warn-700",
+    bg: "bg-warn-50",
+    border: "border-warn-300/80",
     chip: "chip-warn",
     dot: "bg-warn-500",
     bar: "bg-warn-500",
   },
   SVAG: {
-    text: "text-danger-300",
-    bg: "bg-danger-900",
-    border: "border-danger-600/40",
+    text: "text-danger-700",
+    bg: "bg-danger-50",
+    border: "border-danger-300/80",
     chip: "chip-danger",
     dot: "bg-danger-500",
     bar: "bg-danger-500",
@@ -406,11 +406,11 @@ export const TREND_LABELS: Record<PatternTrend, string> = {
 export function trendStyle(trend: PatternTrend): { label: string; arrow: string; text: string } {
   switch (trend) {
     case "forbedres":
-      return { label: TREND_LABELS.forbedres, arrow: "↑", text: "text-brand-300" };
+      return { label: TREND_LABELS.forbedres, arrow: "↑", text: "text-brand-700" };
     case "forvaerres":
-      return { label: TREND_LABELS.forvaerres, arrow: "↓", text: "text-danger-300" };
+      return { label: TREND_LABELS.forvaerres, arrow: "↓", text: "text-danger-700" };
     case "ny":
-      return { label: TREND_LABELS.ny, arrow: "•", text: "text-client-300" };
+      return { label: TREND_LABELS.ny, arrow: "•", text: "text-client-700" };
     case "uaendret":
     default:
       return { label: TREND_LABELS.uaendret, arrow: "→", text: "text-ink-mute" };

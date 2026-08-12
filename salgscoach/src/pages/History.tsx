@@ -147,7 +147,7 @@ export function History() {
       ) : error ? (
         <ErrorNote title="Historikken kunne ikke hentes" onRetry={() => void load()}>
           Dine øvelser er ikke slettet — de kunne bare ikke hentes lige nu.
-          <span className="mt-3 block text-xs text-danger-300/70">{error}</span>
+          <span className="mt-3 block text-xs text-danger-700/80">{error}</span>
         </ErrorNote>
       ) : !sessions.length ? (
         <EmptyState

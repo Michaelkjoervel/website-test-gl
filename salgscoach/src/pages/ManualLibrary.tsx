@@ -268,13 +268,13 @@ export function ManualLibrary() {
       <div className="space-y-8">
       {error && (
         <ErrorNote title="Indekset er ikke helt indlæst" onRetry={() => setAttempt((n) => n + 1)}>
-          <span className="text-xs text-danger-300/70">{error}</span>
+          <span className="text-xs text-danger-700/80">{error}</span>
         </ErrorNote>
       )}
 
       {/* ------------------------------------------------------- Konklusionen */}
       {meta?.northStar && (
-        <Panel className="border-brand-800 bg-brand-950/40">
+        <Panel className="border-brand-200 bg-brand-50/60">
           <div className="eyebrow">Manualens egen konklusion</div>
           <blockquote className="mt-2.5 text-lg font-semibold leading-snug text-ink md:text-2xl md:leading-snug">
             <span aria-hidden="true">»</span>
@@ -515,7 +515,7 @@ function ViewButton({
       aria-pressed={active}
       onClick={onClick}
       className={`btn btn-sm px-3.5 py-2 ${
-        active ? "bg-base-panel2 text-ink ring-1 ring-inset ring-brand-800" : "text-ink-mute hover:text-ink"
+        active ? "bg-base-panel2 text-ink ring-1 ring-inset ring-brand-200" : "text-ink-mute hover:text-ink"
       }`}
     >
       {children}
@@ -537,7 +537,7 @@ function PrincipleRow({
   const others = modes.slice(1);
 
   return (
-    <div className={`py-4 ${highlighted ? "-mx-2 rounded-xl bg-brand-950/50 px-2 ring-1 ring-inset ring-brand-800" : ""}`}>
+    <div className={`py-4 ${highlighted ? "-mx-2 rounded-xl bg-brand-50/70 px-2 ring-1 ring-inset ring-brand-200" : ""}`}>
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
         <h4 className="min-w-0 text-[15px] font-semibold leading-snug text-ink">
           {principle.title}

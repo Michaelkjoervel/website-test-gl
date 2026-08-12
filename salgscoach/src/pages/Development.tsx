@@ -260,7 +260,7 @@ export function Development() {
         <ErrorNote title="Din udvikling kunne ikke hentes" onRetry={() => setAttempt((n) => n + 1)}>
           Vurderingen ligger på green lights server. Den er ikke væk — den kunne bare ikke hentes
           lige nu.
-          <span className="mt-3 block text-xs text-danger-300/70">{error}</span>
+          <span className="mt-3 block text-xs text-danger-700/80">{error}</span>
         </ErrorNote>
       )}
 
@@ -273,7 +273,7 @@ export function Development() {
       ) : (
         <>
           {/* --------------------------------------------------- Vurderingen */}
-          <Panel as="section" className="border-brand-800/70">
+          <Panel as="section" className="border-brand-200/80">
             <h2 className="eyebrow">Salgsdirektørens vurdering</h2>
             {profile.narrative?.trim() ? (
               <CoachText
@@ -443,7 +443,7 @@ export function Development() {
                       <span className="min-w-0 flex-1 text-sm leading-relaxed text-ink-soft">{g}</span>
                       <button
                         type="button"
-                        className="btn-ghost btn-sm shrink-0 px-2 text-ink-mute hover:text-danger-300"
+                        className="btn-ghost btn-sm shrink-0 px-2 text-ink-mute hover:text-danger-700"
                         onClick={() =>
                           void commitGoals((profile.ownGoals ?? []).filter((_, idx) => idx !== i))
                         }
@@ -558,8 +558,8 @@ function PatternCard({ pattern, kind }: { pattern: DevelopmentPattern; kind: "sv
   const edge = single
     ? "border-dashed border-base-line2"
     : kind === "svaghed"
-      ? "border-warn-600/40"
-      : "border-brand-800";
+      ? "border-warn-300/80"
+      : "border-brand-200";
 
   return (
     <article className={`panel border ${edge} p-4 md:p-5`}>
@@ -640,7 +640,7 @@ function PatternCard({ pattern, kind }: { pattern: DevelopmentPattern; kind: "sv
 function SolvedRow({ pattern }: { pattern: DevelopmentPattern }) {
   return (
     <article className="panel-quiet flex items-start gap-3 p-4">
-      <span className="mt-0.5 shrink-0 text-brand-400" aria-hidden="true">
+      <span className="mt-0.5 shrink-0 text-brand-700" aria-hidden="true">
         <Icon.Check width={17} height={17} />
       </span>
       <div className="min-w-0 flex-1">
@@ -685,12 +685,12 @@ function RecommendationCard({ rec, title }: { rec: RecommendedTraining; title: s
     <article
       className={`flex flex-col rounded-2xl border p-5 ${
         top
-          ? "border-brand-700 bg-brand-950/40 shadow-panel"
+          ? "border-brand-300 bg-brand-50/60 shadow-panel"
           : "border-base-line bg-base-panel"
       }`}
     >
       <div className="flex items-center gap-2">
-        <span className={`eyebrow ${top ? "text-brand-300" : ""}`}>
+        <span className={`eyebrow ${top ? "text-brand-700" : ""}`}>
           {top ? "Start her" : `Prioritet ${rec.priority}`}
         </span>
       </div>

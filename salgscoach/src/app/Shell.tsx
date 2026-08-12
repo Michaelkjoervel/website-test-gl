@@ -69,7 +69,7 @@ export function Shell() {
               <Icon.Menu width={20} height={20} />
             </button>
             <span className="text-[15px] font-bold tracking-tight">
-              green light <span className="text-brand-400">Salgscoach</span>
+              green light <span className="text-brand-700">Salgscoach</span>
             </span>
             <span className="ml-auto pr-1">
               <Avatar initials={seller?.initials || "?"} size={32} />
@@ -85,7 +85,7 @@ export function Shell() {
       {/* ------------------------------------------------------ Mobilmenu */}
       {open && (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setOpen(false)} />
+          <div className="absolute inset-0 bg-ink/40 backdrop-blur-sm" onClick={() => setOpen(false)} />
           <div
             className="safe-t absolute left-0 top-0 flex h-full w-[272px] flex-col border-r border-base-line bg-base-raise"
             role="dialog"
@@ -138,12 +138,12 @@ function Nav({ isManager, onNavigate }: { isManager: boolean; onNavigate?: () =>
 function Brand() {
   return (
     <div className="flex min-w-0 items-center gap-3 border-b border-base-line px-5 py-[18px] lg:border-b">
-      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-brand-800 bg-brand-950 text-sm font-bold text-brand-400">
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-brand-200 bg-brand-50 text-sm font-bold text-brand-700">
         gl
       </span>
       <span className="min-w-0 leading-tight">
         <span className="block truncate text-sm font-bold text-ink">green light</span>
-        <span className="block truncate text-xs text-brand-400">Salgscoach</span>
+        <span className="block truncate text-xs text-brand-700">Salgscoach</span>
       </span>
     </div>
   );
@@ -158,8 +158,8 @@ function NavRow({ item }: { item: NavItem }) {
       className={({ isActive }) =>
         `relative flex min-h-[44px] items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors ${
           isActive
-            ? "bg-base-panel text-ink"
-            : "text-ink-soft hover:bg-base-panel/60 hover:text-ink"
+            ? "bg-base-panel2 text-ink"
+            : "text-ink-soft hover:bg-base-panel2/60 hover:text-ink"
         }`
       }
     >
@@ -173,7 +173,7 @@ function NavRow({ item }: { item: NavItem }) {
             }`}
             aria-hidden="true"
           />
-          <span className={isActive ? "text-brand-400" : "text-ink-mute"}>
+          <span className={isActive ? "text-brand-700" : "text-ink-mute"}>
             <I width={18} height={18} />
           </span>
           {item.label}

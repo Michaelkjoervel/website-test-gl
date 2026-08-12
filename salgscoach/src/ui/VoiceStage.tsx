@@ -55,8 +55,8 @@ export function VoiceOrb({
 
   const ring = isClient ? "border-client-400/60" : "border-brand-500/60";
   const fill = isClient
-    ? "from-client-900 to-base-panel border-client-600/50"
-    : "from-brand-950 to-base-panel border-brand-700/60";
+    ? "from-client-50 to-base-panel border-client-300"
+    : "from-brand-50 to-base-panel border-brand-300/70";
   const glow = speaking ? (isClient ? "shadow-glowClient" : "shadow-glow") : "";
 
   return (
@@ -77,7 +77,7 @@ export function VoiceOrb({
             {[0, 1, 2].map((i) => (
               <span
                 key={i}
-                className={`h-1.5 w-1.5 animate-think rounded-full ${isClient ? "bg-client-300" : "bg-brand-300"}`}
+                className={`h-1.5 w-1.5 animate-think rounded-full ${isClient ? "bg-client-500" : "bg-brand-500"}`}
                 style={{ animationDelay: `${i * 180}ms` }}
               />
             ))}
@@ -87,7 +87,7 @@ export function VoiceOrb({
         )}
       </div>
       <div className="absolute -bottom-1 translate-y-full text-center">
-        <div className={`text-sm font-semibold ${isClient ? "text-client-300" : "text-brand-300"}`}>{name}</div>
+        <div className={`text-sm font-semibold ${isClient ? "text-client-700" : "text-brand-700"}`}>{name}</div>
         <div className="mt-0.5 text-xs text-ink-mute">{LABEL[state]}</div>
       </div>
     </div>
@@ -107,7 +107,7 @@ export function Waveform({
   tone?: "brand" | "client";
   bars?: number;
 }) {
-  const cls = tone === "client" ? "bg-client-300" : "bg-brand-300";
+  const cls = tone === "client" ? "bg-client-500" : "bg-brand-500";
   return (
     <div className="flex h-8 items-center gap-1" aria-hidden="true">
       {Array.from({ length: bars }).map((_, i) => {
@@ -147,8 +147,8 @@ export function LiveCaption({
     speaker === "saelger"
       ? "text-ink"
       : speaker === "kunde"
-        ? "text-client-200"
-        : "text-brand-200";
+        ? "text-client-800"
+        : "text-brand-800";
   return (
     <div className="mx-auto max-w-2xl text-center">
       <div className="eyebrow mb-2">{speakerName}</div>
@@ -183,9 +183,9 @@ export function TranscriptRail({
               l.role === "saelger"
                 ? "text-ink-mute"
                 : l.role === "kunde"
-                  ? "text-client-400"
+                  ? "text-client-600"
                   : l.role === "coach"
-                    ? "text-brand-400"
+                    ? "text-brand-700"
                     : "text-ink-faint"
             }`}
           >

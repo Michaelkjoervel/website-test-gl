@@ -481,7 +481,7 @@ function SellerInner({ initials }: { initials: string }) {
               <ul className="space-y-3">
                 {profile.manualGaps.map((g, i) => (
                   <li key={`${g.principleId}-${i}`}>
-                    <article className="rounded-2xl border border-warn-600/30 bg-warn-900/25 p-4">
+                    <article className="rounded-2xl border border-warn-300/60 bg-warn-50/60 p-4">
                       <div className="flex flex-wrap items-baseline justify-between gap-2">
                         <h3 className="title-md">{g.title}</h3>
                         <span className="font-mono text-2xs uppercase tracking-wider text-ink-mute">
@@ -636,8 +636,8 @@ function PatternCard({ pattern, kindTone }: { pattern: DevelopmentPattern; kindT
   const frame = single
     ? "border-dashed border-base-line2 bg-base-raise"
     : kindTone === "brand"
-      ? "border-brand-800/60 bg-brand-950/40"
-      : "border-warn-600/30 bg-warn-900/20";
+      ? "border-brand-200/70 bg-brand-50/60"
+      : "border-warn-300/60 bg-warn-50/60";
 
   return (
     <article className={`rounded-2xl border p-4 md:p-5 ${frame}`}>

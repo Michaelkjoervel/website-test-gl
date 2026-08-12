@@ -106,11 +106,11 @@ export function PageHeader({
 /* ----------------------------------------------------------- Vurderinger */
 
 const RATING_STYLE: Record<Rating, { cls: string; dot: string }> = {
-  FREMRAGENDE: { cls: "border-brand-600 bg-brand-950 text-brand-200", dot: "bg-brand-400" },
-  STÆRK: { cls: "border-brand-800 bg-brand-950/70 text-brand-300", dot: "bg-brand-500" },
+  FREMRAGENDE: { cls: "border-brand-400 bg-brand-50 text-brand-800", dot: "bg-brand-400" },
+  STÆRK: { cls: "border-brand-200 bg-brand-50/90 text-brand-700", dot: "bg-brand-500" },
   ACCEPTABEL: { cls: "border-base-line2 bg-base-panel2 text-ink-soft", dot: "bg-ink-mute" },
-  "SKAL FORBEDRES": { cls: "border-warn-600/50 bg-warn-900 text-warn-300", dot: "bg-warn-500" },
-  SVAG: { cls: "border-danger-600/50 bg-danger-900 text-danger-300", dot: "bg-danger-500" },
+  "SKAL FORBEDRES": { cls: "border-warn-300 bg-warn-50 text-warn-700", dot: "bg-warn-500" },
+  SVAG: { cls: "border-danger-300 bg-danger-50 text-danger-700", dot: "bg-danger-500" },
 };
 
 export function RatingPill({ rating, size = "md" }: { rating: Rating; size?: "sm" | "md" }) {
@@ -138,8 +138,8 @@ export function RatingPill({ rating, size = "md" }: { rating: Rating; size?: "sm
  */
 const AVATAR_TONES = {
   neutral: "bg-base-panel2 text-ink-soft border-base-line2",
-  brand: "bg-brand-950 text-brand-300 border-brand-800",
-  client: "bg-client-900 text-client-300 border-client-600/50",
+  brand: "bg-brand-50 text-brand-700 border-brand-200",
+  client: "bg-client-50 text-client-700 border-client-300",
 } as const;
 
 export type AvatarTone = keyof typeof AVATAR_TONES;
@@ -263,18 +263,18 @@ export function ErrorNote({
   return (
     <div
       role="alert"
-      className="rounded-2xl border border-danger-600/35 bg-danger-900/35 p-4 md:p-5"
+      className="rounded-2xl border border-danger-300/70 bg-danger-50/70 p-4 md:p-5"
     >
       <div className="flex gap-3.5">
-        <Icon.Warn className="mt-0.5 shrink-0 text-danger-300" width={18} height={18} />
+        <Icon.Warn className="mt-0.5 shrink-0 text-danger-700" width={18} height={18} />
         <div className="min-w-0 flex-1">
-          {title && <h3 className="title-md text-danger-300">{title}</h3>}
-          <div className={`max-w-[62ch] text-sm leading-relaxed text-danger-300/90 ${title ? "mt-1.5" : ""}`}>
+          {title && <h3 className="title-md text-danger-700">{title}</h3>}
+          <div className={`max-w-[62ch] text-sm leading-relaxed text-danger-700/90 ${title ? "mt-1.5" : ""}`}>
             {children}
           </div>
           {onRetry && (
             <button
-              className="btn-outline btn-sm mt-4 border-danger-600/50 bg-transparent text-danger-300 hover:border-danger-600 hover:text-danger-300"
+              className="btn-outline btn-sm mt-4 border-danger-300 bg-transparent text-danger-700 hover:border-danger-400 hover:text-danger-700"
               onClick={onRetry}
             >
               <Icon.Repeat width={14} height={14} />
@@ -317,7 +317,7 @@ export function PageState({
         <p
           className={`mt-4 rounded-xl border px-4 py-3 text-xs leading-relaxed ${
             tone === "danger"
-              ? "border-danger-600/35 bg-danger-900/30 text-danger-300/90"
+              ? "border-danger-300/70 bg-danger-50/60 text-danger-700/90"
               : "border-base-line bg-base-panel text-ink-mute"
           }`}
         >
@@ -373,9 +373,9 @@ export function StepWait({
               <span
                 className={`mt-px grid h-5 w-5 shrink-0 place-items-center rounded-full border ${
                   done
-                    ? "border-brand-700 bg-brand-950 text-brand-400"
+                    ? "border-brand-300 bg-brand-50 text-brand-700"
                     : active
-                      ? "border-brand-600 bg-brand-950"
+                      ? "border-brand-400 bg-brand-50"
                       : "border-base-line bg-base-panel text-ink-faint"
                 }`}
               >
@@ -409,7 +409,7 @@ export function StepWait({
 export function Notice({ tone = "info", children }: { tone?: "info" | "warn"; children: ReactNode }) {
   const cls =
     tone === "warn"
-      ? "border-warn-600/40 bg-warn-900/60 text-warn-300"
+      ? "border-warn-300/80 bg-warn-50 text-warn-700"
       : "border-base-line2 bg-base-panel2 text-ink-soft";
   return <div className={`rounded-xl border px-4 py-3 text-sm ${cls}`}>{children}</div>;
 }
@@ -496,7 +496,7 @@ export function Modal({
 
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-ink/40 p-4 backdrop-blur-sm">
       <div
         className="absolute inset-0"
         onClick={onClose}
@@ -547,7 +547,7 @@ export function ToastHost({ children }: { children: ReactNode }) {
             key={t.id}
             className={`pointer-events-auto animate-fade-up rounded-xl border px-4 py-2.5 text-sm shadow-lift ${
               t.tone === "fejl"
-                ? "border-danger-600/50 bg-danger-900 text-danger-300"
+                ? "border-danger-300 bg-danger-50 text-danger-700"
                 : "border-base-line2 bg-base-panel text-ink"
             }`}
           >
@@ -634,7 +634,7 @@ export function Stat({ label, value, sub }: { label: string; value: ReactNode; s
 export function Bar({ value, max = 1, tone = "brand" }: { value: number; max?: number; tone?: "brand" | "client" | "warn" }) {
   const pct = Math.max(0, Math.min(100, (value / (max || 1)) * 100));
   const cls =
-    tone === "client" ? "bg-client-400" : tone === "warn" ? "bg-warn-500" : "bg-brand-500";
+    tone === "client" ? "bg-client-500" : tone === "warn" ? "bg-warn-500" : "bg-brand-500";
   return (
     <div className="h-1.5 w-full overflow-hidden rounded-full bg-base-line">
       <div className={`h-full rounded-full ${cls} transition-[width] duration-500`} style={{ width: `${pct}%` }} />

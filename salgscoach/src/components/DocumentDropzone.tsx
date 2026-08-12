@@ -238,8 +238,8 @@ export function DocumentDropzone({
             busy
               ? "cursor-progress border-base-line bg-base-panel2/60"
               : drag
-                ? "border-brand-500 bg-brand-950 ring-2 ring-brand-900"
-                : "cursor-pointer border-base-line2 bg-base-panel2/40 hover:border-brand-700 hover:bg-base-panel2"
+                ? "border-brand-500 bg-brand-50 ring-2 ring-brand-200"
+                : "cursor-pointer border-base-line2 bg-base-panel2/40 hover:border-brand-300 hover:bg-base-panel2"
           }`}
       >
         {busy ? (
@@ -253,7 +253,7 @@ export function DocumentDropzone({
             <span
               className={`grid h-12 w-12 place-items-center rounded-2xl border transition-colors ${
                 drag
-                  ? "border-brand-500 bg-brand-900 text-brand-200"
+                  ? "border-brand-500 bg-brand-100 text-brand-800"
                   : "border-base-line2 bg-base-panel text-ink-mute"
               }`}
             >
@@ -279,7 +279,7 @@ export function DocumentDropzone({
         <p
           id={errorId}
           role="alert"
-          className="mt-3 flex items-start gap-2.5 rounded-xl border border-danger-600/40 bg-danger-900/50 px-4 py-3 text-sm text-danger-300"
+          className="mt-3 flex items-start gap-2.5 rounded-xl border border-danger-300/80 bg-danger-50/80 px-4 py-3 text-sm text-danger-700"
         >
           <Icon.Warn className="mt-0.5 shrink-0" width={17} height={17} />
           <span>{error}</span>

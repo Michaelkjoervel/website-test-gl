@@ -320,11 +320,11 @@ export interface SellerAvatar {
  * hele klassenavne, så Tailwind kan finde dem i kildekoden.
  */
 const AVATAR_PALETTE: readonly { bg: string; text: string; border: string }[] = [
-  { bg: "bg-brand-900", text: "text-brand-200", border: "border-brand-700" },
-  { bg: "bg-client-900", text: "text-client-200", border: "border-client-600" },
-  { bg: "bg-warn-900", text: "text-warn-300", border: "border-warn-600" },
-  { bg: "bg-danger-900", text: "text-danger-300", border: "border-danger-600" },
-  { bg: "bg-brand-950", text: "text-brand-300", border: "border-brand-800" },
+  { bg: "bg-brand-100", text: "text-brand-800", border: "border-brand-300" },
+  { bg: "bg-client-50", text: "text-client-800", border: "border-client-400" },
+  { bg: "bg-warn-50", text: "text-warn-700", border: "border-warn-400" },
+  { bg: "bg-danger-50", text: "text-danger-700", border: "border-danger-400" },
+  { bg: "bg-brand-50", text: "text-brand-700", border: "border-brand-200" },
   { bg: "bg-base-panel2", text: "text-ink", border: "border-base-line2" },
 ];
 

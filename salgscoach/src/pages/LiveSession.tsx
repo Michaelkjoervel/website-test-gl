@@ -536,11 +536,11 @@ export function LiveSession() {
       <div className="flex h-[100dvh] flex-col bg-base" role="status" aria-label="Henter øvelsen">
         <div className="safe-t border-b border-base-line">
           <div className="mx-auto flex w-full max-w-3xl items-center gap-3 px-5 py-4">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-brand-800 bg-brand-950 text-sm font-bold text-brand-400">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-brand-200 bg-brand-50 text-sm font-bold text-brand-700">
               gl
             </span>
             <span className="text-sm font-bold tracking-tight">
-              green light <span className="text-brand-400">Salgscoach</span>
+              green light <span className="text-brand-700">Salgscoach</span>
             </span>
             <span className="ml-auto flex items-center gap-2.5 text-xs text-ink-mute">
               <Spinner size={14} />
@@ -854,7 +854,7 @@ function Stage({
       <div className="mt-16 text-center text-xs text-ink-mute">{sub}</div>
 
       {paused && (
-        <div className="mt-6 rounded-xl border border-warn-600/40 bg-warn-900/60 px-4 py-2.5 text-sm text-warn-300">
+        <div className="mt-6 rounded-xl border border-warn-300/80 bg-warn-50 px-4 py-2.5 text-sm text-warn-700">
           Øvelsen er på pause. Mikrofonen er slukket, og modparten venter.
         </div>
       )}
@@ -1034,10 +1034,10 @@ function ControlButton({
 }) {
   const cls =
     tone === "warn"
-      ? "border-warn-600/50 bg-warn-900/60 text-warn-300 hover:bg-warn-900"
+      ? "border-warn-300 bg-warn-50 text-warn-700 hover:bg-warn-50"
       : tone === "accent"
-        ? "border-brand-700 bg-brand-950 text-brand-200 hover:bg-brand-900"
-        : "border-base-line2 bg-base-panel text-ink-soft hover:border-brand-700 hover:text-ink";
+        ? "border-brand-300 bg-brand-50 text-brand-800 hover:bg-brand-100"
+        : "border-base-line2 bg-base-panel text-ink-soft hover:border-brand-300 hover:text-ink";
   return (
     <button
       type="button"
@@ -1120,7 +1120,7 @@ const TranscriptSheet = memo(function TranscriptSheet({
     <>
       {open && (
         <button
-          className="fixed inset-0 z-30 bg-black/50 md:hidden"
+          className="fixed inset-0 z-30 bg-ink/30 md:hidden"
           onClick={onClose}
           aria-label="Luk referatet"
         />
@@ -1205,7 +1205,7 @@ function Briefing({
       </p>
 
       {loadError && (
-        <div className="mt-5 flex items-start gap-3 rounded-xl border border-danger-600/40 bg-danger-900/50 px-4 py-3 text-sm text-danger-300">
+        <div className="mt-5 flex items-start gap-3 rounded-xl border border-danger-300/80 bg-danger-50/80 px-4 py-3 text-sm text-danger-700">
           <Icon.Warn className="mt-0.5 shrink-0" width={17} height={17} />
           <div>{loadError}</div>
         </div>
@@ -1213,10 +1213,10 @@ function Briefing({
 
       {/* En afbrudt samtale er stadig en samtale. Den skal kunne bruges. */}
       {savedLines > 0 && (
-        <div className="mt-5 rounded-xl border border-warn-600/40 bg-warn-900/40 px-4 py-3.5">
+        <div className="mt-5 rounded-xl border border-warn-300/80 bg-warn-50/80 px-4 py-3.5">
           <div className="flex items-start gap-3">
-            <Icon.Warn className="mt-0.5 shrink-0 text-warn-500" width={17} height={17} />
-            <p className="text-sm leading-relaxed text-warn-200">
+            <Icon.Warn className="mt-0.5 shrink-0 text-warn-600" width={17} height={17} />
+            <p className="text-sm leading-relaxed text-warn-800">
               Øvelsen blev afbrudt undervejs. Der ligger {savedLines} gemte replikker. Starter du
               forfra, bliver de erstattet af den nye samtale.
             </p>
@@ -1347,7 +1347,7 @@ function Analysing({
             Samtalen er gemt. Du mister ingenting ved at prøve igen — eller ved at gå videre og
             hente feedbacken senere.
           </p>
-          <p className="mt-4 rounded-xl border border-danger-600/35 bg-danger-900/30 px-4 py-3 text-xs leading-relaxed text-danger-300/90">
+          <p className="mt-4 rounded-xl border border-danger-300/70 bg-danger-50/60 px-4 py-3 text-xs leading-relaxed text-danger-700/90">
             {error}
           </p>
           <div className="mt-7 flex flex-col gap-2.5 sm:flex-row">
@@ -1395,7 +1395,7 @@ function VoiceFailure({
     <div className="absolute inset-0 grid place-items-center bg-base/90 px-5 backdrop-blur-sm">
       <div className="panel w-full max-w-md p-6">
         <div className="flex items-start gap-3">
-          <Icon.Warn className="mt-0.5 shrink-0 text-warn-500" width={19} height={19} />
+          <Icon.Warn className="mt-0.5 shrink-0 text-warn-600" width={19} height={19} />
           <div>
             <h2 className="title-md">
               {hasConversation ? "Samtalen blev afbrudt" : "Øvelsen kunne ikke startes"}
@@ -1482,11 +1482,11 @@ function FullScreenMessage({
     <div className="flex h-[100dvh] flex-col bg-base">
       <div className="safe-t border-b border-base-line">
         <div className="mx-auto flex w-full max-w-3xl items-center gap-3 px-5 py-4">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-brand-800 bg-brand-950 text-sm font-bold text-brand-400">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-brand-200 bg-brand-50 text-sm font-bold text-brand-700">
             gl
           </span>
           <span className="text-sm font-bold tracking-tight">
-            green light <span className="text-brand-400">Salgscoach</span>
+            green light <span className="text-brand-700">Salgscoach</span>
           </span>
         </div>
       </div>
