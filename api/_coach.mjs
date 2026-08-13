@@ -40,7 +40,6 @@ export { authorize, rateLimit, corsOrigin } from "./_core.mjs";
 
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
 const OPENAI_REALTIME_SECRETS_URL = "https://api.openai.com/v1/realtime/client_secrets";
-const OPENAI_REALTIME_LEGACY_URL = "https://api.openai.com/v1/realtime/sessions";
 const OPENAI_SPEECH_URL = "https://api.openai.com/v1/audio/speech";
 
 /** Maks. tekst vi nogensinde sender retur fra en dokumentudtrækning. */
@@ -426,7 +425,21 @@ const REALTIME_SECRET_TTL = Math.min(
   Math.max(60, Number(process.env.COACH_REALTIME_TTL_SECONDS) || 120),
 );
 
-function realtimeBody({ instructions, voice, language, eagerness, withTranscription, ttl }) {
+function realtimeBody({ model, instructions, voice, language, eagerness, withTranscription, ttl, minimal }) {
+  // Minimal: kun det, der ikke kan undværes. Bruges som sidste GA-forsøg, så en
+  // enkelt afvist indstilling (fx turtagning eller udløbstid) aldrig kan koste
+  // hele stemmen.
+  if (minimal) {
+    return {
+      session: {
+        type: "realtime",
+        model,
+        instructions: String(instructions || ""),
+        audio: { output: { voice } },
+      },
+    };
+  }
+
   const audioInput = {
     format: { type: "audio/pcm", rate: 24000 },
     turn_detection: {
@@ -445,7 +458,7 @@ function realtimeBody({ instructions, voice, language, eagerness, withTranscript
   const body = {
     session: {
       type: "realtime",
-      model: process.env.COACH_REALTIME_MODEL || "gpt-realtime",
+      model,
       instructions: String(instructions || ""),
       output_modalities: ["audio"],
       audio: {
@@ -498,93 +511,81 @@ export async function mintRealtimeSession({ instructions, voice, language, eager
   if (!apiKey) return { ok: false, status: 500, error: "Serveren mangler OPENAI_API_KEY." };
 
   const v = normalizeVoice(voice);
-  const model = process.env.COACH_REALTIME_MODEL || "gpt-realtime";
 
-  // GA-endpointet forsøges i faldende ambitionsniveau. Rækkefølgen er valgt, så
-  // vi altid ender med den mest restriktive variant, der faktisk virker:
-  //   1. alt: kort levetid + transskription
-  //   2. uden transskription (typisk årsag til 400 på nogle konti)
-  //   3. uden kort levetid (hvis netop DET felt afvises) — så falder vi tilbage
-  //      til OpenAIs standardlevetid frem for at miste stemmen helt
+  // Modelnavne i prioriteret rækkefølge. OpenAI har før omdøbt realtime-
+  // modellerne, og en 404/400 på navnet må aldrig koste stemmen — så vi prøver
+  // de kendte navne, indtil ét svarer. Konfigureret navn vinder altid.
+  const configured = (process.env.COACH_REALTIME_MODEL || "").trim();
+  const models = [...new Set([configured || "gpt-realtime", "gpt-realtime-2.1", "gpt-realtime", "gpt-realtime-mini"])];
+
+  // Varianter i faldende ambitionsniveau; "minimal" er sidste GA-udvej.
   const variants = [
     { withTranscription: true, ttl: REALTIME_SECRET_TTL },
     { withTranscription: false, ttl: REALTIME_SECRET_TTL },
-    { withTranscription: true, ttl: 0 },
     { withTranscription: false, ttl: 0 },
+    { minimal: true },
   ];
 
-  let r = { ok: false, status: 502, error: "Realtime blev ikke forsøgt." };
-  for (const variant of variants) {
-    r = await postJson(
-      OPENAI_REALTIME_SECRETS_URL,
-      realtimeBody({ instructions, voice: v, language, eagerness, ...variant }),
-      apiKey,
-    );
-    if (r.ok) break;
-    // Kun klientfejl er værd at prøve igen på med en anden form; 5xx og
-    // netværksfejl betyder, at OpenAI er nede — så nytter en ny variant intet.
-    if (!(r.status >= 400 && r.status < 500)) break;
-  }
+  // Den FØRSTE afvisning er den mest sigende — det er den, vi melder tilbage,
+  // hvis alt fejler. (Før viste vi den sidste, og så druknede den egentlige
+  // årsag i det gamle beta-endpoints 404.)
+  let firstError = null;
 
-  if (r.ok) {
-    const secret = r.json?.value || r.json?.client_secret?.value || null;
-    if (secret && String(secret).startsWith("ek_")) {
-      return {
-        ok: true,
-        status: 200,
-        clientSecret: secret,
-        expiresAt: r.json?.expires_at || r.json?.client_secret?.expires_at || null,
-        model,
-        voice: v,
-        api: "ga",
-      };
-    }
-    // Svar uden brugbar nøgle behandles som en fejl, så vi prøver beta-vejen.
-    r = { ok: false, status: 502, error: "Realtime-svaret indeholdt ingen brugbar nøgle." };
-  }
+  for (const model of models) {
+    for (const variant of variants) {
+      const r = await postJson(
+        OPENAI_REALTIME_SECRETS_URL,
+        realtimeBody({ model, instructions, voice: v, language, eagerness, ...variant }),
+        apiKey,
+      );
 
-  // --- 3. Det gamle beta-endpoint ------------------------------------------
-  const legacy = await postJson(
-    OPENAI_REALTIME_LEGACY_URL,
-    {
-      model,
-      voice: v,
-      instructions: String(instructions || ""),
-      modalities: ["audio", "text"],
-      input_audio_transcription: { model: process.env.COACH_TRANSCRIBE_MODEL || "gpt-4o-mini-transcribe" },
-      turn_detection: {
-        type: "server_vad",
-        threshold: 0.5,
-        prefix_padding_ms: 300,
-        silence_duration_ms: 600,
-        create_response: true,
-        interrupt_response: true,
-      },
-    },
-    apiKey,
-    { "OpenAI-Beta": "realtime=v1" },
-  );
+      if (r.ok) {
+        const secret = r.json?.value || r.json?.client_secret?.value || null;
+        if (secret && String(secret).startsWith("ek_")) {
+          return {
+            ok: true,
+            status: 200,
+            clientSecret: secret,
+            expiresAt: r.json?.expires_at || r.json?.client_secret?.expires_at || null,
+            model,
+            voice: v,
+            api: "ga",
+          };
+        }
+        // Svar uden nøgle: prøv næste variant.
+        continue;
+      }
 
-  if (legacy.ok) {
-    const secret = legacy.json?.client_secret?.value || null;
-    if (secret) {
-      return {
-        ok: true,
-        status: 200,
-        clientSecret: secret,
-        expiresAt: legacy.json?.client_secret?.expires_at || null,
-        model,
-        voice: v,
-        api: "beta",
-      };
+      if (!firstError) firstError = { status: r.status, error: r.error, model };
+
+      // 5xx/netværk: OpenAI er nede — flere varianter hjælper ikke.
+      if (!(r.status >= 400 && r.status < 500)) {
+        return {
+          ok: false,
+          status: r.status || 502,
+          error: r.error || "OpenAI svarer ikke.",
+          model,
+          voice: v,
+        };
+      }
+
+      // 401/403: nøglen er problemet — andre modeller/varianter ændrer intet.
+      if (r.status === 401 || r.status === 403) {
+        return { ok: false, status: r.status, error: r.error, model, voice: v };
+      }
     }
   }
 
+  // Alle GA-forsøg afvist. Det gamle beta-endpoint er nedlagt hos OpenAI
+  // (svarer 404), så det forsøges ikke længere — det maskerede kun den
+  // egentlige fejl. Meld den første, mest sigende afvisning tilbage.
   return {
     ok: false,
-    status: legacy.status || r.status || 502,
-    error: legacy.error || r.error || "Kunne ikke oprette en stemmesession hos OpenAI.",
-    model,
+    status: firstError?.status || 502,
+    error: firstError
+      ? `Realtime afvist (${firstError.status} på ${firstError.model}): ${firstError.error || "ukendt årsag"}`
+      : "Kunne ikke oprette en stemmesession hos OpenAI.",
+    model: firstError?.model || models[0],
     voice: v,
   };
 }

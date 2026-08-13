@@ -384,7 +384,7 @@ export function LiveSession() {
         documentText: ext.documentText,
         sellerContext: buildSellerContext(profileRef.current, sellerRef.current),
         voice: s.scenario?.persona.voice,
-        eagerness: FAST_MODES.includes(s.modeId) ? "high" : "auto",
+        eagerness: FAST_MODES.includes(s.modeId) ? "auto" : "low",
       });
     } catch {
       /* hooken har allerede sat en læsbar fejl — den vises på scenen */

@@ -349,7 +349,11 @@ async function doAnalyse(body, apiKey, ctx = {}) {
     input: [{ role: "user", content: `Her er samtalen. Giv feedbacken nu.\n\n${trim(transcript, 120_000)}` }],
     schema: FEEDBACK_SCHEMA,
     schemaName: "feedback",
-    effort: "grundig",
+    // "hurtig", ikke "grundig": den grundige model timede ud i praksis, og en
+    // feedback der aldrig kommer, er værdiløs. Skarpheden kommer fra
+    // instruktionen og fra kravet om citater fra samtalen — ikke fra
+    // modellens størrelse. Instruktionen sætter samtidig loft over omfanget.
+    effort: "hurtig",
     apiKey,
   });
   if (!r.ok) return { status: r.status, payload: { error: r.error || "Feedbacken kunne ikke laves." } };
