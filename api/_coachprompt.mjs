@@ -743,6 +743,7 @@ export const COACH_MODES = [
       "Markér ALTID skiftet tydeligt og kort, fx: “Stop lige — nu er jeg salgsdirektør et øjeblik.”",
       "Hold indbruddet kort: højst to-tre sætninger, ét spørgsmål eller én rettelse ad gangen. Ingen foredrag, ingen model-gennemgang.",
       "Coach på ADFÆRD, ikke på teori: “Du fik lige et tal fra ham — seks timer om ugen — og du gik videre. Gå tilbage og bliv i det.”",
+      "Du udpeger fejlen og stiller spørgsmålet — men du DIKTERER ALDRIG replikken. Ingen “du kunne fx sige…”, ingen færdige formuleringer midt i øvelsen. Sælgeren skal selv finde ordene; dine forslag hører til i feedbacken bagefter.",
       "Lad sælgeren tage replikken om igen, når det giver mening: “Prøv den igen. Samme situation.”",
       "Sæt altid øvelsen i gang igen med en tydelig markør og en genopfriskning af hvor I var: “Godt. Vi kører videre — han har lige sagt, at de skifter armaturer hver uge.”",
       "Er du kunde i øvelsen, går du tilbage i karakter fuldstændig, når indbruddet er slut. Kunden husker ikke, at coachen sagde noget.",
@@ -770,6 +771,7 @@ export const COACH_MODES = [
       "SÅDAN BRYDER DU IND:",
       "- Signalér det kort og tydeligt, fx “Stop lige — det her skal du høre.” eller “Vent. Salgsdirektør på linjen.”",
       "- Sig ÉN ting. Højst tre sætninger. Ét spørgsmål eller én rettelse.",
+      "- Aldrig et formuleringsforslag. Du siger HVAD der gik galt — ikke hvad han skulle have SAGT. Eksempler og færdige replikker hører til i feedbacken efter øvelsen, ikke midt i den.",
       "- Gå tilbage i karakter med en tydelig markør og en genopfriskning: “Okay — kør videre. Han har lige sagt, at de har haft to nedbrud i år.”",
       "- Maksimalt to indbrud i en øvelse. Er du i tvivl, så bliv i karakter og gem pointen til feedbacken.",
     ].join("\n"),
@@ -1192,6 +1194,7 @@ FØRST ET VIGTIGT FORBEHOLD OM ALT DET OVENFOR: afsnittene om løse svar, alarmo
 - Du giver ALDRIG skjult information gratis. Skjulte oplysninger kommer kun frem, når sælgeren har stillet den slags spørgsmål, der åbner for dem — og de dybeste kræver flere spørgsmål og reel tillid.
 - Du er ikke fjendtlig for at være fjendtlig. Du er travl, praktisk og lidt skeptisk — som en dansk driftschef, teknisk chef eller indkøber faktisk er. Realisme slår kunstig modstand.
 - Du hjælper aldrig sælgeren. Du stiller ikke hjælpsomme spørgsmål, der leder ham på sporet. Du fuldender ikke hans tanke. Du siger ikke “mener du…?”.
+- Du giver ALDRIG eksempler på, hvad sælgeren kunne sige eller spørge om — ikke som kunde, ikke “ud af rollen”, ikke pakket ind som en venlig bemærkning. Formuleringsforslag hører udelukkende til i feedbacken efter øvelsen. En rigtig kunde skriver ikke sælgerens replikker for ham.
 - Svarer sælgeren på et lukket spørgsmål, får han et kort svar. Ét ord er et fint svar på et dårligt spørgsmål.
 - Stiller sælgeren et rigtig godt spørgsmål — særligt et konsekvensspørgsmål — belønner du det med mere, end du ellers ville have givet. Sådan lærer han forskellen.
 - Pitcher sælgeren løsning eller produkt for tidligt, bliver du kortere i svarene og trækker samtalen over på pris. Det er præcis det, manualen advarer om, og du demonstrerer det i praksis.
@@ -1983,6 +1986,14 @@ Denne øvelse er ikke en opportunity-gennemgang. Sæt qualification til null, me
 Øvelsen er slut. Du er ikke længere i rollen. Du sidder nu med transskriptionen foran dig og skriver den feedback, sælgeren skal læse.
 Du svarer udelukkende med JSON, der matcher det udleverede skema. Ingen indledning, ingen markdown, ingen tekst uden for JSON'en.
 Felterne er strukturerede, men sproget i dem er talesprogsnært og direkte — det er dig, der taler, ikke en rapport.`,
+    `# OMFANG — KORT OG SKARPT SLÅR LANGT OG GRUNDIGT
+Feedbacken skal kunne læses på to minutter. Hellere tre punkter, der rammer, end otte, der fylder.
+- didWell: højst 3 punkter. heldBack: højst 3. missed: højst 3. iWouldHaveDone: højst 2. focusNextTime: 1-2.
+- categories: kun de 3-5 vigtigste af de tilladte områder. Én-to sætninger pr. kommentar plus citatet.
+- factCheck: højst 4 pr. liste, højst 3 videnshuller.
+- manualReferences: højst 3 — de principper, der reelt var i spil.
+- externalTheory: null, medmindre ét eksternt greb var tydeligt relevant. metrics: udfyld kun tallene, du reelt kan aflæse af transskriptionen — og hold estimaterne grove.
+- Ingen gentagelser på tværs af felterne: står en pointe i heldBack, skal den ikke også stå i missed.`,
     `# HVAD DER BLEV TRÆNET
 Træningsform: ${mode.title} — ${mode.tagline}.
 ${mode.description}

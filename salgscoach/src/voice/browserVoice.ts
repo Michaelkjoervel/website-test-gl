@@ -13,6 +13,14 @@
 
 import type { VoiceState } from "./realtime";
 
+/**
+ * Ro-periode før modparten svarer. Browserens talegenkendelse melder "færdig
+ * sætning" ved enhver lille pause — mennesker tænker i pauser, så uden denne
+ * margin afbryder modparten konstant. 1,5 sekund føles som en naturlig
+ * turtagning uden at gøre samtalen træg.
+ */
+const SILENCE_BEFORE_REPLY_MS = 1500;
+
 /* SpeechRecognition er ikke i TypeScripts DOM-typer. Minimal erklæring. */
 interface SpeechRecognitionAlternativeLike {
   transcript: string;
@@ -95,6 +103,7 @@ export class BrowserVoiceSession {
   private stopped = false;
   private busy = false;
   private buffer = "";
+  private flushTimer: number | undefined;
   private restartTimer: number | undefined;
 
   constructor(opts: BrowserVoiceOptions) {
@@ -130,7 +139,9 @@ export class BrowserVoiceSession {
     rec.maxAlternatives = 1;
 
     rec.onspeechstart = () => {
-      // Barge-in på reservemotoren: sælgeren taler → stop afspilningen.
+      // Barge-in på reservemotoren: sælgeren taler → stop afspilningen, og
+      // aflys et eventuelt planlagt svar — hans replik er ikke færdig endnu.
+      window.clearTimeout(this.flushTimer);
       if (this.audio && !this.audio.paused) {
         this.audio.pause();
         this.audio.currentTime = 0;
@@ -149,8 +160,18 @@ export class BrowserVoiceSession {
       const live = (this.buffer + interim).trim();
       if (live) this.opts.events.onTranscript?.("saelger", live, false);
 
-      // Når der er en færdig sætning og et lille ophold, svarer modparten.
-      if (this.buffer.trim() && !interim) void this.flush();
+      /*
+       * Modparten svarer først efter en RO-PERIODE — ikke ved første færdige
+       * sætning. Talegenkendelsen afslutter en sætning ved enhver lille pause,
+       * og uden denne udskydelse afbrød modparten sælgeren midt i hans egen
+       * tankerække. Kommer der mere tale (interim eller ny sætning), aflyses
+       * det planlagte svar, og uret starter forfra.
+       */
+      window.clearTimeout(this.flushTimer);
+      if (interim) return; // sælgeren er stadig i gang
+      if (this.buffer.trim()) {
+        this.flushTimer = window.setTimeout(() => void this.flush(), SILENCE_BEFORE_REPLY_MS);
+      }
     };
 
     rec.onerror = (e) => {
@@ -297,6 +318,7 @@ export class BrowserVoiceSession {
   stop() {
     this.stopped = true;
     window.clearTimeout(this.restartTimer);
+    window.clearTimeout(this.flushTimer);
     try {
       this.rec?.abort();
     } catch {
