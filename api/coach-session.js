@@ -87,6 +87,33 @@ export default async function handler(req, res) {
   const token = (req.headers?.authorization || "").replace(/^Bearer\s+/i, "");
 
   if (req.method === "GET") {
+    // Diagnose: ?probe=1 forsøger at udstede en RIGTIG (men bittelille) realtime-
+    // session og viser OpenAI's egentlige svar. Så kan fejlsøgning ske ved at
+    // åbne én URL i browseren i stedet for at gætte ud fra symptomer.
+    // Nøglen fra prøvesessionen VIDEREGIVES IKKE — kun om det lykkedes.
+    const probe = String(req.url || "").includes("probe=1");
+    if (probe) {
+      const auth = await authorize(token);
+      if (!auth.ok) return res.status(auth.status).json({ error: auth.reason });
+      const r = await mintRealtimeSession({
+        instructions: "Sig kort goddag på dansk.",
+        voice: "cedar",
+        language: "da",
+        eagerness: "auto",
+        apiKey: process.env.OPENAI_API_KEY,
+      });
+      return res.status(200).json({
+        service: "green-light-salgscoach-session",
+        probe: {
+          ok: r.ok,
+          status: r.status,
+          model: r.model || null,
+          api: r.api || null,
+          variant: r.variant || null,
+          error: r.ok ? null : r.error || "ukendt fejl",
+        },
+      });
+    }
     return res.status(200).json({
       service: "green-light-salgscoach-session",
       realtimeConfigured: Boolean(process.env.OPENAI_API_KEY),

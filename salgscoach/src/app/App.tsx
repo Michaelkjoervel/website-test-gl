@@ -24,6 +24,7 @@ import { MaterialDetail } from "../pages/MaterialDetail";
 import { ManagerDashboard } from "../pages/ManagerDashboard";
 import { ManagerSeller } from "../pages/ManagerSeller";
 import { ManualLibrary } from "../pages/ManualLibrary";
+import { VoiceCheck } from "../pages/VoiceCheck";
 
 export function App() {
   return (
@@ -44,6 +45,7 @@ export function App() {
                 <Route path="/materiale" element={<Materials />} />
                 <Route path="/materiale/:documentId" element={<MaterialDetail />} />
                 <Route path="/manual" element={<ManualLibrary />} />
+                <Route path="/stemmetest" element={<VoiceCheck />} />
                 <Route path="/ledelse" element={<ManagerDashboard />} />
                 <Route path="/ledelse/:initials" element={<ManagerSeller />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
