@@ -109,6 +109,8 @@ export function useVoiceSession(): VoiceSessionApi {
   /** Ren tekst-tilstand: ingen mikrofon, men samtalen skal stadig kunne føres. */
   const textOnly = useRef(false);
   const textBusy = useRef(false);
+  /** Talesyntesen meldes kun død én gang — ikke én gang pr. replik. */
+  const speakFailedOnce = useRef(false);
 
   /** Én fejlvej, så UI'et altid får både en type og en tekst. */
   const fail = useCallback((kind: VoiceErrorKind, message: string) => {
@@ -227,6 +229,10 @@ export function useVoiceSession(): VoiceSessionApi {
             if (final) push(speaker === "saelger" ? "saelger" : counterpartRole(p.modeId), text);
             else setLive({ speaker, text });
           },
+          onLevel: (m, r) => {
+            setMicLevel(m);
+            setRemoteLevel(r);
+          },
           onError: (m) => {
             const kind = classify(m);
             // Er mikrofonen eller talegenkendelsen ude af spil, er der ingen
@@ -245,8 +251,15 @@ export function useVoiceSession(): VoiceSessionApi {
           try {
             const spoken = await api.speak({ text: reply, voice: p.voice || "cedar" });
             audio = api.toAudioDataUrl(spoken.audio);
-          } catch {
-            /* uden lyd viser vi stadig teksten */
+          } catch (e) {
+            // Teksten vises stadig — men en modpart, der pludselig er stum,
+            // skal forklares. Én besked, ikke én pr. replik.
+            if (!speakFailedOnce.current) {
+              speakFailedOnce.current = true;
+              setEngineNotice(
+                `Talesyntesen fejlede (${(e as Error).message || "ukendt årsag"}). Øvelsen fortsætter med svar på skrift.`,
+              );
+            }
           }
           return { text: reply, audio };
         },

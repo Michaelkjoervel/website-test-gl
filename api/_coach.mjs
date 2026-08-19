@@ -520,10 +520,10 @@ export async function mintRealtimeSession({ instructions, voice, language, eager
 
   // Varianter i faldende ambitionsniveau; "minimal" er sidste GA-udvej.
   const variants = [
-    { withTranscription: true, ttl: REALTIME_SECRET_TTL },
-    { withTranscription: false, ttl: REALTIME_SECRET_TTL },
-    { withTranscription: false, ttl: 0 },
-    { minimal: true },
+    { name: "fuld", withTranscription: true, ttl: REALTIME_SECRET_TTL },
+    { name: "uden-transskription", withTranscription: false, ttl: REALTIME_SECRET_TTL },
+    { name: "uden-udloebstid", withTranscription: false, ttl: 0 },
+    { name: "minimal", minimal: true },
   ];
 
   // Den FØRSTE afvisning er den mest sigende — det er den, vi melder tilbage,
@@ -550,6 +550,7 @@ export async function mintRealtimeSession({ instructions, voice, language, eager
             model,
             voice: v,
             api: "ga",
+            variant: variant.name,
           };
         }
         // Svar uden nøgle: prøv næste variant.
@@ -607,9 +608,16 @@ export async function speak({ text, voice, apiKey } = {}) {
   const input = String(text || "").trim();
   if (!input) return { ok: false, status: 400, error: "'text' er påkrævet." };
 
-  const model = process.env.COACH_TTS_MODEL || "gpt-4o-mini-tts";
+  // Modelnavne i prioriteret rækkefølge — OpenAI omdøber tale-modellerne med
+  // mellemrum, og en 404 på navnet må ikke koste reservestemmen (den er i
+  // forvejen sidste udvej). Konfigureret navn vinder altid.
+  const models = [...new Set([
+    (process.env.COACH_TTS_MODEL || "").trim() || "gpt-4o-mini-tts",
+    "gpt-4o-mini-tts",
+    "tts-1",
+  ])];
 
-  async function attempt(v) {
+  async function attempt(model, v) {
     let res;
     try {
       res = await fetch(OPENAI_SPEECH_URL, {
@@ -635,15 +643,21 @@ export async function speak({ text, voice, apiKey } = {}) {
   }
 
   const wanted = normalizeVoice(voice, "sage");
-  const first = await attempt(wanted);
-  if (first.ok) return first;
-  // Ikke alle stemmer findes i tale-syntesen (fx de nyeste realtime-stemmer).
-  // Ét forsøg mere med en stemme, der altid findes, før vi giver op.
-  if (first.status >= 400 && first.status < 500 && wanted !== "alloy") {
-    const second = await attempt("alloy");
-    if (second.ok) return second;
+  let first = null;
+  for (const model of models) {
+    const r = await attempt(model, wanted);
+    if (r.ok) return r;
+    if (!first) first = r;
+    // 5xx/netværk: OpenAI er nede — flere navne hjælper ikke.
+    if (!(r.status >= 400 && r.status < 500)) return r;
+    // Ikke alle stemmer findes i tale-syntesen (fx de nyeste realtime-stemmer).
+    if (wanted !== "alloy") {
+      const second = await attempt(model, "alloy");
+      if (second.ok) return second;
+    }
   }
-  return first;
+  // Meld den FØRSTE fejl — den handler om den konfigurerede model og er mest sigende.
+  return first || { ok: false, status: 502, error: "Talesyntesen kunne ikke gennemføres." };
 }
 
 // ---------------------------------------------------------------------------

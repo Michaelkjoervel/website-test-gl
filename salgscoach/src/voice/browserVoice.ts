@@ -104,6 +104,10 @@ export class BrowserVoiceSession {
   private busy = false;
   private buffer = "";
   private flushTimer: number | undefined;
+  private levelStream: MediaStream | null = null;
+  private levelCtx: AudioContext | null = null;
+  private levelAnalyser: AnalyserNode | null = null;
+  private levelRaf = 0;
   private restartTimer: number | undefined;
 
   constructor(opts: BrowserVoiceOptions) {
@@ -202,6 +206,7 @@ export class BrowserVoiceSession {
     };
 
     this.rec = rec;
+    void this.startLevelMeter();
     try {
       rec.start();
       this.setState("lytter");
@@ -237,6 +242,50 @@ export class BrowserVoiceSession {
     } finally {
       this.busy = false;
       if (!this.stopped) this.setState("lytter");
+    }
+  }
+
+  /**
+   * Lydniveau til orben. Talegenkendelsen udleverer ikke sin lydstrøm, så vi
+   * åbner vores egen mikrofonstrøm til måling (tilladelsen er allerede givet).
+   * Uden dette lyser orben aldrig på reservestemmen — og sælgeren kan ikke se,
+   * om han overhovedet bliver hørt.
+   */
+  private async startLevelMeter() {
+    if (!this.opts.events.onLevel || this.levelAnalyser) return;
+    try {
+      this.levelStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const Ctor =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      this.levelCtx = new Ctor();
+      if (this.levelCtx.state === "suspended") void this.levelCtx.resume().catch(() => {});
+      const src = this.levelCtx.createMediaStreamSource(this.levelStream);
+      const analyser = this.levelCtx.createAnalyser();
+      analyser.fftSize = 512;
+      src.connect(analyser);
+      this.levelAnalyser = analyser;
+
+      const buf = new Uint8Array(analyser.frequencyBinCount);
+      let mic = 0;
+      const tick = () => {
+        if (this.stopped && this.state !== "taler") return;
+        analyser.getByteTimeDomainData(buf);
+        let sum = 0;
+        for (let i = 0; i < buf.length; i++) {
+          const v = (buf[i] - 128) / 128;
+          sum += v * v;
+        }
+        mic = mic + (Math.min(1, Math.sqrt(sum / buf.length) * 3.2) - mic) * 0.35;
+        // Modpartens niveau efterlignes under afspilning — en jævn puls, så
+        // orben tydeligt "taler", uden at vi skal analysere afspilningen.
+        const remote = this.state === "taler" ? 0.35 + 0.25 * Math.abs(Math.sin(performance.now() / 180)) : 0;
+        this.opts.events.onLevel?.(mic, remote);
+        this.levelRaf = requestAnimationFrame(tick);
+      };
+      this.levelRaf = requestAnimationFrame(tick);
+    } catch {
+      /* måleren er pynt — den må aldrig vælte øvelsen */
     }
   }
 
@@ -319,6 +368,12 @@ export class BrowserVoiceSession {
     this.stopped = true;
     window.clearTimeout(this.restartTimer);
     window.clearTimeout(this.flushTimer);
+    cancelAnimationFrame(this.levelRaf);
+    this.levelStream?.getTracks().forEach((t) => t.stop());
+    this.levelStream = null;
+    void this.levelCtx?.close().catch(() => {});
+    this.levelCtx = null;
+    this.levelAnalyser = null;
     try {
       this.rec?.abort();
     } catch {

@@ -130,7 +130,16 @@ export class RealtimeVoiceSession {
       if (this.audioEl && stream) {
         this.audioEl.srcObject = stream;
         void this.audioEl.play().catch(() => {
-          /* autoplay-blokering: sessionen startes altid fra et klik, så dette er sjældent */
+          // Autoplay-blokering: sig det højt, og prøv igen ved første klik —
+          // en lydløs modpart uden forklaring er det værste udfald.
+          this.events.onError?.(
+            "Browseren blokerede lyden. Klik ét sted på siden, så tænder den.",
+          );
+          const retry = () => {
+            void this.audioEl?.play().catch(() => {});
+            document.removeEventListener("pointerdown", retry);
+          };
+          document.addEventListener("pointerdown", retry, { once: true });
         });
         this.attachRemoteAnalyser(stream);
       }
@@ -377,6 +386,9 @@ export class RealtimeVoiceSession {
         (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       this.ctx = new Ctor();
     }
+    // Browserens autoplay-politik kan lade konteksten starte "suspended" —
+    // så læser målerne nul, og orben lyser aldrig, selvom lyden virker.
+    if (this.ctx.state === "suspended") void this.ctx.resume().catch(() => {});
     return this.ctx;
   }
 
