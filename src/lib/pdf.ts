@@ -194,21 +194,27 @@ export function generateEstimatePdf(est: CustomerEstimate): jsPDF {
     margin + 16,
     y + 80,
   );
-  doc.text(
+  // Installation vises kun, når den er medregnet i estimatet.
+  const installationIncluded = est.pricing.installationIncluded !== false;
+  const perUnitLine = [
     `Armaturpris pr. stk.: ${dkkInt(
       est.pricing.materialPerLuminaire ??
         (est.technical.luminaireCount > 0
           ? est.pricing.materialCost / est.technical.luminaireCount
           : 0),
-    )} · Installation pr. armatur: ${dkkInt(
-      est.pricing.installationPerLuminaire ??
-        (est.technical.luminaireCount > 0
-          ? est.pricing.installationCost / est.technical.luminaireCount
-          : 0),
     )}`,
-    margin + 16,
-    y + 96,
-  );
+    ...(installationIncluded
+      ? [
+          `Installation pr. armatur: ${dkkInt(
+            est.pricing.installationPerLuminaire ??
+              (est.technical.luminaireCount > 0
+                ? est.pricing.installationCost / est.technical.luminaireCount
+                : 0),
+          )}`,
+        ]
+      : []),
+  ].join(" · ");
+  doc.text(perUnitLine, margin + 16, y + 96);
   y += 130;
 
   // ─── Price breakdown (table) ───
@@ -236,7 +242,9 @@ export function generateEstimatePdf(est: CustomerEstimate): jsPDF {
             ],
           ]
         : []),
-      ["Installation (uden rabat)", dkkInt(est.pricing.installationCost)],
+      ...(installationIncluded
+        ? [["Installation (uden rabat)", dkkInt(est.pricing.installationCost)]]
+        : []),
       ["I alt", dkkInt(est.pricing.totalCost)],
     ],
     theme: "plain",

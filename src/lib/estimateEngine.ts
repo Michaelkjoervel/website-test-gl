@@ -137,8 +137,12 @@ export function calculatePricing(input: TechnicalInput): PricingResult {
   const discountPct = Math.min(100, Math.max(0, input.discountPct ?? 0));
   const discountAmount = (materialCost + controlCost) * (discountPct / 100);
 
-  // Installation – pr. armatur * områdefaktor
-  const installationCost = cfg.installationPerLuminaire * totalCount * areaMult;
+  // Installation – pr. armatur * områdefaktor. Kan slås fra pr. estimat;
+  // så er den 0 og vises ingen steder.
+  const installationIncluded = input.includeInstallation !== false;
+  const installationCost = installationIncluded
+    ? cfg.installationPerLuminaire * totalCount * areaMult
+    : 0;
 
   const totalCost =
     materialCost + controlCost - discountAmount + installationCost;
@@ -151,6 +155,7 @@ export function calculatePricing(input: TechnicalInput): PricingResult {
     installationPerLuminaire:
       totalCount > 0 ? round(installationCost / totalCount) : 0,
     installationCost: round(installationCost),
+    installationIncluded,
     discountPct,
     discountAmount: round(discountAmount),
     controlCost: round(controlCost),

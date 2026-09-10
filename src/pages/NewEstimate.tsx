@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { Stepper } from "../components/Stepper";
 import { Field } from "../components/Field";
 import { ConfidenceMeter } from "../components/Confidence";
@@ -137,6 +137,7 @@ function defaultTechnical(): TechnicalInput {
     electricityPrice: 0,
     budgetWish: undefined,
     discountPct: 0,
+    includeInstallation: true,
     notes: "",
   };
 }
@@ -154,9 +155,9 @@ function defaultEnergyExtra(): EnergyExtraState {
   };
 }
 
-function loadDraft(): WizardDraft | null {
+function loadDraft(key: string): WizardDraft | null {
   try {
-    const raw = localStorage.getItem(DRAFT_KEY);
+    const raw = localStorage.getItem(key);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as WizardDraft;
     return parsed && typeof parsed === "object" ? parsed : null;
@@ -165,11 +166,74 @@ function loadDraft(): WizardDraft | null {
   }
 }
 
+// Genåbn et gemt estimat: alle wizard-felter udledes af det gemte estimat,
+// så det kan redigeres og gemmes tilbage på samme id.
+function draftFromEstimate(est: CustomerEstimate): WizardDraft {
+  const t = est.technical;
+  const ci = est.energyComparisonInput;
+  const avgWatt = averageNewWatt(t);
+  const roundedAvg =
+    avgWatt !== undefined ? Math.round(avgWatt * 10) / 10 : undefined;
+  const energyExtra: Partial<EnergyExtraState> = ci
+    ? {
+        currentWattPerLuminaire: ci.current.wattPerLuminaire,
+        overrideCurrentCount:
+          ci.current.luminaireCount !== t.luminaireCount
+            ? ci.current.luminaireCount
+            : undefined,
+        newWattOverride:
+          roundedAvg !== undefined &&
+          Math.abs(ci.replacement.wattPerLuminaire - roundedAvg) < 0.05
+            ? undefined
+            : ci.replacement.wattPerLuminaire,
+        oneToOne: ci.replacement.luminaireCount === t.luminaireCount,
+        overrideNewCount:
+          ci.replacement.luminaireCount !== t.luminaireCount
+            ? ci.replacement.luminaireCount
+            : undefined,
+        withControl: ci.withControl,
+        withDaylightControl: ci.withDaylightControl,
+      }
+    : {};
+  return {
+    step: 1,
+    projectName: est.projectName,
+    customerName: est.customerName,
+    installer: est.installer,
+    technical: t,
+    energyExtra,
+    customLux:
+      typeof t.luxLevel === "number" && !LUX_PRESETS.includes(t.luxLevel),
+    elprisText: t.electricityPrice
+      ? String(t.electricityPrice).replace(".", ",")
+      : "",
+    discountText: t.discountPct
+      ? String(t.discountPct).replace(".", ",")
+      : "",
+  };
+}
+
 export function NewEstimate() {
   const navigate = useNavigate();
 
-  // Gendan evt. kladde (én gang ved første render).
-  const [draft] = useState(loadDraft);
+  // Redigeringstilstand: /estimat/:id/rediger åbner et gemt estimat i
+  // wizarden og gemmer tilbage på samme id. Kladden holdes adskilt pr. id.
+  const { id: editId } = useParams<{ id: string }>();
+  const [editing] = useState(() =>
+    editId ? storage.getEstimate(editId) : undefined,
+  );
+  const draftKey = editId ? `${DRAFT_KEY}.${editId}` : DRAFT_KEY;
+
+  // Gendan evt. kladde (én gang ved første render). I redigerings-
+  // tilstand uden kladde udledes felterne af det gemte estimat.
+  const [init] = useState(() => {
+    const stored = loadDraft(draftKey);
+    return {
+      draft: stored ?? (editing ? draftFromEstimate(editing) : null),
+      restored: !!stored,
+    };
+  });
+  const draft = init.draft;
 
   const [step, setStep] = useState(() => {
     const s = draft?.step ?? 1;
@@ -228,6 +292,7 @@ export function NewEstimate() {
 
   const [draftRestored, setDraftRestored] = useState(
     () =>
+      init.restored &&
       !!draft &&
       Boolean(
         draft.projectName ||
@@ -237,8 +302,14 @@ export function NewEstimate() {
   );
 
   const startForfra = () => {
-    localStorage.removeItem(DRAFT_KEY);
+    localStorage.removeItem(draftKey);
     window.location.reload();
+  };
+
+  // Annullér redigering: kassér ugemte ændringer og gå tilbage til estimatet.
+  const cancelEdit = () => {
+    localStorage.removeItem(draftKey);
+    navigate(editing ? `/estimat/${editing.id}` : "/historik");
   };
 
   // Skift styringsform til/fra. Systemer (exclusive) udelukker hinanden;
@@ -302,7 +373,7 @@ export function NewEstimate() {
         elprisText,
         discountText,
       };
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(wizardDraft));
+      localStorage.setItem(draftKey, JSON.stringify(wizardDraft));
     } catch {
       // Fuldt storage må ikke vælte appen – kladden springes blot over.
     }
@@ -316,6 +387,7 @@ export function NewEstimate() {
     customLux,
     elprisText,
     discountText,
+    draftKey,
   ]);
 
   const pricing = useMemo(() => calculatePricing(technical), [technical]);
@@ -418,8 +490,33 @@ export function NewEstimate() {
     setEnergyExtra((e) => ({ ...e, ...patch }));
 
   const save = () => {
-    const id = newId();
     const now = new Date().toISOString();
+
+    // Redigering: opdatér det eksisterende estimat (id, oprettelsesdato,
+    // status og faktisk resultat bevares).
+    if (editing) {
+      const updated: CustomerEstimate = {
+        ...editing,
+        updatedAt: now,
+        projectName,
+        customerName,
+        installer,
+        technical,
+        pricing,
+        energy,
+        energyComparison,
+        energyComparisonInput: energyInput,
+        confidence,
+        learningAdjustmentPct: learning.averageDeltaPct,
+        learningNote: learning.message,
+      };
+      storage.saveEstimate(updated);
+      localStorage.removeItem(draftKey);
+      navigate(`/estimat/${updated.id}`);
+      return;
+    }
+
+    const id = newId();
     const est: CustomerEstimate = {
       id,
       createdAt: now,
@@ -439,16 +536,47 @@ export function NewEstimate() {
     };
     storage.saveEstimate(est);
     // Estimatet er gemt – ryd kladden, så næste estimat starter tomt.
-    localStorage.removeItem(DRAFT_KEY);
+    localStorage.removeItem(draftKey);
     navigate(`/estimat/${id}`);
   };
+
+  if (editId && !editing) {
+    return (
+      <div className="card p-8 text-center text-ink-mute">
+        Estimatet blev ikke fundet.{" "}
+        <Link to="/historik" className="text-brand-700 underline">
+          Tilbage til historik
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
       <div>
+        {editing && (
+          <div className="mb-4 flex items-center justify-between gap-3 rounded-xl bg-amber-50 border border-amber-200 px-4 py-2.5 text-sm text-amber-900">
+            <span>
+              Du redigerer <strong>{editing.projectName || "Uden navn"}</strong>
+              {" "}– ændringer gemmes først, når du trykker “Gem ændringer”.
+            </span>
+            <button
+              type="button"
+              className="text-xs font-semibold hover:underline shrink-0"
+              onClick={cancelEdit}
+            >
+              Annullér
+            </button>
+          </div>
+        )}
+
         {draftRestored && (
           <div className="mb-4 flex items-center justify-between gap-3 rounded-xl bg-brand-50 border border-brand-100 px-4 py-2.5 text-sm text-brand-800">
-            <span>Din kladde er gendannet – fortsæt hvor du slap.</span>
+            <span>
+              {editing
+                ? "Dine ugemte ændringer er gendannet."
+                : "Din kladde er gendannet – fortsæt hvor du slap."}
+            </span>
             <div className="flex items-center gap-3 shrink-0">
               <button
                 type="button"
@@ -795,6 +923,40 @@ export function NewEstimate() {
                 />
               </Field>
 
+              <Field
+                label="Installation (montage)"
+                tooltip="Vælg om installationsomkostningen skal indgå i estimatet. Er den fra, vises installation ingen steder – heller ikke i PDF'en."
+              >
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setTechnical({ ...technical, includeInstallation: true })
+                    }
+                    className={`chip border ${
+                      technical.includeInstallation !== false
+                        ? "bg-brand-500 text-white border-brand-500"
+                        : "bg-white text-ink-soft border-surface-line hover:border-brand-300"
+                    }`}
+                  >
+                    Medregnes i estimatet
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setTechnical({ ...technical, includeInstallation: false })
+                    }
+                    className={`chip border ${
+                      technical.includeInstallation === false
+                        ? "bg-brand-500 text-white border-brand-500"
+                        : "bg-white text-ink-soft border-surface-line hover:border-brand-300"
+                    }`}
+                  >
+                    Uden installation
+                  </button>
+                </div>
+              </Field>
+
               <Field label="Område (m²)" tooltip="Valgfrit. Forbedrer kvaliteten af lysberegningen.">
                 <input
                   type="number"
@@ -1084,23 +1246,30 @@ export function NewEstimate() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div
+              className={`grid grid-cols-1 gap-3 ${
+                pricing.installationIncluded ? "sm:grid-cols-3" : "sm:grid-cols-2"
+              }`}
+            >
               <SmallStat label="Materiale" value={dkkInt(pricing.materialCost)} />
               <SmallStat
                 label="Styringstilvalg"
                 value={dkkInt(pricing.controlCost)}
               />
-              <SmallStat
-                label="Installation (uden rabat)"
-                value={dkkInt(pricing.installationCost)}
-              />
+              {pricing.installationIncluded && (
+                <SmallStat
+                  label="Installation (uden rabat)"
+                  value={dkkInt(pricing.installationCost)}
+                />
+              )}
             </div>
 
             {pricing.discountAmount > 0 && (
               <div className="rounded-xl bg-brand-50 border border-brand-100 px-4 py-3 text-sm text-brand-800">
                 Tilbudsrabat ({num.format(pricing.discountPct)}%):{" "}
                 <strong>−{dkkInt(pricing.discountAmount)}</strong> — fratrækkes
-                kun armaturer og styringstilvalg, ikke installationen.
+                kun armaturer og styringstilvalg
+                {pricing.installationIncluded ? ", ikke installationen" : ""}.
                 Armaturer og styring efter rabat:{" "}
                 <strong>
                   {dkkInt(
@@ -1113,15 +1282,21 @@ export function NewEstimate() {
               </div>
             )}
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div
+              className={`grid grid-cols-2 gap-3 ${
+                pricing.installationIncluded ? "sm:grid-cols-4" : "sm:grid-cols-3"
+              }`}
+            >
               <SmallStat
                 label="Armaturpris pr. stk."
                 value={dkkInt(pricing.materialPerLuminaire)}
               />
-              <SmallStat
-                label="Installation pr. armatur"
-                value={dkkInt(pricing.installationPerLuminaire)}
-              />
+              {pricing.installationIncluded && (
+                <SmallStat
+                  label="Installation pr. armatur"
+                  value={dkkInt(pricing.installationPerLuminaire)}
+                />
+              )}
               <SmallStat
                 label="Årligt forbrug"
                 value={`${num.format(energy.annualKwh)} kWh`}
@@ -1211,7 +1386,7 @@ export function NewEstimate() {
             </button>
           ) : (
             <button type="button" className="btn-primary" onClick={save}>
-              Gem estimat
+              {editing ? "Gem ændringer" : "Gem estimat"}
             </button>
           )}
         </div>
@@ -1260,10 +1435,12 @@ export function NewEstimate() {
                     />
                   </>
                 )}
-                <Row
-                  label="Installation (uden rabat)"
-                  value={dkkInt(pricing.installationCost)}
-                />
+                {pricing.installationIncluded && (
+                  <Row
+                    label="Installation (uden rabat)"
+                    value={dkkInt(pricing.installationCost)}
+                  />
+                )}
               </div>
 
               <div className="mt-4 pt-4 border-t border-surface-line space-y-2">
@@ -1282,10 +1459,12 @@ export function NewEstimate() {
                   label="Armaturpris pr. stk."
                   value={dkkInt(pricing.materialPerLuminaire)}
                 />
-                <Row
-                  label="Installation pr. armatur"
-                  value={dkkInt(pricing.installationPerLuminaire)}
-                />
+                {pricing.installationIncluded && (
+                  <Row
+                    label="Installation pr. armatur"
+                    value={dkkInt(pricing.installationPerLuminaire)}
+                  />
+                )}
                 <Row
                   label="Årligt forbrug"
                   value={`${num.format(energy.annualKwh)} kWh`}

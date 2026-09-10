@@ -34,6 +34,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/nyt-estimat" element={<NewEstimate />} />
                 <Route path="/estimat/:id" element={<EstimateDetail />} />
+                <Route path="/estimat/:id/rediger" element={<NewEstimate />} />
                 <Route path="/historik" element={<History />} />
                 <Route path="/import" element={<ImportPage />} />
                 <Route path="/prisdata" element={<PricingAdmin />} />

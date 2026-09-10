@@ -78,6 +78,9 @@ export interface TechnicalInput {
   accessories?: string[];
   // Tilbudsrabat i procent (0-100) på armaturer + styringstilvalg.
   discountPct?: number;
+  // Medregnes installation (montage)? undefined/true = ja, false = nej.
+  // Når den er fra, vises installation ingen steder i estimatet.
+  includeInstallation?: boolean;
   // Flere styringsformer kan vælges; tom liste = ingen styring.
   controlTypes: ControlType[];
   luxLevel: LuxLevel;
@@ -95,6 +98,8 @@ export interface PricingResult {
   // Installationsomkostning pr. armatur
   installationPerLuminaire: number;
   installationCost: number;
+  // Er installation medregnet i dette estimat? (styrer visning)
+  installationIncluded: boolean;
   // Tilbudsrabat: procent og beløb (af materiale + styringstilvalg)
   discountPct: number;
   discountAmount: number;

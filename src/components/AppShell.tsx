@@ -31,6 +31,9 @@ const navSections: { heading?: string; items: NavItem[] }[] = [
 // Sidetitel: længste matchende nav-sti, med særlige detalje-ruter.
 function resolveTitle(pathname: string): string {
   if (pathname.startsWith("/visualisering/")) return "Visualisering";
+  if (pathname.startsWith("/estimat/") && pathname.endsWith("/rediger")) {
+    return "Rediger estimat";
+  }
   if (pathname.startsWith("/estimat/")) return "Estimat";
   const items = navSections.flatMap((s) => s.items);
   const match = items

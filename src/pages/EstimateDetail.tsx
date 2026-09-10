@@ -102,6 +102,9 @@ export function EstimateDetail() {
                 </option>
               ))}
             </select>
+            <Link to={`/estimat/${est.id}/rediger`} className="btn-outline">
+              Rediger
+            </Link>
             <Link to={`/forretningscase/${est.id}`} className="btn-outline">
               <PresentIcon /> Forretningscase
             </Link>
@@ -190,7 +193,11 @@ export function EstimateDetail() {
                     ],
                   ] as [string, string][])
                 : []),
-              ["Installation (uden rabat)", dkkInt(est.pricing.installationCost)],
+              ...(est.pricing.installationIncluded !== false
+                ? ([
+                    ["Installation (uden rabat)", dkkInt(est.pricing.installationCost)],
+                  ] as [string, string][])
+                : []),
               ["I alt", dkkInt(est.pricing.totalCost)],
             ]}
             highlightLast
