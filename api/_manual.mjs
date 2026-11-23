@@ -1107,3 +1107,21 @@ export function renderFullManualOutline() {
     CHECKLISTS.map((c) => `${c.title}\n- ${c.items.join("\n- ")}\n→ Hvis nej: ${c.ifNo}`).join("\n\n"),
   ].join("\n");
 }
+
+/**
+ * Kompakt omrids til stemmevejen: kapitler, principper (titel + udsagn) og
+ * checklister — uden begrundelser og antimønstre. Til manualeksamen over
+ * realtime, hvor hele den fulde manual (~70.000 tegn) gjorde stemmen
+ * langsom og stiv. Den fulde udgave bruges stadig i analysen bagefter.
+ */
+export function renderCompactManualOutline() {
+  return [
+    `# ${MANUAL_META.title} (${MANUAL_META.version}) — kompakt omrids`,
+    CHAPTERS.map((c) => `${c.no}. ${c.title}`).join("\n"),
+    "",
+    PRINCIPLES.map((p) => `- ${p.title} [kap. ${p.chapter}]: ${p.statement}`).join("\n"),
+    "",
+    "## Checklister",
+    CHECKLISTS.map((c) => `${c.title}: ${c.items.join(" · ")}`).join("\n"),
+  ].join("\n");
+}

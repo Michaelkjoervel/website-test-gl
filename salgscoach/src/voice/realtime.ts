@@ -47,6 +47,12 @@ export interface RealtimeConnectOptions {
   /** "ga" bruger /v1/realtime/calls, "beta" bruger /v1/realtime. */
   api?: "ga" | "beta";
   events: RealtimeEvents;
+  /**
+   * Modparten tager første replik (kunden hilser, tager telefonen,
+   * salgsdirektøren skyder første spørgsmål af). Uden det står sælgeren og
+   * venter på en kunde, der selv venter — og første indtryk bliver en robot.
+   */
+  speakFirst?: boolean;
 }
 
 const CALLS_URL_GA = "https://api.openai.com/v1/realtime/calls";
@@ -162,6 +168,9 @@ export class RealtimeVoiceSession {
     const dc = pc.createDataChannel("oai-events");
     this.dc = dc;
     dc.onmessage = (e) => this.handleEvent(e.data);
+    dc.onopen = () => {
+      if (opts.speakFirst !== false && !this.closed) this.send({ type: "response.create" });
+    };
     dc.onerror = () => this.events.onError?.("Datakanalen til stemmemotoren fejlede.");
 
     // 4) SDP-håndtryk.

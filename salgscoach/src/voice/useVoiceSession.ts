@@ -111,6 +111,8 @@ export function useVoiceSession(): VoiceSessionApi {
   const textBusy = useRef(false);
   /** Talesyntesen meldes kun død én gang — ikke én gang pr. replik. */
   const speakFailedOnce = useRef(false);
+  /** Kundens stemme og stemmeinstruks, som serveren vælger ud fra personaen. */
+  const counterpartVoice = useRef<{ voice?: RealtimeVoice; style?: string }>({});
 
   /** Én fejlvej, så UI'et altid får både en type og en tekst. */
   const fail = useCallback((kind: VoiceErrorKind, message: string) => {
@@ -186,10 +188,55 @@ export function useVoiceSession(): VoiceSessionApi {
         sellerContext: p.sellerContext,
         messages: history,
       });
+      if (res.voice || res.voiceStyle) counterpartVoice.current = { voice: res.voice, style: res.voiceStyle };
       return res.reply;
     },
     [],
   );
+
+  /**
+   * Modpartens første replik, før sælgeren har sagt noget: kunden hilser eller
+   * tager telefonen, salgsdirektøren skyder første spørgsmål af. Samme vej ind
+   * som resten af samtalen — serveren kender rollen og den skjulte viden.
+   */
+  const openingLine = useCallback(async (p: StartParams) => {
+    const res = await api.converse({
+      modeId: p.modeId,
+      coachMode: p.coachMode,
+      language: p.language,
+      scenario: p.scenario,
+      hiddenBlob: p.hiddenBlob,
+      intake: p.intake,
+      documentText: p.documentText,
+      sellerContext: p.sellerContext,
+      messages: [],
+      opening: true,
+    });
+    if (res.voice || res.voiceStyle) counterpartVoice.current = { voice: res.voice, style: res.voiceStyle };
+    return res.reply.trim();
+  }, []);
+
+  /** Læs en replik op med kundens egen stemme. Fejler det, siges det én gang. */
+  const voiced = useCallback(async (p: StartParams, text: string) => {
+    try {
+      const spoken = await api.speak({
+        text,
+        voice: counterpartVoice.current.voice || p.voice || "cedar",
+        style: counterpartVoice.current.style,
+      });
+      return api.toAudioDataUrl(spoken.audio);
+    } catch (e) {
+      // Teksten vises stadig — men en modpart, der pludselig er stum,
+      // skal forklares. Én besked, ikke én pr. replik.
+      if (!speakFailedOnce.current) {
+        speakFailedOnce.current = true;
+        setEngineNotice(
+          `Talesyntesen fejlede (${(e as Error).message || "ukendt årsag"}). Øvelsen fortsætter med svar på skrift.`,
+        );
+      }
+      return undefined;
+    }
+  }, []);
 
   /** Skift øvelsen over på skrift. Sidste udvej — men altid bedre end at dø. */
   const fallBackToText = useCallback((notice: string) => {
@@ -218,6 +265,21 @@ export function useVoiceSession(): VoiceSessionApi {
               : "Øvelsen kører på skrift, fordi browseren ikke understøtter talegenkendelse."),
         );
         setState("lytter");
+        if (lines.current.length === 0 && !textBusy.current) {
+          textBusy.current = true;
+          setState("taenker");
+          void openingLine(p)
+            .then((line) => {
+              if (line && textOnly.current) push(counterpartRole(p.modeId), line);
+            })
+            .catch(() => {
+              /* sælgeren kan bare starte selv */
+            })
+            .finally(() => {
+              textBusy.current = false;
+              if (textOnly.current) setState("lytter");
+            });
+        }
         return;
       }
 
@@ -247,29 +309,21 @@ export function useVoiceSession(): VoiceSessionApi {
         },
         respond: async (sellerText, opts) => {
           const reply = await textRespond(p, sellerText, { recorded: opts.recorded });
-          let audio: string | undefined;
-          try {
-            const spoken = await api.speak({ text: reply, voice: p.voice || "cedar" });
-            audio = api.toAudioDataUrl(spoken.audio);
-          } catch (e) {
-            // Teksten vises stadig — men en modpart, der pludselig er stum,
-            // skal forklares. Én besked, ikke én pr. replik.
-            if (!speakFailedOnce.current) {
-              speakFailedOnce.current = true;
-              setEngineNotice(
-                `Talesyntesen fejlede (${(e as Error).message || "ukendt årsag"}). Øvelsen fortsætter med svar på skrift.`,
-              );
-            }
-          }
-          return { text: reply, audio };
+          return { text: reply, audio: await voiced(p, reply) };
         },
       });
       bv.current = session;
       setEngine("browser");
       setEngineNotice(notice);
       await session.start();
+      if (lines.current.length === 0) {
+        void session.open(async () => {
+          const line = await openingLine(p);
+          return { text: line, audio: line ? await voiced(p, line) : undefined };
+        });
+      }
     },
-    [push, textRespond, fail, classify, fallBackToText],
+    [push, textRespond, openingLine, voiced, fail, classify, fallBackToText],
   );
 
   /**
@@ -307,6 +361,7 @@ export function useVoiceSession(): VoiceSessionApi {
         setElapsedSec(0);
       }
       params.current = p;
+      if (!opts.keepTranscript) counterpartVoice.current = {};
 
       const wantsRealtime = p.prefer !== "browser" && p.prefer !== "tekst";
 
@@ -332,6 +387,7 @@ export function useVoiceSession(): VoiceSessionApi {
               clientSecret: res.clientSecret,
               model: res.model,
               api: res.api === "beta" ? "beta" : "ga",
+              speakFirst: lines.current.length === 0,
               events: {
                 onState: setState,
                 onTranscript: (speaker, text, final) => {

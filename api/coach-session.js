@@ -34,6 +34,7 @@ import {
   normalizeVoice,
 } from "./_coach.mjs";
 import { MODES, buildSystemInstructions } from "./_coachprompt.mjs";
+import { naturalVoiceFor } from "./_personas.mjs";
 
 export const config = {
   maxDuration: 60,
@@ -144,8 +145,17 @@ export default async function handler(req, res) {
 
   const mode = findMode(modeId);
   const language = body?.language === "en" ? "en" : "da";
-  // Kunden i rollespillet har sin egen stemme; ellers en neutral coach-stemme.
-  const voice = normalizeVoice(body?.voice || body?.scenario?.persona?.voice, "cedar");
+  // Åbnes KUN her — aldrig i browseren. Og kun hvis forseglingen er udstedt
+  // til netop denne bruger og ikke er udløbet.
+  const hidden = openHidden(body?.hiddenBlob, { audience: auth.email });
+
+  // Kunden taler med SIN stemme. Browseren kender den ikke (den offentlige
+  // persona har kun navn og rolle), så den hentes fra den fulde persona i den
+  // forseglede blob. Før talte alle kunder med samme mandestemme — også Lene,
+  // Anette og Susanne. Salgsdirektøren har en rolig, fast stemme.
+  const personaVoice =
+    mode?.counterpart === "kunde" && hidden?.persona ? naturalVoiceFor(hidden.persona, "") : "";
+  const voice = normalizeVoice(personaVoice || body?.voice, "cedar");
   const eagerness = EAGERNESS.includes(body?.eagerness) ? body.eagerness : "auto";
 
   let instructions = "";
@@ -155,9 +165,7 @@ export default async function handler(req, res) {
       coachMode: body?.coachMode || mode?.defaultCoachMode || "realistisk",
       language,
       scenario: body?.scenario || null,
-      // Åbnes KUN her — aldrig i browseren. Og kun hvis forseglingen er udstedt
-      // til netop denne bruger og ikke er udløbet.
-      hidden: openHidden(body?.hiddenBlob, { audience: auth.email }),
+      hidden,
       sellerContext: boundContext(body?.sellerContext),
       intake: trim(body?.intake, 6000),
       documentText: trim(body?.documentText, 40_000),

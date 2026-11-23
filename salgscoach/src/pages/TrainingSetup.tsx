@@ -110,17 +110,17 @@ const COACH_FALLBACK: CoachModeSpec[] = [
 const SVAERHED: { id: Difficulty; label: string; note: string }[] = [
   {
     id: "moderat",
-    label: "Moderat",
-    note: "Kunden vil gerne tale med dig, men giver ikke noget væk uopfordret.",
+    label: "Realistisk",
+    note: "En almindelig, venlig kunde med en travl hverdag. Han fortæller gerne — men det vigtigste skal du selv spørge dig frem til. Standard.",
   },
   {
     id: "haard",
-    label: "Hård",
-    note: "Kunden har travlt, er skeptisk og presser på pris. Standard.",
+    label: "Skeptisk",
+    note: "Kunden har travlt, er brændt før og presser på pris. Han skal overbevises, før han åbner op.",
   },
   {
     id: "braendende",
-    label: "Brændende",
+    label: "Presset",
     note: "Tidspres, en konkurrent er allerede inde, og historikken er dårlig.",
   },
 ];
@@ -243,7 +243,7 @@ export function TrainingSetup() {
   const [coachMode, setCoachMode] = useState<CoachMode | null>(null);
   const [intake, setIntake] = useState("");
   const [aabenTilpas, setAabenTilpas] = useState(false);
-  const [difficulty, setDifficulty] = useState<Difficulty>("haard");
+  const [difficulty, setDifficulty] = useState<Difficulty>("moderat");
   const [industry, setIndustry] = useState<string | undefined>();
   const [companySize, setCompanySize] = useState<string | undefined>();
   const [customerRole, setCustomerRole] = useState<string | undefined>();

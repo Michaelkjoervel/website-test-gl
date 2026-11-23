@@ -191,7 +191,17 @@ function readOutputText(json) {
  * Ét kald til OpenAI's Responses API.
  * @returns {Promise<{ ok: boolean, status: number, data?: any, error?: string, model?: string }>}
  */
-export async function callModel({ instructions, input, schema, schemaName, model, effort, apiKey } = {}) {
+export async function callModel({
+  instructions,
+  input,
+  schema,
+  schemaName,
+  model,
+  effort,
+  reasoning,
+  verbosity,
+  apiKey,
+} = {}) {
   if (!apiKey) {
     return { ok: false, status: 500, error: "Serveren mangler OPENAI_API_KEY." };
   }
@@ -218,30 +228,62 @@ export async function callModel({ instructions, input, schema, schemaName, model
     };
   }
   // Ræsonnementsmodeller (gpt-5 / o-serien) kan skrue tempoet ned eller op.
-  // Andre modeller afviser feltet, så det sættes kun når vi ved det passer.
-  if (/^(gpt-5|o[1-9])/.test(chosen)) {
-    body.reasoning = { effort: effort === "hurtig" ? "low" : "medium" };
+  // En samtalereplik skal komme NU — dér beder kalderen om "minimal": ingen
+  // lang tænkning før en kunde siger "jamen, det ved jeg sgu ikke". Andre
+  // modeller afviser feltet, så det sættes kun når vi ved det passer.
+  const reasoningModel = /^(gpt-5|o[1-9])/.test(chosen);
+  if (reasoningModel) {
+    body.reasoning = { effort: reasoning || (effort === "hurtig" ? "low" : "medium") };
+    if (verbosity && !schema) body.text = { ...(body.text || {}), verbosity };
   }
+
+  const send = (payload) =>
+    fetch(OPENAI_RESPONSES_URL, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  const readDetail = async (r) => {
+    try {
+      const err = await r.json();
+      return err?.error?.message || "";
+    } catch {
+      return await r.text().catch(() => "");
+    }
+  };
 
   let res;
   try {
-    res = await fetch(OPENAI_RESPONSES_URL, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+    res = await send(body);
   } catch (e) {
     return { ok: false, status: 502, error: `Kunne ikke nå OpenAI: ${e.message}` };
   }
 
-  if (!res.ok) {
-    let detail = "";
-    try {
-      const err = await res.json();
-      detail = err?.error?.message || "";
-    } catch {
-      detail = await res.text().catch(() => "");
+  // Nyere modeller har omdøbt eller fjernet indstillinger (fx "minimal"
+  // ræsonnering). Afviser modellen netop dét, prøver vi én gang uden — en
+  // finjustering må aldrig koste svaret.
+  let firstDetail = "";
+  if (!res.ok && res.status === 400 && (body.reasoning || body.text?.verbosity)) {
+    firstDetail = await readDetail(res);
+    if (/reasoning|verbosity|effort|unsupported|not supported/i.test(firstDetail)) {
+      const retry = { ...body };
+      delete retry.reasoning;
+      if (retry.text?.verbosity) {
+        const { verbosity: _v, ...rest } = retry.text;
+        retry.text = Object.keys(rest).length ? rest : undefined;
+        if (!retry.text) delete retry.text;
+      }
+      try {
+        res = await send(retry);
+        firstDetail = "";
+      } catch (e) {
+        return { ok: false, status: 502, error: `Kunne ikke nå OpenAI: ${e.message}` };
+      }
     }
+  }
+
+  if (!res.ok) {
+    const detail = firstDetail || (await readDetail(res));
     return {
       ok: false,
       status: res.status === 401 ? 401 : 502,
@@ -512,11 +554,15 @@ export async function mintRealtimeSession({ instructions, voice, language, eager
 
   const v = normalizeVoice(voice);
 
-  // Modelnavne i prioriteret rækkefølge. OpenAI har før omdøbt realtime-
-  // modellerne, og en 404/400 på navnet må aldrig koste stemmen — så vi prøver
-  // de kendte navne, indtil ét svarer. Konfigureret navn vinder altid.
+  // Modelnavne i prioriteret rækkefølge — nyeste først. gpt-realtime-2.1
+  // (juli 2026) har ~25 % lavere svartid og bedre håndtering af stilhed og
+  // støj end sine forgængere. OpenAI har før omdøbt realtime-modellerne, så en
+  // afvisning på navnet må aldrig koste stemmen: vi prøver de kendte navne,
+  // indtil ét svarer. Et konfigureret navn (COACH_REALTIME_MODEL) vinder altid.
   const configured = (process.env.COACH_REALTIME_MODEL || "").trim();
-  const models = [...new Set([configured || "gpt-realtime", "gpt-realtime-2.1", "gpt-realtime", "gpt-realtime-mini"])];
+  const models = [
+    ...new Set([configured, "gpt-realtime-2.1", "gpt-realtime-2", "gpt-realtime", "gpt-realtime-2.1-mini"].filter(Boolean)),
+  ];
 
   // Varianter i faldende ambitionsniveau; "minimal" er sidste GA-udvej.
   const variants = [
@@ -574,6 +620,10 @@ export async function mintRealtimeSession({ instructions, voice, language, eager
       if (r.status === 401 || r.status === 403) {
         return { ok: false, status: r.status, error: r.error, model, voice: v };
       }
+
+      // Kender OpenAI ikke modelnavnet, hjælper en mindre krop ikke — spring
+      // direkte til næste navn i stedet for at spilde tre forsøg mere.
+      if (r.status === 404 || /model_not_found|does not exist|invalid model|unknown model|model .*not (found|available)/i.test(String(r.error || ""))) break;
     }
   }
 
@@ -603,7 +653,7 @@ const SPEAK_MAX_CHARS = 4000;
 /**
  * @returns {Promise<{ ok: boolean, status: number, audio?: string, voice?: string, error?: string }>}
  */
-export async function speak({ text, voice, apiKey } = {}) {
+export async function speak({ text, voice, style, apiKey } = {}) {
   if (!apiKey) return { ok: false, status: 500, error: "Serveren mangler OPENAI_API_KEY." };
   const input = String(text || "").trim();
   if (!input) return { ok: false, status: 400, error: "'text' er påkrævet." };
@@ -623,7 +673,16 @@ export async function speak({ text, voice, apiKey } = {}) {
       res = await fetch(OPENAI_SPEECH_URL, {
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ model, voice: v, input: input.slice(0, SPEAK_MAX_CHARS), response_format: "mp3" }),
+        body: JSON.stringify({
+          model,
+          voice: v,
+          input: input.slice(0, SPEAK_MAX_CHARS),
+          response_format: "mp3",
+          // Kun de nyere tale-modeller forstår en stemmeinstruktion. Den gør
+          // den største forskel på, om reservestemmen lyder som en person
+          // eller som en oplæsning: tempo, tonefald, temperament.
+          ...(/tts-1/.test(model) ? {} : { instructions: speakInstructions(style) }),
+        }),
       });
     } catch (e) {
       return { ok: false, status: 502, error: `Kunne ikke nå OpenAI: ${e.message}` };
@@ -658,6 +717,14 @@ export async function speak({ text, voice, apiKey } = {}) {
   }
   // Meld den FØRSTE fejl — den handler om den konfigurerede model og er mest sigende.
   return first || { ok: false, status: 502, error: "Talesyntesen kunne ikke gennemføres." };
+}
+
+/** Stemmeinstruktion til tale-syntesen: altid naturligt dansk talesprog. */
+function speakInstructions(style) {
+  const base =
+    "Tal naturligt, afslappet dansk talesprog som en rigtig person i en samtale — ikke som en oplæser. Små pauser og naturlig rytme.";
+  const extra = String(style || "").trim().slice(0, 600);
+  return extra ? `${base} Personen: ${extra}` : base;
 }
 
 // ---------------------------------------------------------------------------

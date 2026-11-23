@@ -308,6 +308,27 @@ export class BrowserVoiceSession {
     });
   }
 
+  /**
+   * Modpartens åbningsreplik — uden at sælgeren har sagt noget. Kunden hilser
+   * eller tager telefonen, præcis som i realtime-motoren.
+   */
+  async open(produce: () => Promise<{ text: string; audio?: string }>) {
+    if (this.busy || this.stopped) return;
+    this.busy = true;
+    this.setState("taenker");
+    try {
+      const reply = await produce();
+      if (this.stopped || !reply.text) return;
+      this.opts.events.onTranscript?.("modpart", reply.text, true);
+      if (reply.audio) await this.play(reply.audio);
+    } catch {
+      /* en udebleven åbning må aldrig vælte øvelsen — sælgeren kan bare starte */
+    } finally {
+      this.busy = false;
+      if (!this.stopped) this.setState("lytter");
+    }
+  }
+
   /** Skriftligt input i reservemotoren (fx hvis mikrofonen driller). */
   async say(text: string, opts: { record?: boolean } = {}) {
     this.buffer = text;

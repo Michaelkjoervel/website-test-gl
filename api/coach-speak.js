@@ -73,7 +73,13 @@ export default async function handler(req, res) {
 
   let result;
   try {
-    result = await speak({ text, voice: body?.voice, apiKey: process.env.OPENAI_API_KEY });
+    result = await speak({
+      text,
+      voice: body?.voice,
+      // Stemmeføringen (tempo, tonefald) — gør reservestemmen menneskelig.
+      style: typeof body?.style === "string" ? body.style.slice(0, 600) : "",
+      apiKey: process.env.OPENAI_API_KEY,
+    });
   } catch (e) {
     result = { ok: false, status: 502, error: `Uventet fejl: ${String(e?.message || e).slice(0, 200)}` };
   }
