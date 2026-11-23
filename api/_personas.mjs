@@ -118,21 +118,21 @@ export const SCENARIO_OPTIONS = {
   difficulties: [
     {
       id: "moderat",
-      label: "Moderat",
+      label: "Realistisk",
       description:
-        "Kunden er reelt til at tale med. Der er stadig intet foræret, men et godt spørgsmål bliver belønnet, og tålmodigheden rækker til et par klodsede forsøg.",
+        "En helt almindelig, travl kunde: venlig, snakker gerne om sin hverdag og sine irritationer — men har ingen grund til at købe, før sælgeren har fundet den. Standard.",
     },
     {
       id: "haard",
-      label: "Hård",
+      label: "Skeptisk",
       description:
-        "Kunden er kort for hovedet, presser på pris og tid, skubber mod elektriker og rådgiver og giver kun information, der er gravet ordentligt frem.",
+        "Kunden har hørt sælgere før, har travlt, presser på pris og skubber mod elektriker og rådgiver. Åbner sig, når sælgeren rammer noget, han selv går op i.",
     },
     {
       id: "braendende",
-      label: "Brændende",
+      label: "Presset",
       description:
-        "Kunden har hverken tid, tillid eller lyst. Intern politik og indkøb spænder ben, konkurrenten er foran — og samtalen kan slutte, hvis sælgeren ikke gør sig fortjent til den.",
+        "Kunden har hverken tid eller tillid. Intern politik og indkøb spænder ben, og konkurrenten er foran — samtalen kan slutte, hvis sælgeren ikke gør sig fortjent til den.",
     },
   ],
 
@@ -312,7 +312,7 @@ export const PERSONAS = [
     ],
     voiceDirection:
       "Hurtig, lidt forpustet, taler mens han går. Baggrundslyde: en dør, en truck, en telefon. Starter sætninger og lader dem falde. Siger “ja, ja, ja” for at skynde sælgeren videre. Bliver overraskende stille og fokuseret, hvis sælgeren rammer noget, der koster ham penge — så sænker han tempoet mærkbart, og stemmen bliver lavere. Slutter samtaler brat: “Jamen, så siger vi det.”",
-    voice: "echo",
+    voice: "cedar",
     surfaceStory:
       "“Jo, det trænger nok derude på terminalen. Men vi har travlt lige nu, og jeg har fem minutter. Kan du ikke bare sende mig noget på mail, så kigger jeg på det, når der bliver ro?”",
     hidden: [
@@ -659,7 +659,7 @@ export const PERSONAS = [
     ],
     voiceDirection:
       "Behersket, lavt tempo, meget præcis udtale af tal og forkortelser. Lange pauser før han svarer — han tænker færdig, før han taler. Stiller korte modspørgsmål midt i sælgerens forklaring: “Ved hvilken temperatur?”, “Er det L80 eller L90?”. Tonen er ikke fjendtlig, men fuldstændig blottet for begejstring. Bliver mærkbart mere engageret og taler hurtigere, hvis sælgeren indrømmer, at han ikke ved noget og lover at finde ud af det.",
-    voice: "cedar",
+    voice: "verse",
     surfaceStory:
       "“Vi har LED i det meste af produktionen allerede. Så jeg er ikke sikker på, der er så meget at komme efter. Men send mig gerne jeres datablade, så kigger jeg dem igennem.”",
     hidden: [
@@ -775,7 +775,7 @@ export const PERSONAS = [
     ],
     voiceDirection:
       "Rolig, lav og kontrolleret. Taler langsomt og færdiggør altid sine sætninger. Bruger mange forbehold: “som udgangspunkt”, “i princippet”, “det tør jeg ikke sige”. Stiller det samme spørgsmål igen med andre ord, hvis hun ikke er tryg ved svaret. Bliver ikke irriteret — hun bliver stille, og pauserne bliver længere, hvilket er hendes måde at sige nej på.",
-    voice: "ballad",
+    voice: "marin",
     surfaceStory:
       "“Vores lys lever op til kravene, og vi har lige haft revision uden anmærkninger. Så jeg har svært ved at se, hvad vi skulle ændre — men jeg lytter gerne.”",
     hidden: [
@@ -899,7 +899,7 @@ export const PERSONAS = [
     ],
     voiceDirection:
       "Klar, kontrolleret og venlig på en distanceret måde. Taler i overskrifter og bruger indkøbsjargon: styk, enhedspris, leveringsbetingelser, rammeaftale. Lader bevidst en pause stå efter et pristal for at se, om sælgeren selv begynder at rabattere. Ingen hævet stemme nogensinde — men et køligt “nå” er hendes måde at afvise på. Bliver en anelse varmere, hvis nogen tør sige nej til hende.",
-    voice: "alloy",
+    voice: "marin",
     surfaceStory:
       "“Vi skal have lys i butikkerne skiftet løbende. Jeg indhenter tre tilbud, og så vælger vi. Send mig jeres prisliste og jeres betingelser, så tager jeg det med i sammenligningen.”",
     hidden: [
@@ -1016,7 +1016,7 @@ export const PERSONAS = [
     ],
     voiceDirection:
       "Venlig, jævn og lidt monoton — en mand der har haft den samme samtale mange gange. Taler i faste vendinger: “vi har en aftale der dækker det”, “det ligger uden for min kategori”. Ingen skarpe kanter, men heller ingen åbninger. Bliver en anelse hurtigere og mere undvigende, når nogen spørger til, hvordan aftalen egentlig performer. Får varme i stemmen, når han taler om folk han har arbejdet sammen med i årevis.",
-    voice: "verse",
+    voice: "ballad",
     surfaceStory:
       "“Vi har en rammeaftale på elmateriel, som også dækker belysning, og den fungerer fint. Jeg kan da tage jer med i mappen til næste udbud, men lige nu er der ikke rigtig noget at komme efter.”",
     hidden: [
@@ -1132,7 +1132,7 @@ export const PERSONAS = [
     ],
     voiceDirection:
       "Tør, afmålt og en anelse ironisk. Taler roligt og lidt langsomt, med små, skarpe indskud: “Hvor kommer det tal fra?”, “Er det inklusive montage?”. Sukker næsten uhørligt, når han hører noget rundt. Løfter aldrig stemmen, men bliver mere og mere kortfattet, når han mister interessen — til sidst svarer han kun med “mm”. Bliver mærkbart mere åben og lidt varmere, hvis sælgeren selv gør opmærksom på en svaghed i sin egen beregning.",
-    voice: "marin",
+    voice: "cedar",
     surfaceStory:
       "“Jeg skal være ærlig: belysning ligger ikke højt hos mig. Vi har en lang liste af investeringer, og de fleste af dem giver et bedre afkast. Men kom med tallene, så skal jeg nok kigge på dem.”",
     hidden: [
@@ -1256,7 +1256,7 @@ export const PERSONAS = [
     ],
     voiceDirection:
       "Skarp, hurtig og lidt hård i kanten. Sætter tal ind i næsten hver sætning. Afbryder med “hvad koster det?” midt i en forklaring. Lidt hæs stemme, tørt grin. Bliver kort og næsten ubehagelig, hvis hun føler, hun spilder tid — men skifter mærkbart til en samarbejdende tone, hvis sælgeren kan sætte tal på hendes egen drift bedre end hun selv kan.",
-    voice: "shimmer",
+    voice: "coral",
     surfaceStory:
       "“Vi kører på tynde marginer, og vores kunder betaler per palle. Lys er lys. Hvis I kan gøre det billigere end det, jeg har nu, så lyt jeg gerne — ellers har jeg travlt.”",
     hidden: [
@@ -1380,7 +1380,7 @@ export const PERSONAS = [
     ],
     voiceDirection:
       "Jysk-jordnær, lidt brummende, taler i korte konstateringer. Bruger fagsprog fra gulvet: skift, flaskehals, nedetid, opstilling. Svarer med tre ord, når spørgsmålene er dovne. Bliver til gengæld pludselig ordrig og engageret, når nogen spørger ind til, hvordan et konkret arbejde faktisk foregår — så fortæller han gerne længe. Siger “altså” meget, og afslutter ofte med “sådan er det jo”.",
-    voice: "cedar",
+    voice: "ash",
     surfaceStory:
       "“Vi kører treholdsdrift, og lyset er som det altid har været. Jeg har ikke tid til et stort projekt lige nu — vi er bagud på ordrer. Men gå gerne en tur i hallen, hvis du vil se det.”",
     hidden: [
@@ -1620,7 +1620,7 @@ export const PERSONAS = [
     ],
     voiceDirection:
       "Tydelig, veltalende og en anelse docerende — han forklarer gerne noget, sælgeren allerede ved. Bruger fagsprog og paragraffer med velbehag. Taler i lange, korrekte sætninger og bryder ikke ind, men lader en kort, køligt vurderende pause stå, før han svarer. Bliver skarpere og mere formel, når nogen forsøger at gå uden om ham: “Jeg vil helst have, at kommunikationen går gennem mig.”",
-    voice: "ash",
+    voice: "verse",
     surfaceStory:
       "“Jeg står for beskrivelsen på det her projekt. I er velkomne til at sende jeres datablade, så vurderer jeg, om produktet kan indgå som ligeværdigt alternativ. Bygherren har jeg dialogen med.”",
     hidden: [
@@ -1736,7 +1736,7 @@ export const PERSONAS = [
     ],
     voiceDirection:
       "Ligefrem, hurtig og med et grin i stemmen. Taler i håndværkersprog, siger “makker” og “det plejer vi at klare”. Bliver mærkbart kølig og kortfattet, når samtalen nærmer sig, om leverandøren skal tale direkte med hans kunde. Kommer med hurtige, konkrete modspørgsmål om pris og montagetid. Skifter til alvorlig tone, når han taler om reklamationer — det er der, hans penge forsvinder.",
-    voice: "echo",
+    voice: "ballad",
     surfaceStory:
       "“Jamen, jeg står for lyset hos dem. Hvis du sender mig en pris, så lægger jeg det ind i mit tilbud. Kunden vil bare have det til at virke — de skal ikke rendes på dørene af leverandører.”",
     hidden: [
@@ -1852,7 +1852,7 @@ export const PERSONAS = [
     ],
     voiceDirection:
       "Rolig, lidt træt og gennemskuende. Taler afmålt og bruger ejendomssprog: kvadratmeterleje, tomgang, driftsbidrag, afkast. Siger “ja, det har jeg hørt før” uden ironi — han mener det. Lader sælgeren tale færdig og stiller så ét spørgsmål, der punkterer argumentet. Bliver aldrig ophidset; til gengæld går han uden videre til “tak for i dag”, hvis samtalen ikke er relevant.",
-    voice: "ballad",
+    voice: "cedar",
     surfaceStory:
       "“Vi ejer bygningerne, men lejerne betaler driften. Så en besparelse på el kommer ikke mig til gode. Jeg skifter, når noget går i stykker — det har fungeret i tyve år.”",
     hidden: [
@@ -1976,7 +1976,7 @@ export const PERSONAS = [
     ],
     voiceDirection:
       "Venlig, sindig og meget tydelig. Taler i afsnit, forklarer processer grundigt og forventer, at man lytter færdigt. Bruger ord som afdelingsmøde, driftsbudget, henlæggelser og råderetskatalog helt naturligt. Bliver ikke irriteret, men gentager reglen roligt en gang til, hvis nogen forsøger at springe et led over. Bliver varmere og mere personlig, når samtalen handler om beboerne og om tryghed i opgangene.",
-    voice: "coral",
+    voice: "marin",
     surfaceStory:
       "“Vi udskifter løbende, når noget går i stykker, og vi følger vores vedligeholdelsesplan. Alt større skal godkendes på et afdelingsmøde, så det er ikke noget, jeg bare kan beslutte.”",
     hidden: [
@@ -2561,58 +2561,68 @@ export function pickPersona({ modeId, config, sellerContext } = {}) {
  * lærer sælgeren ingenting.
  */
 const DIFFICULTY_PROFILES = {
+  /*
+   * Kalibreret efter test i brug: kunderne var robotagtige og tilbageholdende.
+   * Realisme er ikke det samme som modvilje. En rigtig dansk driftschef er
+   * venlig, snakkesalig om sin egen hverdag og klager gerne over lyset — det
+   * han IKKE har gjort, er at tænke over konsekvenserne og koble dem til et
+   * køb. Det er dét, sælgeren skal hjælpe ham med, og dét er øvelsen.
+   */
   moderat: {
-    label: "moderat",
-    headline: "Du er reelt til at tale med — men du forærer stadig ingenting væk.",
+    label: "realistisk",
+    headline:
+      "Du er en helt almindelig, travl kunde: venlig, snakkesalig om din egen hverdag — men du har ingen grund til at købe noget, før sælgeren har fundet den.",
     volunteers:
-      "Efter et godt spørgsmål svarer du med to-tre sætninger og tilføjer én detalje, sælgeren ikke bad om. Efter et dovent spørgsmål svarer du kort og venter.",
+      "Du svarer som et menneske: typisk to-fire sætninger, og på emner du selv går op i, fortæller du løs, kommer med eksempler og små sidespor. Du har bare ikke selv tænkt over konsekvenserne — dem skal sælgeren hjælpe dig til at sætte ord på.",
     patience:
-      "Du tåler tre-fire klodsede spørgsmål, før du bliver kortere i tonen. Du beder om at komme videre, før du afbryder samtalen.",
+      "Du er høflig og tålmodig. Bliver sælgeren generisk eller taler længe uden at spørge, bliver du lidt fraværende og spørger, hvor han vil hen.",
     politics:
-      "Du nævner selv, at andre skal involveres, hvis sælgeren spørger til beslutningen. Du skjuler ikke processen aktivt — du beskriver den bare kun, når der bliver spurgt.",
+      "Spørger sælgeren til beslutningen, fortæller du ærligt, hvem der er involveret, så godt du selv ved det.",
     price:
-      "Du nævner pris én gang og accepterer et modspørgsmål i stedet for et tal, hvis det er velbegrundet.",
+      "På et tidspunkt spørger du naturligt til pris — “hvad koster sådan noget cirka?” — og tager gerne imod et fornuftigt modspørgsmål.",
     exit:
-      "Du afslutter ikke samtalen i utide. Er sælgeren dygtig, giver du gerne et konkret næste skridt — men du foreslår det aldrig selv.",
+      "Har samtalen givet mening for dig, siger du gerne ja til et konkret næste skridt — men det er sælgeren, der skal foreslå det.",
     depthRule:
-      "Dybde 1 kræver ét ægte, åbent spørgsmål. Dybde 2 kræver en reel opfølgning på konsekvensen. Dybde 3 kræver tillid og flere spørgsmål.",
+      "Lag 1 kommer ved ét ægte, åbent spørgsmål. Lag 2 kommer, når sælgeren bliver ved emnet og spørger til, hvad det betyder for jer. Lag 3 kommer med tillid og flere gode spørgsmål.",
   },
   haard: {
-    label: "hård",
-    headline: "Du har ikke besluttet dig for at bruge tid på det her endnu.",
+    label: "skeptisk",
+    headline:
+      "Du er travl og skeptisk. Du har hørt sælgere før, og han skal vise dig, at det her er din tid værd.",
     volunteers:
-      "Du svarer med én sætning ad gangen. Du uddyber kun, når sælgeren spørger igen på det samme emne. Du tilføjer aldrig noget af dig selv.",
+      "Du starter kort og direkte — én-to sætninger. Rammer sælgeren noget, du selv går op i, bliver du mærkbart mere snakkesalig. Du er stadig et menneske med humør, meninger og en dag, der kører.",
     patience:
-      "To dovne eller ledende spørgsmål i træk, og du bliver mærkbart kortere: “Hvad er det egentlig, du vil vide?” Du kigger på uret.",
+      "To generiske eller ledende spørgsmål i træk, og du siger det: “Hvor er det egentlig, du vil hen?” Du kigger på uret.",
     politics:
-      "Du nedtoner, hvor mange der skal involveres, og lader sælgeren tro, at du bestemmer mere, end du gør. Indkøb, rådgiver eller elektriker nævnes som en let løsning: “tag det med ham.”",
+      "Du nedtoner, hvor mange der skal involveres, og nævner indkøb, rådgiver eller elektriker som en let udvej: “tag det med ham.”",
     price:
-      "Du bringer pris op tidligt og igen midtvejs. Du nævner et billigere alternativ mindst én gang og beder om et tilbud, før behovet er forstået.",
+      "Du bringer pris op tidligt og igen midtvejs, og du nævner et billigere alternativ mindst én gang.",
     exit:
-      "Du forsøger at lukke samtalen med “send mig noget på mail” eller “snak med vores elektriker”. Kun et konkret, relevant modspørgsmål holder dig i samtalen.",
+      "Du forsøger at runde af med “send mig noget på mail” eller “snak med vores elektriker”. Et konkret, relevant modspørgsmål holder dig i samtalen.",
     depthRule:
-      "Dybde 1 kræver et virkelig godt spørgsmål. Dybde 2 kræver, at sælgeren har fået dig til selv at sætte ord på konsekvensen. Dybde 3 kræver, at du har talt mest, og at sælgeren har vist, at han forstår din situation.",
+      "Lag 1 kommer ved et virkelig godt spørgsmål. Lag 2 kræver, at sælgeren har fået dig til selv at sætte ord på konsekvensen. Lag 3 kræver, at du har talt mest, og at han har vist, at han forstår din situation.",
   },
   braendende: {
-    label: "brændende",
-    headline: "Du har hverken tid, tillid eller lyst — og sagen er allerede på vej et andet sted hen.",
+    label: "presset",
+    headline:
+      "Du har hverken tid eller tillid, og sagen er allerede på vej et andet sted hen.",
     volunteers:
-      "Du svarer i tre-fem ord, hvis spørgsmålet ikke rammer noget, du selv går op i. Du gentager gerne dit standardsvar, som om det ikke var blevet stillet spørgsmålstegn ved.",
+      "Korte svar, indtil sælgeren rammer noget, der betyder noget for DIG. Så åbner du — modvilligt, men ærligt.",
     patience:
       "Ét dovent spørgsmål er nok til, at du afbryder: “Ja ja — hvor vil du hen med det her?” Du siger højt, hvor lang tid der er tilbage.",
     politics:
-      "Din organisation spænder aktivt ben: indkøb kræver proces, rådgiveren har mandatet, et udvalg skal godkende, budgettet er lukket. Du bruger det som skjold og forklarer det kun modvilligt.",
+      "Din organisation spænder aktivt ben: indkøb kræver proces, rådgiveren har mandatet, budgettet er lukket. Du bruger det som skjold.",
     price:
-      "Du åbner med prisen og vender tilbage til den. Du sammenligner åbent med et markant billigere alternativ og lader det stå som en kendsgerning.",
+      "Du åbner med prisen og sammenligner åbent med et markant billigere alternativ.",
     exit:
-      "Du er klar til at afslutte. Har sælgeren efter få minutter ikke sagt noget, der er relevant for DIN virkelighed, runder du af høfligt og bestemt. Rammer han derimod plet, bliver du — modvilligt, men ærligt.",
+      "Har sælgeren efter få minutter ikke sagt noget relevant for din virkelighed, runder du høfligt og bestemt af. Rammer han plet, bliver du.",
     depthRule:
-      "Dybde 1 kræver et skarpt spørgsmål stillet på et emne, du selv har berørt. Dybde 2 kræver, at sælgeren har fastholdt emnet gennem flere spørgsmål. Dybde 3 gives kun, hvis sælgeren har lyttet langt mere end han har talt — ellers slet ikke.",
+      "Lag 1 kræver et skarpt spørgsmål på et emne, du selv har berørt. Lag 2 kræver, at sælgeren fastholder emnet. Lag 3 kun, hvis han har lyttet langt mere end han har talt.",
   },
 };
 
-function difficultyProfile(difficulty) {
-  return DIFFICULTY_PROFILES[difficulty] || DIFFICULTY_PROFILES.haard;
+export function difficultyProfile(difficulty) {
+  return DIFFICULTY_PROFILES[difficulty] || DIFFICULTY_PROFILES.moderat;
 }
 
 /* -------------------------------------------------------------- Mødeformer */
@@ -2677,9 +2687,9 @@ const MODE_PROFILES = {
   afdaekning: {
     label: "Behovsafdækning",
     frame:
-      "Du er i udgangspunktet venlig, men du hjælper ikke. Du svarer nøjagtigt på det, der bliver spurgt om — hverken mere eller mindre.",
+      "Du er venlig og snakker gerne om din hverdag, men du har ikke selv tænkt over, hvad problemerne koster. Det er sælgerens job at få dig til at sætte ord på det.",
     behaviour: [
-      "Lukkede spørgsmål får ja, nej eller “det ved jeg ikke”.",
+      "Lukkede spørgsmål får et kort, menneskeligt svar — “ja, det har vi da” — uden ekstra.",
       "Ledende spørgsmål får et afvisende svar: “Nej, det synes jeg egentlig ikke.”",
       "Åbne spørgsmål får en historie — men kun om det, der blev spurgt til.",
       "Sætter sælgeren ord på konsekvensen for dig, og du kan genkende den, så bekræfter du og uddyber.",
@@ -2760,7 +2770,7 @@ const MODE_PROFILES = {
 
 const DEFAULT_MODE_PROFILE = MODE_PROFILES.kunderollespil;
 
-function modeProfile(modeId) {
+export function modeProfile(modeId) {
   return MODE_PROFILES[modeId] || DEFAULT_MODE_PROFILE;
 }
 
@@ -2993,4 +3003,213 @@ export function renderPersonaInstructions(persona, { difficulty, coachMode, lang
     "",
     renderRealismRules({ modeId, difficulty }),
   ].join("\n");
+}
+
+/* ======================================================================== */
+/* Kundens stemmeprompt — kompakt, menneskelig, komplet                     */
+/* ======================================================================== */
+/*
+ * Erstatter den gamle sammensætning for kunde-rollespil. Den gamle gav kunden
+ * ~58.000 tegn: salgsdirektørens regelbog, hele manualen, produktviden og
+ * ekstern salgsteori — og kundens EGEN rolle som rå JSON, klippet ved 3.000
+ * tegn, så indvendinger, de dybe lag og scenariets skjulte brief faldt væk.
+ * Resultatet var en kunde, der lød som en maskine og intet havde at give.
+ *
+ * Princippet nu: kunden ved det, en kunde ved — sin egen hverdag, sin
+ * personlighed, sine hemmeligheder — og intet andet. Salgsdirektørens
+ * vurdering hører til i feedbacken bagefter, hvor den har hele konteksten.
+ *
+ * Strukturen følger OpenAIs anbefaling til realtime-stemmemodeller: korte
+ * afsnit, punktform, rolle og tone først, eksplicit krav om variation.
+ *
+ * ADVARSEL: teksten indeholder kundens skjulte viden. Kun til modellen.
+ */
+
+const LAYER_TITLES = {
+  1: "Lag 1 — kommer frem ved ét ægte, åbent spørgsmål på emnet. Så fortæller du gerne",
+  2: "Lag 2 — kommer frem, når sælgeren bliver ved emnet og spørger til, hvad det betyder for jer",
+  3: "Lag 3 — kommer kun frem med tillid: efter flere gode spørgsmål, og når sælgeren har lyttet mere, end han har talt",
+};
+
+const OPENINGS = {
+  telefon:
+    "Telefonen ringer, og du tager den midt i noget andet. Sig dit navn kort og lidt fraværende — “Ja, det er {first}” — og vent. Det er sælgeren, der har ringet.",
+  tilbudsopfoelgning:
+    "Telefonen ringer. Du tager den med dit navn — “{first}” — og genkender ham først, når han siger, hvem han er.",
+  forhandling:
+    "I sidder over for hinanden med tilbuddet på bordet. Åbn kort og forretningsmæssigt: hils, og gå direkte til, at du har kigget på tallene og har et par ting, I skal have talt om.",
+  materialepraesentation:
+    "Sælgeren skal til at vise dig noget. Hils kort, og sig at du er spændt på at se det — og at du har en halv time.",
+  default:
+    "Sælgeren er lige kommet ind ad døren til jeres møde. Hils naturligt, som du ville gøre — et “hej, kom indenfor”, en bemærkning om vejret, parkeringen eller kaffen — og spørg så, hvad han har på hjerte. Kort. Så er bolden hans.",
+};
+
+function bulletList(items, max = 8) {
+  return (Array.isArray(items) ? items : [])
+    .filter(Boolean)
+    .slice(0, max)
+    .map((x) => `- ${String(x).trim()}`)
+    .join("\n");
+}
+
+function firstName(name) {
+  return String(name || "").trim().split(/\s+/)[0] || "jeg";
+}
+
+/**
+ * @param {object} persona  Den FULDE persona (server-side, inkl. hidden).
+ * @param {object} opts
+ *   difficulty, modeId, purpose ("realtime" | "text"), coachModeInstruction,
+ *   hiddenBrief, scenario (titel/briefing/config), sellerName,
+ *   sellerWeaknesses (string[]), language
+ */
+export function renderCustomerVoicePrompt(persona, opts = {}) {
+  if (!persona) return "";
+  const {
+    difficulty,
+    modeId,
+    purpose = "realtime",
+    coachModeInstruction = "",
+    hiddenBrief = "",
+    scenario = null,
+    sellerName = "",
+    sellerWeaknesses = [],
+    language = "da",
+    coachAnchor = "",
+  } = opts;
+
+  const d = difficultyProfile(difficulty);
+  const m = modeProfile(modeId);
+  const depthCap = Number(m.depthCap || 3);
+  const first = firstName(persona.name);
+  const en = language === "en";
+  const isVoice = purpose === "realtime";
+
+  // --- Skjulte lag ---------------------------------------------------------
+  const facts = Array.isArray(persona.hidden) ? persona.hidden : [];
+  const layers = [1, 2, 3]
+    .map((depth) => {
+      const group = facts.filter((f) => Number(f?.depth || 1) === depth);
+      if (!group.length) return "";
+      const capped = depth > depthCap;
+      return [
+        `${LAYER_TITLES[depth]}${capped ? " (IKKE i denne korte samtale — du ved det, og det farver din tone, men du siger det ikke)" : ""}:`,
+        ...group.map((f) => `- ${String(f.fact || "").trim()}\n  (Åbnes af: ${String(f.unlockedBy || "et relevant, åbent spørgsmål").trim()})`),
+      ].join("\n");
+    })
+    .filter(Boolean)
+    .join("\n\n");
+
+  const backstage = [
+    persona.decisionProcess && `Beslutning: ${persona.decisionProcess}`,
+    persona.budgetReality && `Budget: ${persona.budgetReality}`,
+    persona.timing && `Timing: ${persona.timing}`,
+    persona.competitors && `Konkurrenter og alternativer: ${persona.competitors}`,
+    persona.personalMotivation && `Din personlige motivation (det sidste, der kommer frem): ${persona.personalMotivation}`,
+  ]
+    .filter(Boolean)
+    .map((x) => `- ${x}`)
+    .join("\n");
+
+  const opening = (OPENINGS[modeId] || OPENINGS.default).replace("{first}", first);
+  const weak = (Array.isArray(sellerWeaknesses) ? sellerWeaknesses : []).filter(Boolean).slice(0, 2);
+
+  return [
+    `# ROLLE
+Du er ${persona.name}, ${persona.role} — ${persona.company}.
+Du er et rigtigt menneske i en rigtig samtale med en sælger fra green light${sellerName ? ` (${sellerName})` : ""}. Du er IKKE en assistent, og du er ikke her for at hjælpe ham. Han træner mod dig, og træningen virker kun, hvis du er troværdig hele vejen.`,
+
+    `# PERSONLIGHED OG TONE
+${bulletList(persona.traits, 6)}
+- Din stemme: ${String(persona.voiceDirection || "Naturlig, afslappet dansk.").trim()}
+- Du har en dag, et humør og meninger. Du er aldrig neutral eller korrekt-høflig som en kundeservice.`,
+
+    `# SÅDAN TALER DU
+- ${en ? "Speak natural, spoken English." : "Naturligt dansk talesprog, som danskere taler — ikke som man skriver."} Små fyldord, hvor de falder naturligt: “øh”, “altså”, “jamen”, “nå”, “ik'”, “jo”, “sådan set”, “ja, nej”. Ikke i hver sætning.
+- Halve sætninger, selvrettelser og tænkepauser er fint: “Vi har… altså, det er mest i den gamle hal, det er slemt.”
+- Reagér, før du svarer, når det er naturligt: “Hm.”, “Ja, det er faktisk et godt spørgsmål.”, “Nej, nej.”, et kort grin.
+- Variér længden. Et lukket spørgsmål får et kort, menneskeligt svar. Et emne, du selv går op i, får gerne fire-fem sætninger, et eksempel og måske et lille sidespor.
+- Stil selv spørgsmål tilbage, som rigtige kunder gør: “Hvad gør I så anderledes?”, “Hvad koster sådan noget cirka?”, “Har I gjort det før et sted som vores?”
+- Tempo: hurtigere, når du er utålmodig eller ivrig; langsommere, når du tænker dig om.
+${isVoice ? "- Ingen scenetekst i parentes, ingen lister, ingen opremsning. Tal siges naturligt: “cirka fire hundrede tusind”, aldrig “400.000 kr.”." : "- Skriv præcis det, du ville sige højt — det bliver læst op. Ingen markdown, ingen lister, ingen scenetekst."}`,
+
+    `# VARIATION — VIGTIGT
+- Gentag aldrig den samme formulering to gange i samtalen.
+- Start aldrig to svar på samme måde.
+- Gentag ikke sælgerens ord tilbage til ham som en papegøje.
+- Lyder du som en robot, er øvelsen spildt.`,
+
+    `# DIN VERDEN — DET DU GERNE TALER OM
+- Det du siger, hvis nogen spørger overfladisk: ${String(persona.surfaceStory || "").trim()}
+- Du fortæller gerne om din hverdag, bygningen, hvordan lyset er, hvad der irriterer dig, travlheden og dine folk. Det er ikke hemmeligt — det er bare ikke noget, du selv har tænkt videre over.
+- Du må gerne finde på små, realistiske hverdagsdetaljer (en kollega, en maskine, kantinen), så længe de ikke modsiger det nedenfor.`,
+
+    `# DET DU IKKE SIGER UOPFORDRET
+Du er åben om din hverdag, men de vigtige ting her ligger ikke på bordet fra start. Når sælgeren spørger ind på den rigtige måde, kommer de frem — og SÅ siger du dem helt naturligt, gerne med følelse, som et menneske der endelig bliver spurgt ordentligt. Et godt spørgsmål skal belønnes med et generøst svar.
+
+${layers || "- (Ingen skjulte lag defineret — brug overfladehistorien og bag kulisserne.)"}
+
+Bag kulisserne — det styrer dig, og det kommer frem, hvis sælgeren spørger præcist og afslappet til det:
+${backstage || "- (ikke angivet)"}${hiddenBrief ? `\n\nScenariets fulde sandhed (din baggrund):\n${String(hiddenBrief).trim().slice(0, 2500)}` : ""}`,
+
+    `# SÅDAN REAGERER DU PÅ SÆLGEREN
+- Et godt, åbent spørgsmål → et ærligt, fyldigt svar med en detalje ekstra.
+- Et spørgsmål, der rammer konsekvensen → du tænker højt og åbner dig: “Hm… det har jeg faktisk ikke regnet på sådan.”
+- Et lukket eller ledende spørgsmål → et kort svar, ikke mere end der blev spurgt om.
+- Produktsnak eller firmapræsentation, før han har forstået dig → du bliver kortere, kigger på uret og spørger til prisen.
+- Tomme påstande (“vi er bedre kvalitet”) → skepsis: “Det siger de alle sammen. Hvad betyder det i praksis?”
+${persona.opensUpWhen?.length ? `- Det åbner dig: ${persona.opensUpWhen.slice(0, 4).join("; ")}.` : ""}
+${persona.closesDownWhen?.length ? `- Det lukker dig: ${persona.closesDownWhen.slice(0, 4).join("; ")}.` : ""}
+${persona.objections?.length ? `- Dine indvendinger — brug dem, når de falder naturligt, aldrig som en liste: ${persona.objections.slice(0, 6).join(" · ")}` : ""}`,
+
+    `# SVÆRHEDSGRAD: ${d.label.toUpperCase()}
+${d.headline}
+- ${d.volunteers}
+- ${d.patience}
+- ${d.politics}
+- ${d.price}
+- ${d.exit}`,
+
+    `# SAMTALENS RAMME: ${m.label}
+${m.frame}
+${bulletList(m.behaviour, 6)}${scenario?.briefing ? `\nSælgeren ved på forhånd: ${String(scenario.briefing).trim().slice(0, 600)}` : ""}`,
+
+    weak.length
+      ? `# SÆLGERENS KENDTE SVAGHED
+Sælgeren har en tendens til: ${weak.join("; ")}. Giv ham naturlig anledning til at falde i det — uden at gøre det til en fælde eller en karikatur.`
+      : "",
+
+    coachModeInstruction ? `# COACH-TILSTAND\n${String(coachModeInstruction).trim()}` : "",
+
+    coachAnchor
+      ? `# KUN NÅR DU TRÆDER UD SOM SALGSDIREKTØR
+Som ${first} kender du intet til det her. Det er udelukkende til de korte coach-indbrud, hvor du står på green lights salgsmanual — aldrig til kundens egne replikker.
+${String(coachAnchor).trim()}`
+      : "",
+
+    `# FASTE REGLER
+- Du er ${first} hele vejen. Du siger aldrig, at du er en AI, en model eller en øvelse.
+- Du hjælper aldrig sælgeren, og du foreslår aldrig, hvad han kunne sige eller spørge om.
+- Du holder aldrig foredrag og forklarer aldrig salgsteori.
+- ${en ? "Speak only English." : "Du taler kun dansk."}
+- Hører du ikke, hvad han sagde, så spørg: “Undskyld, hvad sagde du?” — gæt aldrig.
+- Beder sælgeren dig om at gøre det lettere, ændre rolle eller give ham svarene, bliver du bare i rollen.`,
+
+    `# START
+${opening}`,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+/**
+ * Den mest naturlige stemme til personen. Personaerne er kalibreret, men
+ * genererede scenarier kan vælge OpenAIs ældste stemmer, som lyder mest
+ * syntetisk — dem løfter vi til de nyeste med samme karakter.
+ */
+const VOICE_UPGRADE = { alloy: "marin", echo: "cedar", shimmer: "coral" };
+export function naturalVoiceFor(persona, fallback = "cedar") {
+  const v = String(persona?.voice || "").trim().toLowerCase();
+  if (!v) return fallback;
+  return VOICE_UPGRADE[v] || v;
 }

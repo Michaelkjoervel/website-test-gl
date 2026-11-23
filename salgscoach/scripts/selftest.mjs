@@ -343,10 +343,72 @@ async function main() {
   const modelCall = sent.find((s) => s.url.includes("/v1/responses"));
   const instructions = String(modelCall?.body?.instructions || "");
   ok("modellen får en systeminstruktion", instructions.length > 500, `${instructions.length} tegn`);
+  // Kunden er et menneske, ikke en regelbog: kundeprompten må IKKE bære
+  // salgsdirektørens DNA eller manualen (det gjorde ham robotagtig og
+  // tilbageholdende) — men SKAL bære hele den skjulte viden fra forseglingen.
   ok(
-    "instruktionen indeholder salgsmanualen",
-    /salgsmanual/i.test(instructions),
+    "kundeprompten er kompakt (ingen direktør-regelbog eller fuld manual)",
+    !/salgsdirektør der ikke har tid/i.test(instructions) && !/kompakt omrids/i.test(instructions) && instructions.length < 20_000,
+    `${instructions.length} tegn`,
   );
+  ok(
+    "i hybrid står coach-indbruddet på manualen — adskilt fra kunden",
+    /# KUN NÅR DU TRÆDER UD SOM SALGSDIREKTØR[\s\S]*salgsmanual/i.test(instructions),
+  );
+  ok("kundeprompten har de skjulte fakta fra forseglingen", instructions.includes("prøve-fact"));
+  ok("kundeprompten har den fulde sandhed (hiddenBrief)", instructions.includes("prøve-hiddenBrief"));
+  ok("kundeprompten har personens indvendinger", instructions.includes("prøve-objections"));
+  ok("kundeprompten har personlig motivation (bagscenen)", instructions.includes("prøve-personalMotivation"));
+  ok("kundeprompten har regler for naturligt talesprog", /fyldord|talesprog/i.test(instructions) && /VARIATION/.test(instructions));
+  ok("samtalen kører med minimal ræsonnering", modelCall?.body?.reasoning?.effort === "minimal", JSON.stringify(modelCall?.body?.reasoning));
+  ok("samtalen tvinges ikke til korte svar", modelCall?.body?.text?.verbosity !== "low");
+  ok(
+    "reservestemmen får kundens egen stemme og stemmeføring",
+    typeof talk.payload?.voice === "string" && talk.payload.voice.length > 0 && String(talk.payload?.voiceStyle || "").includes("prøve-voiceDirection"),
+    JSON.stringify({ voice: talk.payload?.voice, style: talk.payload?.voiceStyle }),
+  );
+
+  sent.length = 0;
+  const opener = await invoke(coach, {
+    body: {
+      action: "samtale",
+      modeId: "telefon",
+      coachMode: "realistisk",
+      language: "da",
+      scenario: scen.payload?.scenario,
+      hiddenBlob: blob,
+      messages: [],
+      opening: true,
+    },
+  });
+  ok("åbningsreplik uden replikker virker", opener.status === 200 && typeof opener.payload?.reply === "string", JSON.stringify(opener.payload).slice(0, 160));
+  const openerCall = sent.find((s) => s.url.includes("/v1/responses"));
+  const openerInput = JSON.stringify(openerCall?.body?.input || "");
+  ok("åbningen beder modparten tage første replik", /Samtalen begynder nu/.test(openerInput));
+  ok(
+    "i realistisk tilstand er kunden et menneske uden regelbog",
+    !/salgsmanual/i.test(String(openerCall?.body?.instructions || "")),
+  );
+  ok("telefonkunden tager telefonen med sit navn", /Ja, det er/.test(String(openerCall?.body?.instructions || "")));
+  const noOpener = await invoke(coach, {
+    body: { action: "samtale", modeId: "telefon", coachMode: "realistisk", language: "da", messages: [] },
+  });
+  ok("tom samtale uden åbning afvises stadig", noOpener.status === 400);
+
+  sent.length = 0;
+  await invoke(coach, {
+    body: {
+      action: "samtale",
+      modeId: "lynild",
+      coachMode: "coach",
+      language: "da",
+      sellerContext: SELLER_CONTEXT,
+      messages: [{ role: "saelger", text: "Klar." }],
+    },
+  });
+  const directorInstr = String(sent.find((s) => s.url.includes("/v1/responses"))?.body?.instructions || "");
+  ok("salgsdirektøren træner stadig ud fra salgsmanualen", /salgsmanual/i.test(directorInstr), `${directorInstr.length} tegn`);
+
   ok(
     "instruktionen indeholder sælgerens kendte svaghed",
     instructions.includes("GAAR_I_LOESNING_FOER_KONSEKVENS_ER_ETABLERET"),
@@ -441,14 +503,30 @@ async function main() {
   const rtInstructions = String(mintCall?.body?.session?.instructions || "");
   ok("instruktionen bages ind server-side", rtInstructions.length > 500, `${rtInstructions.length} tegn`);
   ok("realtime får talt-sprog-regler", /kort|talt|sætning/i.test(rtInstructions));
+  ok("realtime-kunden kender de skjulte fakta", rtInstructions.includes("prøve-fact") && rtInstructions.includes("prøve-hiddenBrief"));
+  ok("realtime-kunden er kompakt", rtInstructions.length < 20_000, `${rtInstructions.length} tegn`);
+  ok(
+    "nyeste realtime-model prøves først",
+    String(mintCall?.body?.session?.model || "") === (process.env.COACH_REALTIME_MODEL || "gpt-realtime-2.1"),
+    String(mintCall?.body?.session?.model || ""),
+  );
   ok(
     "browseren får ikke instruktionen retur",
     !JSON.stringify(voice.payload).includes("SALGSMANUAL") &&
       JSON.stringify(voice.payload).length < 2000,
   );
 
-  const speakRes = await invoke(coachSpeak, { body: { text: "Hvad sagde kunden præcist?" } });
+  sent.length = 0;
+  const speakRes = await invoke(coachSpeak, {
+    body: { text: "Hvad sagde kunden præcist?", voice: "marin", style: "Rolig, lidt træt fredagsstemme." },
+  });
   ok("talesyntese svarer 200", speakRes.status === 200, JSON.stringify(speakRes.payload).slice(0, 160));
+  const ttsCall = sent.find((s) => s.url.includes("/audio/speech"));
+  ok(
+    "talesyntesen får stemmeføring med (ikke flad oplæsning)",
+    /fredagsstemme/.test(String(ttsCall?.body?.instructions || "")) && ttsCall?.body?.voice === "marin",
+    JSON.stringify(ttsCall?.body || {}).slice(0, 200),
+  );
 
   /* ------------------------------------------------------------- Afvisning */
   section("Afvisninger");

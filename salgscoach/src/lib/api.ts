@@ -210,6 +210,8 @@ export interface ConverseInput {
   intake?: string;
   /** Udtrukket materialetekst, når øvelsen handler om et dokument. */
   documentText?: string;
+  /** Bed modparten om at åbne samtalen (ingen replikker endnu). */
+  opening?: boolean;
 }
 
 export interface AnalyseSessionInput {
@@ -258,6 +260,10 @@ export interface ScenarioResult {
 export interface ConverseResult {
   reply: string;
   speaker: SpeakerRole;
+  /** Kundens egen stemme (vælges på serveren ud fra den skjulte persona). */
+  voice?: RealtimeVoice;
+  /** Kort stemmeinstruks til talesyntesen — hvordan kunden lyder. */
+  voiceStyle?: string;
 }
 
 export interface AnalyseResult {
@@ -702,15 +708,20 @@ export async function converse(
       sellerContext: input.sellerContext,
       intake: input.intake,
       documentText: input.documentText,
+      opening: input.opening === true ? true : undefined,
     },
     { timeoutMs: TIMEOUT.normal, label: "Svaret", signal: opts.signal },
   );
 
   const speaker = str(payload.speaker);
   const valid: SpeakerRole[] = ["saelger", "kunde", "coach", "system"];
+  const voice = str(payload.voice);
+  const voiceStyle = str(payload.voiceStyle);
   return {
     reply: need<string>(payload, "reply", "Svaret"),
     speaker: valid.includes(speaker as SpeakerRole) ? (speaker as SpeakerRole) : "kunde",
+    voice: voice ? (voice as RealtimeVoice) : undefined,
+    voiceStyle: voiceStyle || undefined,
   };
 }
 
@@ -943,12 +954,12 @@ export async function createRealtimeSession(
 }
 
 export async function speak(
-  input: { text: string; voice?: RealtimeVoice },
+  input: { text: string; voice?: RealtimeVoice; style?: string },
   opts: { signal?: AbortSignal } = {},
 ): Promise<SpeakResult> {
   const payload = await request<Record<string, unknown>>(
     "/coach-speak",
-    { text: input.text, voice: input.voice },
+    { text: input.text, voice: input.voice, style: input.style || undefined },
     { timeoutMs: TIMEOUT.quick, label: "Talesyntesen", signal: opts.signal },
   );
   return { audio: need<string>(payload, "audio", "Talesyntesen") };

@@ -39,7 +39,7 @@ import {
 } from "./_coach.mjs";
 import { manualManifest } from "./_manual.mjs";
 import { knowledgeManifest } from "./_greenlight.mjs";
-import { personaManifest, pickPersona, publicScenarioView } from "./_personas.mjs";
+import { personaManifest, pickPersona, publicScenarioView, naturalVoiceFor } from "./_personas.mjs";
 import {
   MODES,
   COACH_MODES,
@@ -286,22 +286,31 @@ async function doSamtale(body, apiKey, ctx = {}) {
   const modeId = String(body?.modeId || "").trim();
   if (!modeId) return { status: 400, payload: { error: "'modeId' er påkrævet." } };
 
-  const messages = renderMessages(body?.messages);
+  // Åbningsreplikken: modparten taler først (kunden tager telefonen eller
+  // hilser, salgsdirektøren stiller sit første spørgsmål). Så er der endnu
+  // ingen replikker — kun en usynlig startbesked, der aldrig havner i
+  // referatet.
+  const opening = body?.opening === true;
+  let messages = renderMessages(body?.messages);
+  if (!messages.length && opening) {
+    messages = [{ role: "user", content: "[Samtalen begynder nu. Sig din første replik — kort og naturligt.]" }];
+  }
   if (!messages.length) {
     return { status: 400, payload: { error: "'messages' skal indeholde mindst én replik." } };
   }
 
   const mode = findMode(modeId);
   const speaker = mode?.counterpart === "salgsdirektoer" ? "coach" : "kunde";
+  const hidden = openHidden(body?.hiddenBlob, { audience: ctx.user });
 
   const instructions = safeBuild(buildSystemInstructions, {
     modeId,
     coachMode: body?.coachMode || mode?.defaultCoachMode || "realistisk",
     language: lang(body),
     scenario: body?.scenario || null,
-    // Åbnes KUN her på serveren — og kun hvis blobben er udstedt til netop
-    // denne bruger og ikke er udløbet.
-    hidden: openHidden(body?.hiddenBlob, { audience: ctx.user }),
+    // Åbnet ovenfor — KUN her på serveren, og kun hvis blobben er udstedt til
+    // netop denne bruger og ikke er udløbet.
+    hidden,
     sellerContext: boundContext(body?.sellerContext),
     intake: trim(body?.intake, 6000),
     documentText: trim(body?.documentText, 40_000),
@@ -311,11 +320,33 @@ async function doSamtale(body, apiKey, ctx = {}) {
     return { status: 500, payload: { error: "Samtale-instruktionen kunne ikke bygges på serveren." } };
   }
 
-  // Samtalen skal føles levende — derfor den hurtige model.
-  const r = await callModel({ instructions, input: messages, effort: "hurtig", apiKey });
+  // Samtalen skal føles levende: den hurtige model og MINIMAL ræsonnering (en
+  // kunde tænker ikke i ti sekunder, før han siger "jamen, det ved jeg sgu
+  // ikke"). Længden styrer rollen selv — en tvungen "kort" ville gøre kunden
+  // tilbageholdende og robotagtig igen.
+  const r = await callModel({
+    instructions,
+    input: messages,
+    effort: "hurtig",
+    reasoning: "minimal",
+    apiKey,
+  });
   if (!r.ok) return { status: r.status, payload: { error: r.error || "Der kom ikke noget svar fra modellen." } };
 
-  return { status: 200, payload: { reply: String(r.data || "").trim(), speaker } };
+  // Stemmen og stemmeføringen til reservestemmens tale-syntese. Ikke hemmeligt
+  // (det er tonefald, ikke viden) — men kun serveren kender det.
+  const persona = speaker === "kunde" ? hidden?.persona : null;
+  return {
+    status: 200,
+    payload: {
+      reply: String(r.data || "").trim(),
+      speaker,
+      voice: persona ? naturalVoiceFor(persona, "cedar") : "cedar",
+      voiceStyle: persona?.voiceDirection
+        ? String(persona.voiceDirection).slice(0, 600)
+        : "Rolig, skarp og krævende salgsdirektør. Taler direkte og i et naturligt tempo.",
+    },
+  };
 }
 
 async function doAnalyse(body, apiKey, ctx = {}) {
