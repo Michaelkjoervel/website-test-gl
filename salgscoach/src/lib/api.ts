@@ -212,6 +212,8 @@ export interface ConverseInput {
   documentText?: string;
   /** Bed modparten om at åbne samtalen (ingen replikker endnu). */
   opening?: boolean;
+  /** Få repliklyden med i samme svar (reservestemmen) — sparer et helt kald. */
+  speak?: boolean;
 }
 
 export interface AnalyseSessionInput {
@@ -264,6 +266,10 @@ export interface ConverseResult {
   voice?: RealtimeVoice;
   /** Kort stemmeinstruks til talesyntesen — hvordan kunden lyder. */
   voiceStyle?: string;
+  /** Repliklyden (data-URL), når der blev bedt om `speak`. */
+  audio?: string;
+  /** Hvorfor lyden mangler, hvis talesyntesen fejlede på serveren. */
+  speakError?: string;
 }
 
 export interface AnalyseResult {
@@ -709,6 +715,7 @@ export async function converse(
       intake: input.intake,
       documentText: input.documentText,
       opening: input.opening === true ? true : undefined,
+      speak: input.speak === true ? true : undefined,
     },
     { timeoutMs: TIMEOUT.normal, label: "Svaret", signal: opts.signal },
   );
@@ -722,6 +729,8 @@ export async function converse(
     speaker: valid.includes(speaker as SpeakerRole) ? (speaker as SpeakerRole) : "kunde",
     voice: voice ? (voice as RealtimeVoice) : undefined,
     voiceStyle: voiceStyle || undefined,
+    audio: str(payload.audio) || undefined,
+    speakError: str(payload.speakError) || undefined,
   };
 }
 

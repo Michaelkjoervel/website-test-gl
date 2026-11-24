@@ -285,14 +285,18 @@ export function TrainingSetup() {
 
   // Profil og historik bruges kun til sælgerkonteksten. Fejler de, kører
   // øvelsen alligevel — coachen har bare mindre hukommelse med sig.
+  const [kontekstKlar, setKontekstKlar] = useState(false);
   useEffect(() => {
     let stoppet = false;
     void (async () => {
-      const p = await getProfile().catch(() => undefined);
-      const s = await listSessions().catch(() => [] as TrainingSession[]);
+      const [p, s] = await Promise.all([
+        getProfile().catch(() => undefined),
+        listSessions().catch(() => [] as TrainingSession[]),
+      ]);
       if (stoppet) return;
       setProfil(p ?? null);
       setSessioner(s);
+      setKontekstKlar(true);
     })();
     return () => {
       stoppet = true;
@@ -376,6 +380,77 @@ export function TrainingSetup() {
     knownInformation,
   ]);
 
+  /* ------------------------------------------------- Scenarie på forhånd */
+  /*
+   * Scenariet bygges, MENS sælgeren læser siden og vælger til og fra — ikke
+   * først når han trykker start. Ændrer han et valg, bygges der forfra (efter
+   * en kort pause, så det ikke sker for hvert tastetryk). Trykker han start,
+   * før det er færdigt, venter han kun på resten.
+   */
+  type Forhaand = { key: string; ctrl: AbortController; promise: Promise<api.ScenarioResult> };
+  const forhaand = useRef<Forhaand | null>(null);
+  const forhaandAntal = useRef(0);
+  const [forhaandKlar, setForhaandKlar] = useState(false);
+
+  const scenarieNoegle = useCallback(
+    () =>
+      JSON.stringify({
+        m: mode?.id,
+        c: scenarieConfig(),
+        p: profil?.updatedAt ?? null,
+        s: sessioner.length,
+        u: seller?.id ?? null,
+      }),
+    [mode, scenarieConfig, profil, sessioner, seller],
+  );
+
+  const bygPaaForhaand = useCallback(
+    (key: string): Forhaand | null => {
+      if (!mode) return null;
+      forhaand.current?.ctrl.abort();
+      const ctrl = new AbortController();
+      const promise = api.generateScenario(
+        {
+          modeId: mode.id,
+          config: scenarieConfig(),
+          sellerContext: api.buildSellerContext(profil, seller, sessioner),
+          language: appConfig.defaultLanguage,
+        },
+        { signal: ctrl.signal },
+      );
+      const job: Forhaand = { key, ctrl, promise };
+      forhaand.current = job;
+      setForhaandKlar(false);
+      promise.then(
+        () => {
+          if (forhaand.current === job && levende.current) setForhaandKlar(true);
+        },
+        () => {
+          /* en fejl her vises først, hvis sælgeren trykker start */
+        },
+      );
+      return job;
+    },
+    [mode, scenarieConfig, profil, seller, sessioner],
+  );
+
+  useEffect(() => {
+    if (!mode?.usesScenario || !kontekstKlar || fase.kind !== "klar") return;
+    const key = scenarieNoegle();
+    if (forhaand.current?.key === key) return;
+    // Loft pr. besøg på siden: den, der klikker alle valg igennem, skal ikke
+    // brænde scenarie-kvoten af. Derefter bygges der først ved start.
+    if (forhaandAntal.current >= 4) return;
+    const t = window.setTimeout(() => {
+      forhaandAntal.current += 1;
+      bygPaaForhaand(key);
+    }, forhaand.current ? 900 : 0);
+    return () => window.clearTimeout(t);
+  }, [mode, kontekstKlar, fase.kind, scenarieNoegle, bygPaaForhaand]);
+
+  // Forlader sælgeren siden uden at starte, droppes det halvfærdige scenarie.
+  useEffect(() => () => forhaand.current?.ctrl.abort(), []);
+
   /* --------------------------------------------------------------- Start */
 
   const start = useCallback(
@@ -389,12 +464,21 @@ export function TrainingSetup() {
       if (brugerScenarie && opts.medScenarie) {
         setFase({ kind: "bygger" });
         try {
-          const svar = await api.generateScenario({
-            modeId: mode.id,
-            config: scenarieConfig(),
-            sellerContext: api.buildSellerContext(profil, seller, sessioner),
-            language: appConfig.defaultLanguage,
-          });
+          const key = scenarieNoegle();
+          const klar = forhaand.current?.key === key ? forhaand.current : null;
+          const job = klar ?? bygPaaForhaand(key);
+          if (!job) throw new Error("Øvelsen kunne ikke findes.");
+          let svar: api.ScenarioResult;
+          try {
+            svar = await job.promise;
+          } catch (e) {
+            // Fejlede forhåndsbygningen (fx et netværksblink), prøves der én
+            // gang til med det samme — før sælgeren ser en fejl.
+            if (!klar) throw e;
+            const igen = bygPaaForhaand(key);
+            if (!igen) throw e;
+            svar = await igen.promise;
+          }
           scenario = svar.scenario;
           hiddenBlob = svar.hiddenBlob || undefined;
         } catch (e) {
@@ -439,17 +523,7 @@ export function TrainingSetup() {
       igang.current = false;
       navigate(`/session/${session.id}`);
     },
-    [
-      mode,
-      brugerScenarie,
-      scenarieConfig,
-      profil,
-      seller,
-      sessioner,
-      coachMode,
-      intake,
-      navigate,
-    ],
+    [mode, brugerScenarie, scenarieNoegle, bygPaaForhaand, seller, coachMode, intake, navigate],
   );
 
   /* -------------------------------------------------------------- Render */
@@ -574,7 +648,13 @@ export function TrainingSetup() {
               scenariet selv.
             </p>
             {fase.kind === "bygger" && (
-              <p className="mt-2 text-xs text-ink-mute">Det tager typisk 5-10 sekunder.</p>
+              <p className="mt-2 text-xs text-ink-mute">Kunden er næsten klar — et par sekunder endnu.</p>
+            )}
+            {fase.kind === "klar" && brugerScenarie && forhaandKlar && forhaand.current?.key === scenarieNoegle() && (
+              <p className="mt-2 flex items-center gap-1.5 text-xs text-brand-700">
+                <span className="h-1.5 w-1.5 rounded-full bg-brand-600" />
+                Kunden er klar — du starter med det samme.
+              </p>
             )}
           </div>
         </div>

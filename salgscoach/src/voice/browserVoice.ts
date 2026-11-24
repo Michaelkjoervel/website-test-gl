@@ -78,7 +78,7 @@ export interface BrowserVoiceOptions {
    */
   respond: (
     sellerText: string,
-    opts: { recorded: boolean },
+    opts: { recorded: boolean; signal?: AbortSignal },
   ) => Promise<{ text: string; audio?: string }>;
 }
 
@@ -109,6 +109,13 @@ export class BrowserVoiceSession {
   private levelAnalyser: AnalyserNode | null = null;
   private levelRaf = 0;
   private restartTimer: number | undefined;
+  /**
+   * Forudhentet svar: så snart sælgeren holder en pause, spørges modparten —
+   * MENS vi venter på, om han fortsætter. Taler han videre, droppes svaret.
+   * Ventetiden før svaret (stilheden) bruges altså til at hente det.
+   */
+  private spec: { text: string; ctrl: AbortController; promise: Promise<{ text: string; audio?: string }> } | null =
+    null;
 
   constructor(opts: BrowserVoiceOptions) {
     this.opts = opts;
@@ -150,6 +157,7 @@ export class BrowserVoiceSession {
         this.audio.pause();
         this.audio.currentTime = 0;
       }
+      this.cancelSpec();
       if (!this.busy) this.setState("lytter");
     };
 
@@ -172,8 +180,13 @@ export class BrowserVoiceSession {
        * det planlagte svar, og uret starter forfra.
        */
       window.clearTimeout(this.flushTimer);
-      if (interim) return; // sælgeren er stadig i gang
+      if (interim) {
+        // Sælgeren er stadig i gang — et forudhentet svar passer ikke længere.
+        this.cancelSpec();
+        return;
+      }
       if (this.buffer.trim()) {
+        this.startSpec(this.buffer.trim());
         this.flushTimer = window.setTimeout(() => void this.flush(), SILENCE_BEFORE_REPLY_MS);
       }
     };
@@ -221,6 +234,26 @@ export class BrowserVoiceSession {
    * `record: false` bruges til beskeder der skal til modparten, men IKKE ind i
    * referatet — fx sælgerens anmodning om coaching.
    */
+  private startSpec(text: string) {
+    if (this.busy || this.stopped || text.length < 2) return;
+    if (this.spec?.text === text) return;
+    this.cancelSpec();
+    const ctrl = new AbortController();
+    // recorded: false — replikken står endnu ikke i referatet; den skrives
+    // først ind, når pausen er lang nok til, at sælgeren faktisk er færdig.
+    const promise = this.opts.respond(text, { recorded: false, signal: ctrl.signal });
+    promise.catch(() => {
+      /* håndteres i flush — eller var bare et droppet forsøg */
+    });
+    this.spec = { text, ctrl, promise };
+  }
+
+  private cancelSpec() {
+    if (!this.spec) return;
+    this.spec.ctrl.abort();
+    this.spec = null;
+  }
+
   private async flush(opts: { record?: boolean } = {}) {
     const record = opts.record !== false;
     const text = this.buffer.trim();
@@ -230,8 +263,20 @@ export class BrowserVoiceSession {
     if (record) this.opts.events.onTranscript?.("saelger", text, true);
     this.setState("taenker");
 
+    // Brug det forudhentede svar, hvis det er til præcis det, sælgeren sagde.
+    const spec = record && this.spec?.text === text ? this.spec : null;
+    if (!spec) this.cancelSpec();
+    this.spec = null;
+
     try {
-      const reply = await this.opts.respond(text, { recorded: record });
+      let reply: { text: string; audio?: string };
+      try {
+        reply = spec ? await spec.promise : await this.opts.respond(text, { recorded: record });
+      } catch (e) {
+        if (!spec) throw e;
+        // Forudhentningen fejlede (fx et netværksblink) — spørg igen normalt.
+        reply = await this.opts.respond(text, { recorded: record });
+      }
       if (this.stopped) return;
       this.opts.events.onTranscript?.("modpart", reply.text, true);
       if (reply.audio) {
@@ -355,6 +400,7 @@ export class BrowserVoiceSession {
    */
   setMuted(muted: boolean) {
     if (muted) {
+      this.cancelSpec();
       this.stopped = true;
       window.clearTimeout(this.restartTimer);
       try {
@@ -370,6 +416,7 @@ export class BrowserVoiceSession {
   }
 
   pause() {
+    this.cancelSpec();
     this.stopped = true;
     try {
       this.rec?.stop();
@@ -387,6 +434,7 @@ export class BrowserVoiceSession {
 
   stop() {
     this.stopped = true;
+    this.cancelSpec();
     window.clearTimeout(this.restartTimer);
     window.clearTimeout(this.flushTimer);
     cancelAnimationFrame(this.levelRaf);

@@ -69,9 +69,9 @@ export const MAX_DOCUMENT_CHARS = 120_000;
 
 /** Kald pr. bruger pr. time. Tallene følger, hvad handlingen koster. */
 const COACH_DEFAULT_LIMITS = {
-  samtale: 150, // korte replikker på den hurtige model — mange pr. øvelse
+  samtale: 200, // korte replikker på den hurtige model — mange pr. øvelse (reservestemmen forudhenter)
   speak: 150, // oplæsning, billig
-  scenarie: 30, // grundig model, ét kald pr. øvelse
+  scenarie: 40, // ét kald pr. øvelse — opsætningen bygger scenariet på forhånd
   analyse: 30, // grundig model på en hel udskrift
   profil: 20,
   team: 20,
@@ -128,11 +128,38 @@ export function coachRateLimit(action, user) {
   return { ok: true };
 }
 
+/**
+ * Den hurtige model bærer alt det, sælgeren venter på: samtalens replikker og
+ * scenariet. GPT-5.4 mini er mere end dobbelt så hurtig som gpt-5-mini og
+ * kører uden tænkepause (reasoning "none"). Kender kontoen ikke navnet, falder
+ * callModel selv tilbage til gpt-5-mini — en model må aldrig koste svaret.
+ */
+export const FAST_MODEL_DEFAULT = "gpt-5.4-mini";
+export const FAST_MODEL_FALLBACK = "gpt-5-mini";
+
 export function coachModel(effort) {
-  const fast = process.env.COACH_FAST_MODEL || "gpt-5-mini";
+  const fast = process.env.COACH_FAST_MODEL || FAST_MODEL_DEFAULT;
   const deep = process.env.COACH_MODEL || "gpt-5";
   return effort === "hurtig" ? fast : deep;
 }
+
+/**
+ * Samme ønske, oversat til hver modelfamilies sprog: gpt-5 / gpt-5-mini kender
+ * "minimal" men ikke "none"; gpt-5.1 og nyere (5.4, 6.x) kender "none" men
+ * ikke "minimal". Uden oversættelsen ville hvert kald først blive afvist og så
+ * sendt igen — et helt ekstra rundtur pr. replik.
+ */
+export function reasoningEffortFor(model, wanted) {
+  const m = String(model || "");
+  const w = String(wanted || "");
+  if (!w) return w;
+  const newer = /^gpt-(5\.[1-9]|[6-9])/.test(m);
+  if (newer && w === "minimal") return "none";
+  if (!newer && w === "none") return "minimal";
+  return w;
+}
+
+const MODEL_UNKNOWN = /model_not_found|does not exist|invalid model|unknown model|model .*not (found|available)|do not have access to (the )?model/i;
 
 // ---------------------------------------------------------------------------
 // 1. callModel — Responses API
@@ -201,11 +228,21 @@ export async function callModel({
   reasoning,
   verbosity,
   apiKey,
+  timeoutMs,
 } = {}) {
   if (!apiKey) {
     return { ok: false, status: 500, error: "Serveren mangler OPENAI_API_KEY." };
   }
   const chosen = model || coachModel(effort);
+  // Valgfrit tidsloft for kald, hvor sælgeren står og venter, og hvor
+  // kalderen har en hurtigere plan B (fx en kunde fra biblioteket).
+  const deadline = Number(timeoutMs) > 0 ? Date.now() + Number(timeoutMs) : 0;
+  // Faldet tilbage til den kendte hurtige model, hvis kontoen ikke har den
+  // nyeste (kun når ingen model er valgt eksplicit eller i miljøet).
+  const fallbackModel =
+    !model && effort === "hurtig" && !process.env.COACH_FAST_MODEL && chosen !== FAST_MODEL_FALLBACK
+      ? FAST_MODEL_FALLBACK
+      : "";
 
   const body = {
     model: chosen,
@@ -233,7 +270,7 @@ export async function callModel({
   // modeller afviser feltet, så det sættes kun når vi ved det passer.
   const reasoningModel = /^(gpt-5|o[1-9])/.test(chosen);
   if (reasoningModel) {
-    body.reasoning = { effort: reasoning || (effort === "hurtig" ? "low" : "medium") };
+    body.reasoning = { effort: reasoningEffortFor(chosen, reasoning || (effort === "hurtig" ? "low" : "medium")) };
     if (verbosity && !schema) body.text = { ...(body.text || {}), verbosity };
   }
 
@@ -242,6 +279,7 @@ export async function callModel({
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify(payload),
+      ...(deadline ? { signal: AbortSignal.timeout(Math.max(1000, deadline - Date.now())) } : {}),
     });
   const readDetail = async (r) => {
     try {
@@ -256,6 +294,9 @@ export async function callModel({
   try {
     res = await send(body);
   } catch (e) {
+    if (e?.name === "TimeoutError" || e?.name === "AbortError") {
+      return { ok: false, status: 504, error: "Modellen nåede ikke at svare i tide.", timedOut: true, model: chosen };
+    }
     return { ok: false, status: 502, error: `Kunne ikke nå OpenAI: ${e.message}` };
   }
 
@@ -284,6 +325,13 @@ export async function callModel({
 
   if (!res.ok) {
     const detail = firstDetail || (await readDetail(res));
+    if (fallbackModel && (res.status === 404 || MODEL_UNKNOWN.test(String(detail)))) {
+      const left = deadline ? deadline - Date.now() : 0;
+      if (deadline && left < 1500) {
+        return { ok: false, status: 504, error: "Modellen nåede ikke at svare i tide.", timedOut: true, model: chosen };
+      }
+      return callModel({ instructions, input, schema, schemaName, model: fallbackModel, effort, reasoning, verbosity, apiKey, timeoutMs: left || undefined });
+    }
     return {
       ok: false,
       status: res.status === 401 ? 401 : 502,
@@ -295,7 +343,10 @@ export async function callModel({
   let json;
   try {
     json = await res.json();
-  } catch {
+  } catch (e) {
+    if (e?.name === "TimeoutError" || e?.name === "AbortError") {
+      return { ok: false, status: 504, error: "Modellen nåede ikke at svare i tide.", timedOut: true, model: chosen };
+    }
     return { ok: false, status: 502, error: "Uventet svar fra OpenAI (kunne ikke læses som JSON).", model: chosen };
   }
 
@@ -467,7 +518,7 @@ const REALTIME_SECRET_TTL = Math.min(
   Math.max(60, Number(process.env.COACH_REALTIME_TTL_SECONDS) || 120),
 );
 
-function realtimeBody({ model, instructions, voice, language, eagerness, withTranscription, ttl, minimal }) {
+function realtimeBody({ model, instructions, voice, language, eagerness, withTranscription, ttl, minimal, reasoning, extras }) {
   // Minimal: kun det, der ikke kan undværes. Bruges som sidste GA-forsøg, så en
   // enkelt afvist indstilling (fx turtagning eller udløbstid) aldrig kan koste
   // hele stemmen.
@@ -491,6 +542,10 @@ function realtimeBody({ model, instructions, voice, language, eagerness, withTra
       interrupt_response: true,
     },
   };
+  // Støjreduktion før turtagningen: en ventilator, et tastatur eller kollegaer
+  // i baggrunden tolkes ikke som tale — så modparten hverken afbryder eller
+  // venter forgæves. "far_field" passer til en bærbar uden headset.
+  if (extras) audioInput.noise_reduction = { type: process.env.COACH_NOISE_REDUCTION || "far_field" };
   if (withTranscription) {
     audioInput.transcription = {
       model: process.env.COACH_TRANSCRIBE_MODEL || "gpt-4o-mini-transcribe",
@@ -509,6 +564,10 @@ function realtimeBody({ model, instructions, voice, language, eagerness, withTra
       },
     },
   };
+  // gpt-realtime-2.x tænker før den taler (standard "low"). En kunde behøver
+  // ikke tænke længe for at svare "jamen, det ved jeg sgu ikke" — lavere
+  // tænkeniveau giver hurtigere første lyd.
+  if (extras && reasoning && /^gpt-realtime-2/.test(String(model))) body.session.reasoning = { effort: reasoning };
   // Kun med når vi beder om det: afviser en konto/model feltet, prøver vi igen
   // uden det, så stemmen aldrig falder ud alene på grund af en udløbsindstilling.
   if (ttl) body.expires_after = { anchor: "created_at", seconds: ttl };
@@ -549,7 +608,7 @@ async function postJson(url, body, apiKey, extraHeaders = {}) {
  *                     expiresAt?: number, model?: string, voice?: string,
  *                     api?: "ga"|"beta", error?: string }>}
  */
-export async function mintRealtimeSession({ instructions, voice, language, eagerness, apiKey } = {}) {
+export async function mintRealtimeSession({ instructions, voice, language, eagerness, reasoning, apiKey } = {}) {
   if (!apiKey) return { ok: false, status: 500, error: "Serveren mangler OPENAI_API_KEY." };
 
   const v = normalizeVoice(voice);
@@ -565,7 +624,11 @@ export async function mintRealtimeSession({ instructions, voice, language, eager
   ];
 
   // Varianter i faldende ambitionsniveau; "minimal" er sidste GA-udvej.
+  // "hurtig" lægger tænkeniveau og støjreduktion oveni; afviser modellen et af
+  // felterne, er næste forsøg præcis den opsætning, der virkede før.
+  const effort = String(process.env.COACH_REALTIME_REASONING || reasoning || "").trim();
   const variants = [
+    { name: "hurtig", withTranscription: true, ttl: REALTIME_SECRET_TTL, extras: true, reasoning: effort },
     { name: "fuld", withTranscription: true, ttl: REALTIME_SECRET_TTL },
     { name: "uden-transskription", withTranscription: false, ttl: REALTIME_SECRET_TTL },
     { name: "uden-udloebstid", withTranscription: false, ttl: 0 },

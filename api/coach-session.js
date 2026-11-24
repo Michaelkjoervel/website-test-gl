@@ -157,6 +157,9 @@ export default async function handler(req, res) {
     mode?.counterpart === "kunde" && hidden?.persona ? naturalVoiceFor(hidden.persona, "") : "";
   const voice = normalizeVoice(personaVoice || body?.voice, "cedar");
   const eagerness = EAGERNESS.includes(body?.eagerness) ? body.eagerness : "auto";
+  // Kunden og lynild-drillen skal svare med det samme; salgsdirektørens
+  // refleksive øvelser (forberedelse, debriefing, eksamen) må gerne tænke lidt.
+  const reasoning = mode?.counterpart === "kunde" || modeId === "lynild" ? "minimal" : "low";
 
   let instructions = "";
   try {
@@ -191,7 +194,7 @@ export default async function handler(req, res) {
 
   let session;
   try {
-    session = await mintRealtimeSession({ instructions, voice, language, eagerness, apiKey });
+    session = await mintRealtimeSession({ instructions, voice, language, eagerness, reasoning, apiKey });
   } catch (e) {
     session = { ok: false, error: `Uventet fejl: ${String(e?.message || e).slice(0, 200)}` };
   }
