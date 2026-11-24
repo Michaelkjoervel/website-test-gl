@@ -99,14 +99,23 @@ const MODE_INTENT: Partial<Record<TrainingModeId, string>> = {
     "Salgsdirektøren tager fat i det, du selv bringer op. Sig hvad du gerne vil have hjælp til.",
 };
 
-/** Øvelser hvor tempoet er en del af pointen. */
 /*
- * Kun telefonen kører med den mest ivrige turtagning — en travl person i
- * røret ER utålmodig. Lynild gør IKKE: presset skal komme fra coachens
- * spørgsmål og de ~6 sekunders betænkningstid, ikke fra at maskinen afbryder
- * sælgeren, i samme øjeblik han trækker vejret for at tænke.
+ * Turtagning: hvor længe stemmen venter, før den svarer.
+ * - Kunderne og lynild svarer i normalt samtaletempo ("auto"). Den tidligere
+ *   klage over afbrydelser kom fra reservestemmen, mens realtime var nede —
+ *   den er løst dér (stilhedsvinduet), og her kostede den tålmodige
+ *   indstilling op til 8 sekunders tavshed efter hver replik.
+ * - Salgsdirektørens refleksive øvelser venter tålmodigt ("low"): her tænker
+ *   sælgeren højt, og en pause er ikke et færdigt svar.
  */
-const FAST_MODES: readonly TrainingModeId[] = ["telefon"];
+const PATIENT_MODES: readonly TrainingModeId[] = [
+  "kvalificering",
+  "forberedelse",
+  "debriefing",
+  "manualeksamen",
+  "fri-coaching",
+  "materialepraesentation",
+];
 
 const ENGINE_LABEL: Record<VoiceEngine, string> = {
   realtime: "Realtime-stemme",
@@ -384,7 +393,7 @@ export function LiveSession() {
         documentText: ext.documentText,
         sellerContext: buildSellerContext(profileRef.current, sellerRef.current),
         voice: s.scenario?.persona.voice,
-        eagerness: FAST_MODES.includes(s.modeId) ? "auto" : "low",
+        eagerness: PATIENT_MODES.includes(s.modeId) ? "low" : "auto",
       });
     } catch {
       /* hooken har allerede sat en læsbar fejl — den vises på scenen */

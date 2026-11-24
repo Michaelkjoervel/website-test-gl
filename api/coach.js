@@ -32,6 +32,7 @@ import {
   coachRateLimit,
   corsOrigin,
   callModel,
+  speak,
   sealHidden,
   openHidden,
   extractDocumentText,
@@ -39,7 +40,7 @@ import {
 } from "./_coach.mjs";
 import { manualManifest } from "./_manual.mjs";
 import { knowledgeManifest } from "./_greenlight.mjs";
-import { personaManifest, pickPersona, publicScenarioView, naturalVoiceFor } from "./_personas.mjs";
+import { personaManifest, pickPersona, publicScenarioView, naturalVoiceFor, libraryScenario } from "./_personas.mjs";
 import {
   MODES,
   COACH_MODES,
@@ -220,38 +221,42 @@ async function doScenarie(body, apiKey, ctx = {}) {
     return { status: 500, payload: { error: "Scenarie-instruktionen kunne ikke bygges på serveren." } };
   }
 
+  // Personaen står allerede i instruktionen — den sendes ikke en gang til.
   const input = [
     {
       role: "user",
-      content: [
-        "Byg scenariet nu.",
-        "",
-        "Sælgerens valg:",
-        JSON.stringify(scenarioConfig).slice(0, 4000),
-        persona ? `\nUdgangspunkt (persona fra biblioteket):\n${JSON.stringify(persona).slice(0, 6000)}` : "",
-      ]
-        .filter(Boolean)
-        .join("\n"),
+      content: ["Byg scenariet nu.", "", "Sælgerens valg:", JSON.stringify(scenarioConfig).slice(0, 4000)].join("\n"),
     },
   ];
 
-  // Den HURTIGE model, med vilje: sælgeren står og venter på at komme i gang,
-  // og på en kold serverless-funktion nåede den grundige model ikke altid i
-  // mål, før klienten gav op. Kvaliteten bæres af instruktionen og af
-  // persona-biblioteket som udgangspunkt — ikke af modellens størrelse.
+  // Den HURTIGE model uden tænkepause, med et tidsloft: sælgeren står og
+  // venter. Kvaliteten bæres af instruktionen og af persona-biblioteket som
+  // udgangspunkt — ikke af modellens størrelse eller tænketid. Når loftet
+  // rammes (eller modellen fejler), får sælgeren straks en håndskrevet kunde
+  // fra biblioteket i stedet for en fejlbesked.
+  const budget = Math.max(5000, Number(process.env.COACH_SCENARIO_BUDGET_MS) || 25_000);
   const r = await callModel({
     instructions,
     input,
     schema: SCENARIO_SCHEMA,
     schemaName: "scenarie",
     effort: "hurtig",
+    reasoning: "minimal",
+    timeoutMs: budget,
     apiKey,
   });
-  if (!r.ok) return { status: r.status, payload: { error: r.error || "Scenariet kunne ikke genereres." } };
 
-  const scenario = pruneNulls(r.data);
+  let scenario = r.ok ? pruneNulls(r.data) : null;
   if (!scenario || typeof scenario !== "object") {
-    return { status: 502, payload: { error: "Modellen returnerede et ubrugeligt scenarie." } };
+    // 401 er nøglen — så hjælper en bibliotekskunde ikke, samtalen vil fejle.
+    const fallback = r.status !== 401 && persona ? libraryScenario(persona, { mode: findMode(modeId), config: scenarioConfig }) : null;
+    if (!fallback) {
+      return {
+        status: r.ok ? 502 : r.status,
+        payload: { error: r.ok ? "Modellen returnerede et ubrugeligt scenarie." : r.error || "Scenariet kunne ikke genereres." },
+      };
+    }
+    scenario = fallback;
   }
 
   // Alt sælgeren IKKE må se forsegles. Klienten sender blobben retur ved hver
@@ -336,16 +341,30 @@ async function doSamtale(body, apiKey, ctx = {}) {
   // Stemmen og stemmeføringen til reservestemmens tale-syntese. Ikke hemmeligt
   // (det er tonefald, ikke viden) — men kun serveren kender det.
   const persona = speaker === "kunde" ? hidden?.persona : null;
+  const reply = String(r.data || "").trim();
+  const voice = persona ? naturalVoiceFor(persona, "cedar") : "cedar";
+  const voiceStyle = persona?.voiceDirection
+    ? String(persona.voiceDirection).slice(0, 600)
+    : "Rolig, skarp og krævende salgsdirektør. Taler direkte og i et naturligt tempo.";
+
+  // Reservestemmen: replik OG lyd i samme kald. Før hentede browseren lyden
+  // bagefter i et nyt kald — én rundtur og én kold serverfunktion mere, før
+  // kunden sagde noget. Fejler talesyntesen, kommer teksten stadig.
+  let audio;
+  let speakError;
+  if (body?.speak === true && reply) {
+    try {
+      const spoken = await speak({ text: reply.slice(0, 4000), voice, style: voiceStyle, apiKey });
+      if (spoken.ok) audio = spoken.audio;
+      else speakError = spoken.error || "Talesyntesen fejlede.";
+    } catch (e) {
+      speakError = `Talesyntesen fejlede: ${String(e?.message || e).slice(0, 200)}`;
+    }
+  }
+
   return {
     status: 200,
-    payload: {
-      reply: String(r.data || "").trim(),
-      speaker,
-      voice: persona ? naturalVoiceFor(persona, "cedar") : "cedar",
-      voiceStyle: persona?.voiceDirection
-        ? String(persona.voiceDirection).slice(0, 600)
-        : "Rolig, skarp og krævende salgsdirektør. Taler direkte og i et naturligt tempo.",
-    },
+    payload: { reply, speaker, voice, voiceStyle, ...(audio ? { audio } : {}), ...(speakError ? { speakError } : {}) },
   };
 }
 

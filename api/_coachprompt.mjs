@@ -2172,7 +2172,7 @@ export function buildScenarioInstructions({
     ? `# UDGANGSPUNKT FRA PERSONABIBLIOTEKET
 Byg videre på denne person frem for at opfinde en ny. Behold rolle, temperament og stemmeføring; tilpas virksomhed, tal og den skjulte information til scenariet, og uddyb hvor der mangler noget.
 
-${clip(JSON.stringify(persona, null, 2), 6000)}`
+${clip(JSON.stringify(persona), 6000)}`
     : "";
 
   return joinBlocks(
@@ -2194,7 +2194,7 @@ Du svarer udelukkende med JSON efter det udleverede skema. Ingen tekst udenom.`,
 
 # DEN SKJULTE INFORMATION ER SELVE ØVELSEN
 - Kunden SKAL sidde på information, sælgeren ikke har, og som afgør sagen: det reelle problem bag det oplyste, hvad det koster dem, hvem der reelt beslutter, hvad der allerede er lovet en anden leverandør, en intern politik, en deadline, en tidligere dårlig oplevelse, et budget der er bundet et andet sted.
-- Lav mindst fem-syv skjulte fakta fordelt på dybde: nogle åbnes af ét godt spørgsmål (dybde 1), nogle kræver en opfølgning (dybde 2), og mindst to kræver tillid og flere spørgsmål i træk (dybde 3).
+- Lav præcis fem skjulte fakta fordelt på dybde: to åbnes af ét godt spørgsmål (dybde 1), ét kræver en opfølgning (dybde 2), og to kræver tillid og flere spørgsmål i træk (dybde 3).
 - For hvert skjult faktum skal det stå tydeligt, hvilken slags spørgsmål der åbner det. De dybeste må aldrig kunne åbnes af et overfladisk spørgsmål.
 - surfaceStory er det, kunden siger, hvis man spørger overfladisk — den skal være plausibel og en anelse misvisende, så en doven sælger går hjem med et forkert billede.
 
@@ -2223,8 +2223,13 @@ Denne sælger har gentagne gange vist følgende:
 ${bullets(sellerContext.weaknesses)}
 Byg scenariet, så netop dét bliver svært at komme udenom. Er svagheden fx at gå til løsning før konsekvensen, skal kunden være en, der gerne taler produkt og gladeligt lader sælgeren gøre det. Gør det uden at scenariet bliver kunstigt — og uden at nævne svagheden i briefingen.`
       : "",
-    manualBlock(mode, keywords),
-    knowledgeBlock({ keywords, industry: config.industry || "" }),
+    // Scenariet skal stå klar på få sekunder: kun øvelsens kerneprincipper.
+    // Fagviden (9.000 tegn) hører til i samtalen og feedbacken — ikke i
+    // opfindelsen af en kunde — og hvert ekstra tegn her er ventetid.
+    manualBlock(mode, keywords, { limit: 3 }),
+    `# KORT OG STRAMT — SÆLGEREN STÅR OG VENTER
+- Hver tekst højst to sætninger. hiddenBrief højst fem sætninger. Lister højst fire punkter.
+- Ingen gentagelser mellem felterne, ingen fyldord, ingen indledninger.`,
     `# FELTER DER SKAL SÆTTES TEKNISK KORREKT
 - modeId skal være “${mode.id}”.
 - source skal være “genereret”.
@@ -2622,7 +2627,7 @@ const PERSONA_SPEC = OBJ({
   voiceDirection: S("Hvordan personen taler — tempo, tonefald, ordvalg, temperament."),
   voice: ENUM(REALTIME_VOICES, "OpenAI realtime-stemme der passer bedst."),
   surfaceStory: S("Hvad personen åbent siger, hvis man spørger overfladisk — plausibel og en anelse misvisende."),
-  hidden: LIST(HIDDEN_FACT, "Fem til syv skjulte fakta fordelt på dybde 1-3."),
+  hidden: LIST(HIDDEN_FACT, "Fem skjulte fakta fordelt på dybde 1-3."),
   opensUpWhen: SLIST("Adfærd hos sælgeren der åbner personen."),
   closesDownWhen: SLIST("Adfærd hos sælgeren der lukker personen."),
   objections: SLIST("Indvendinger formuleret som personen ville sige dem."),

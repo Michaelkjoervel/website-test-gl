@@ -3213,3 +3213,54 @@ export function naturalVoiceFor(persona, fallback = "cedar") {
   if (!v) return fallback;
   return VOICE_UPGRADE[v] || v;
 }
+
+/* --------------------------------------------------- Øjeblikkeligt scenarie */
+/**
+ * Et komplet scenarie bygget direkte af en håndskrevet bibliotekskunde — uden
+ * modelkald. Bruges, når modellen er for langsom eller fejler: sælgeren står
+ * og venter, og en kalibreret kunde fra biblioteket er langt bedre end en
+ * fejlbesked. Den skjulte viden er præcis den samme som i biblioteket.
+ */
+const LIBRARY_SITUATIONS = {
+  telefon: (p, first) =>
+    `Du ringer til ${p.name}, ${p.role} hos ${p.company}. Du har nummeret fra virksomhedens hjemmeside og har ikke talt med ${first} før.`,
+  tilbudsopfoelgning: (p, first) =>
+    `${p.company} fik for tre uger siden et tilbud fra green light. Du ringer til ${p.name}, ${p.role}, for at følge op. ${first} har ikke svaret på din mail.`,
+  forhandling: (p) =>
+    `${p.name}, ${p.role} hos ${p.company}, har tilbuddet foran sig og har bedt om et møde om pris og vilkår.`,
+  materialepraesentation: (p) =>
+    `Du skal præsentere dit materiale for ${p.name}, ${p.role} hos ${p.company}.`,
+  default: (p, first) =>
+    `Du har et første møde med ${p.name}, ${p.role} hos ${p.company}. Mødet blev booket efter et kort opkald, hvor ${first} sagde ja til at høre, hvad green light kan.`,
+};
+
+export function libraryScenario(persona, { mode, config = {} } = {}) {
+  if (!persona) return null;
+  const first = String(persona.name || "").trim().split(/\s+/)[0] || "kunden";
+  const modeId = mode?.id || "kunderollespil";
+  const situation = (LIBRARY_SITUATIONS[modeId] || LIBRARY_SITUATIONS.default)(persona, first);
+  const objectives = (Array.isArray(mode?.trains) ? mode.trains : []).slice(0, 3).map(String);
+  const hiddenBrief = [
+    persona.decisionProcess && `Beslutning: ${persona.decisionProcess}`,
+    persona.budgetReality && `Budget: ${persona.budgetReality}`,
+    persona.timing && `Timing: ${persona.timing}`,
+    persona.competitors && `Konkurrenter: ${persona.competitors}`,
+    persona.personalMotivation && `Personligt: ${persona.personalMotivation}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  return {
+    id: `bibliotek-${persona.id}-${Date.now().toString(36)}`,
+    title: `${persona.role} · ${persona.company}`,
+    briefing: `${situation} ${persona.company} er en virksomhed inden for ${String(persona.industry || "dansk erhverv").toLowerCase()}.`,
+    objectives: objectives.length
+      ? objectives
+      : ["Find kundens reelle problem — og hvad det koster", "Få et konkret næste skridt i kalenderen"],
+    persona,
+    config: { ...config, industry: config.industry || persona.industry, customerRole: config.customerRole || persona.role },
+    hiddenBrief,
+    source: "bibliotek",
+    modeId,
+  };
+}

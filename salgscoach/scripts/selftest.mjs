@@ -109,12 +109,20 @@ function checkStrictSchema(name, schema, problems = [], trail = "") {
 
 /** Alt der blev sendt til modellen — så vi kan kigge instruktionen efter. */
 const sent = [];
+/** Svar der skal afvises i næste kald (fx en model kontoen ikke kender). */
+const failNext = [];
 
 function stubFetch() {
   globalThis.fetch = async (url, init = {}) => {
     const u = String(url);
     const body = init.body && typeof init.body === "string" ? safeJson(init.body) : null;
     sent.push({ url: u, body, raw: typeof init.body === "string" ? init.body : "" });
+
+    const i = failNext.findIndex((f) => u.includes(f.url) && (!f.model || body?.model === f.model));
+    if (i >= 0) {
+      const [f] = failNext.splice(i, 1);
+      return json({ error: { message: f.message, code: f.code } }, f.status);
+    }
 
     if (u.includes("/v1/realtime/client_secrets")) {
       return json({ value: "ek_selftest_hemmelig_noegle", expires_at: 1893456000, session: {} });
@@ -321,6 +329,50 @@ async function main() {
     "svaret til browseren indeholder ikke hiddenBrief",
     !JSON.stringify(scen.payload?.scenario || {}).includes("hiddenBrief"),
   );
+  const scenCall = sent.find((s) => s.url.includes("/v1/responses"));
+  ok("scenariet bygges på den hurtige model (GPT-5.4 mini)", scenCall?.body?.model === "gpt-5.4-mini", String(scenCall?.body?.model));
+  ok("scenariet bygges uden tænkepause", scenCall?.body?.reasoning?.effort === "none", JSON.stringify(scenCall?.body?.reasoning));
+  ok(
+    "scenarie-instruktionen er slank (ingen fagviden-blok)",
+    String(scenCall?.body?.instructions || "").length < 18_000 && !/GREEN LIGHT-VIDEN/.test(String(scenCall?.body?.instructions || "")),
+    `${String(scenCall?.body?.instructions || "").length} tegn`,
+  );
+  ok("personaen sendes ikke to gange", !JSON.stringify(scenCall?.body?.input || "").includes("Udgangspunkt (persona"));
+
+  // Modellen fejler → sælgeren får straks en håndskrevet kunde fra biblioteket.
+  sent.length = 0;
+  failNext.push({ url: "/v1/responses", status: 500, message: "server overloaded" });
+  const scenFallback = await invoke(coach, {
+    body: { action: "scenarie", modeId: "telefon", config: { auto: true, difficulty: "moderat" }, language: "da" },
+  });
+  const fbBlob = scenFallback.payload?.hiddenBlob;
+  const fbOpened = fbBlob ? coachCore.openHidden(fbBlob) : null;
+  ok(
+    "fejler modellen, kommer der straks en bibliotekskunde",
+    scenFallback.status === 200 && scenFallback.payload?.scenario?.source === "bibliotek",
+    JSON.stringify(scenFallback.payload).slice(0, 160),
+  );
+  ok(
+    "bibliotekskunden har sin fulde skjulte viden i forseglingen",
+    (fbOpened?.persona?.hidden || []).length >= 4 && String(fbOpened?.hiddenBrief || "").length > 40,
+  );
+  ok(
+    "bibliotekskundens skjulte viden når ikke browseren",
+    !JSON.stringify(scenFallback.payload?.scenario || {}).includes(String(fbOpened?.persona?.hidden?.[0]?.fact || "§§").slice(0, 30)),
+  );
+
+  // Kender kontoen ikke den nyeste model, bruges den kendte — uden fejl.
+  sent.length = 0;
+  failNext.push({ url: "/v1/responses", model: "gpt-5.4-mini", status: 404, code: "model_not_found", message: "The model `gpt-5.4-mini` does not exist or you do not have access to it." });
+  const oldModel = await invoke(coach, {
+    body: { action: "samtale", modeId: "fri-coaching", coachMode: "coach", language: "da", messages: [{ role: "saelger", text: "Hej." }] },
+  });
+  const models = sent.filter((s) => s.url.includes("/v1/responses")).map((s) => s.body?.model);
+  ok("ukendt nyeste model → falder tilbage til gpt-5-mini", oldModel.status === 200 && models.join(",") === "gpt-5.4-mini,gpt-5-mini", models.join(","));
+  ok(
+    "tænkeniveauet oversættes til den ældre model",
+    sent.filter((s) => s.url.includes("/v1/responses"))[1]?.body?.reasoning?.effort === "minimal",
+  );
 
   /* -------------------------------------------------------------- Samtale */
   section("Endepunkt: samtale — hvad får modellen at vide?");
@@ -360,12 +412,56 @@ async function main() {
   ok("kundeprompten har personens indvendinger", instructions.includes("prøve-objections"));
   ok("kundeprompten har personlig motivation (bagscenen)", instructions.includes("prøve-personalMotivation"));
   ok("kundeprompten har regler for naturligt talesprog", /fyldord|talesprog/i.test(instructions) && /VARIATION/.test(instructions));
-  ok("samtalen kører med minimal ræsonnering", modelCall?.body?.reasoning?.effort === "minimal", JSON.stringify(modelCall?.body?.reasoning));
+  ok(
+    "samtalen kører på GPT-5.4 mini uden tænkepause",
+    modelCall?.body?.model === "gpt-5.4-mini" && modelCall?.body?.reasoning?.effort === "none",
+    JSON.stringify({ model: modelCall?.body?.model, reasoning: modelCall?.body?.reasoning }),
+  );
   ok("samtalen tvinges ikke til korte svar", modelCall?.body?.text?.verbosity !== "low");
   ok(
     "reservestemmen får kundens egen stemme og stemmeføring",
     typeof talk.payload?.voice === "string" && talk.payload.voice.length > 0 && String(talk.payload?.voiceStyle || "").includes("prøve-voiceDirection"),
     JSON.stringify({ voice: talk.payload?.voice, style: talk.payload?.voiceStyle }),
+  );
+
+  sent.length = 0;
+  const talkVoice = await invoke(coach, {
+    body: {
+      action: "samtale",
+      modeId: "kunderollespil",
+      coachMode: "hybrid",
+      language: "da",
+      scenario: scen.payload?.scenario,
+      hiddenBlob: blob,
+      messages: [{ role: "saelger", text: "Hvordan fungerer lyset i den gamle hal?" }],
+      speak: true,
+    },
+  });
+  ok(
+    "reservestemmen får replik og lyd i samme kald",
+    talkVoice.status === 200 && String(talkVoice.payload?.audio || "").startsWith("data:audio/") && Boolean(talkVoice.payload?.reply),
+    JSON.stringify(talkVoice.payload).slice(0, 120),
+  );
+  const ttsInline = sent.find((s) => s.url.includes("/audio/speech"));
+  ok(
+    "lyden læses op med kundens stemme og stemmeføring",
+    Boolean(ttsInline) && ttsInline.body?.voice === talkVoice.payload?.voice && /prøve-voiceDirection/.test(String(ttsInline.body?.instructions || "")),
+  );
+  failNext.push({ url: "/v1/audio/speech", status: 500, message: "tts nede" });
+  failNext.push({ url: "/v1/audio/speech", status: 500, message: "tts nede" });
+  failNext.push({ url: "/v1/audio/speech", status: 500, message: "tts nede" });
+  const talkNoTts = await invoke(coach, {
+    body: {
+      action: "samtale", modeId: "kunderollespil", coachMode: "hybrid", language: "da",
+      scenario: scen.payload?.scenario, hiddenBlob: blob, speak: true,
+      messages: [{ role: "saelger", text: "Hvad koster det jer?" }],
+    },
+  });
+  failNext.length = 0;
+  ok(
+    "fejler talesyntesen, kommer replikken stadig (med forklaring)",
+    talkNoTts.status === 200 && Boolean(talkNoTts.payload?.reply) && !talkNoTts.payload?.audio && Boolean(talkNoTts.payload?.speakError),
+    JSON.stringify(talkNoTts.payload).slice(0, 160),
   );
 
   sent.length = 0;
@@ -505,6 +601,20 @@ async function main() {
   ok("realtime får talt-sprog-regler", /kort|talt|sætning/i.test(rtInstructions));
   ok("realtime-kunden kender de skjulte fakta", rtInstructions.includes("prøve-fact") && rtInstructions.includes("prøve-hiddenBrief"));
   ok("realtime-kunden er kompakt", rtInstructions.length < 20_000, `${rtInstructions.length} tegn`);
+  ok(
+    "realtime-kunden svarer med minimalt tænkeniveau",
+    mintCall?.body?.session?.reasoning?.effort === "minimal",
+    JSON.stringify(mintCall?.body?.session?.reasoning),
+  );
+  ok(
+    "realtime har støjreduktion før turtagningen",
+    Boolean(mintCall?.body?.session?.audio?.input?.noise_reduction?.type),
+  );
+  ok(
+    "realtime-kunden lytter med normal turtagning",
+    ["auto", "medium"].includes(String(mintCall?.body?.session?.audio?.input?.turn_detection?.eagerness)),
+    String(mintCall?.body?.session?.audio?.input?.turn_detection?.eagerness),
+  );
   ok(
     "nyeste realtime-model prøves først",
     String(mintCall?.body?.session?.model || "") === (process.env.COACH_REALTIME_MODEL || "gpt-realtime-2.1"),

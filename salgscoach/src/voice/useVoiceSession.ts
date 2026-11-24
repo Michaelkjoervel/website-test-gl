@@ -11,7 +11,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RealtimeVoiceSession, realtimeSupported, type VoiceState } from "./realtime";
 import { BrowserVoiceSession, browserVoiceSupported } from "./browserVoice";
-import { api, type SellerContext } from "../lib/api";
+import { api, type ConverseResult, type SellerContext } from "../lib/api";
 import { newId } from "../lib/ids";
 import type {
   CoachMode,
@@ -172,26 +172,40 @@ export function useVoiceSession(): VoiceSessionApi {
    * uden at havne i udskriften — ellers ville coachen bagefter analysere
    * sælgeren på ord, han aldrig har sagt.
    */
-  const textRespond = useCallback(
-    async (p: StartParams, sellerText: string, opts: { recorded?: boolean } = {}) => {
+  const converseFor = useCallback(
+    async (
+      p: StartParams,
+      sellerText: string,
+      opts: { recorded?: boolean; speak?: boolean; signal?: AbortSignal } = {},
+    ) => {
       const history = opts.recorded
         ? lines.current
         : [...lines.current, { role: "saelger" as const, text: sellerText }];
-      const res = await api.converse({
-        modeId: p.modeId,
-        coachMode: p.coachMode,
-        language: p.language,
-        scenario: p.scenario,
-        hiddenBlob: p.hiddenBlob,
-        intake: p.intake,
-        documentText: p.documentText,
-        sellerContext: p.sellerContext,
-        messages: history,
-      });
+      const res = await api.converse(
+        {
+          modeId: p.modeId,
+          coachMode: p.coachMode,
+          language: p.language,
+          scenario: p.scenario,
+          hiddenBlob: p.hiddenBlob,
+          intake: p.intake,
+          documentText: p.documentText,
+          sellerContext: p.sellerContext,
+          messages: history,
+          speak: opts.speak,
+        },
+        { signal: opts.signal },
+      );
       if (res.voice || res.voiceStyle) counterpartVoice.current = { voice: res.voice, style: res.voiceStyle };
-      return res.reply;
+      return res;
     },
     [],
+  );
+
+  const textRespond = useCallback(
+    async (p: StartParams, sellerText: string, opts: { recorded?: boolean } = {}) =>
+      (await converseFor(p, sellerText, opts)).reply,
+    [converseFor],
   );
 
   /**
@@ -199,7 +213,7 @@ export function useVoiceSession(): VoiceSessionApi {
    * tager telefonen, salgsdirektøren skyder første spørgsmål af. Samme vej ind
    * som resten af samtalen — serveren kender rollen og den skjulte viden.
    */
-  const openingLine = useCallback(async (p: StartParams) => {
+  const openingLine = useCallback(async (p: StartParams, opts: { speak?: boolean } = {}) => {
     const res = await api.converse({
       modeId: p.modeId,
       coachMode: p.coachMode,
@@ -211,32 +225,54 @@ export function useVoiceSession(): VoiceSessionApi {
       sellerContext: p.sellerContext,
       messages: [],
       opening: true,
+      speak: opts.speak,
     });
     if (res.voice || res.voiceStyle) counterpartVoice.current = { voice: res.voice, style: res.voiceStyle };
-    return res.reply.trim();
+    return { ...res, reply: res.reply.trim() };
   }, []);
 
-  /** Læs en replik op med kundens egen stemme. Fejler det, siges det én gang. */
-  const voiced = useCallback(async (p: StartParams, text: string) => {
-    try {
-      const spoken = await api.speak({
-        text,
-        voice: counterpartVoice.current.voice || p.voice || "cedar",
-        style: counterpartVoice.current.style,
-      });
-      return api.toAudioDataUrl(spoken.audio);
-    } catch (e) {
-      // Teksten vises stadig — men en modpart, der pludselig er stum,
-      // skal forklares. Én besked, ikke én pr. replik.
-      if (!speakFailedOnce.current) {
-        speakFailedOnce.current = true;
-        setEngineNotice(
-          `Talesyntesen fejlede (${(e as Error).message || "ukendt årsag"}). Øvelsen fortsætter med svar på skrift.`,
-        );
-      }
-      return undefined;
-    }
+  /** Talesyntesen fejlede: teksten vises stadig, men det siges — én gang. */
+  const speakFailed = useCallback((why: string) => {
+    if (speakFailedOnce.current) return;
+    speakFailedOnce.current = true;
+    setEngineNotice(`Talesyntesen fejlede (${why || "ukendt årsag"}). Øvelsen fortsætter med svar på skrift.`);
   }, []);
+
+  /** Læs en replik op med kundens egen stemme (når lyden ikke kom med svaret). */
+  const voiced = useCallback(
+    async (p: StartParams, text: string, signal?: AbortSignal) => {
+      try {
+        const spoken = await api.speak(
+          {
+            text,
+            voice: counterpartVoice.current.voice || p.voice || "cedar",
+            style: counterpartVoice.current.style,
+          },
+          { signal },
+        );
+        return api.toAudioDataUrl(spoken.audio);
+      } catch (e) {
+        if (signal?.aborted) throw e;
+        speakFailed((e as Error).message);
+        return undefined;
+      }
+    },
+    [speakFailed],
+  );
+
+  /** Lyden til en replik: med fra serveren, eller hentet bagefter som reserve. */
+  const audioFor = useCallback(
+    async (p: StartParams, res: ConverseResult, signal?: AbortSignal) => {
+      if (res.audio) return api.toAudioDataUrl(res.audio);
+      if (!res.reply) return undefined;
+      if (res.speakError) {
+        speakFailed(res.speakError);
+        return undefined;
+      }
+      return voiced(p, res.reply, signal);
+    },
+    [voiced, speakFailed],
+  );
 
   /** Skift øvelsen over på skrift. Sidste udvej — men altid bedre end at dø. */
   const fallBackToText = useCallback((notice: string) => {
@@ -269,8 +305,8 @@ export function useVoiceSession(): VoiceSessionApi {
           textBusy.current = true;
           setState("taenker");
           void openingLine(p)
-            .then((line) => {
-              if (line && textOnly.current) push(counterpartRole(p.modeId), line);
+            .then((res) => {
+              if (res.reply && textOnly.current) push(counterpartRole(p.modeId), res.reply);
             })
             .catch(() => {
               /* sælgeren kan bare starte selv */
@@ -307,9 +343,15 @@ export function useVoiceSession(): VoiceSessionApi {
             fail(kind, m);
           },
         },
+        // Replik og lyd i ét kald — og gerne forudhentet, mens sælgeren
+        // stadig holder sin pause (se BrowserVoiceSession).
         respond: async (sellerText, opts) => {
-          const reply = await textRespond(p, sellerText, { recorded: opts.recorded });
-          return { text: reply, audio: await voiced(p, reply) };
+          const res = await converseFor(p, sellerText, {
+            recorded: opts.recorded,
+            speak: true,
+            signal: opts.signal,
+          });
+          return { text: res.reply, audio: await audioFor(p, res, opts.signal) };
         },
       });
       bv.current = session;
@@ -318,12 +360,12 @@ export function useVoiceSession(): VoiceSessionApi {
       await session.start();
       if (lines.current.length === 0) {
         void session.open(async () => {
-          const line = await openingLine(p);
-          return { text: line, audio: line ? await voiced(p, line) : undefined };
+          const res = await openingLine(p, { speak: true });
+          return { text: res.reply, audio: res.reply ? await audioFor(p, res) : undefined };
         });
       }
     },
-    [push, textRespond, openingLine, voiced, fail, classify, fallBackToText],
+    [push, converseFor, openingLine, audioFor, fail, classify, fallBackToText],
   );
 
   /**
